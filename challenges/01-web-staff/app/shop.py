@@ -558,14 +558,37 @@ def news_card(p):
             f'<b>{p["title"]}</b><p>{p["lede"]}</p><span class="more">Lire l\'article</span></a>')
 
 
+SPORT_TILES = [("/natation", "Natation", "lunettes-natation"), ("/velo", "Vélo", "velo-chrono-race-900"),
+               ("/course-a-pied", "Course à pied", "chaussures-lacage-rapide"),
+               ("/triathlon", "Triathlon", "combinaison-tri-500")]
+BEST_SELLERS = ["ceinture-dossard", "gels-energetiques", "kit-reparation", "bonnet-silicone"]
+
+
+def sport_tiles():
+    return "".join(f'<a class="tile" href="{h}"><span class="ph">{photo(art)}</span><span class="t">{n}</span></a>'
+                   for h, n, art in SPORT_TILES)
+
+
+def grid_section(title, slugs, link=("", "")):
+    more = f'<a href="{link[0]}">{link[1]}</a>' if link[0] else ""
+    return (f'<section class="sec"><div class="in"><div class="sec-hd"><h2>{title}</h2>{more}</div>'
+            f'<div class="grid">{"".join(card(s) for s in slugs)}</div></div></section>')
+
+
+def not_found_body():
+    """Body of the shop's 404 page (used by app.py's error handler)."""
+    return fr(f"""<section class="page-hd"><div class="in"><h1>Page introuvable</h1>
+<p>La page que vous cherchez n'existe pas ou a changé d'adresse. Le produit a peut-être été retiré de la vente.</p>
+<div class="btns" style="margin-top:20px"><a class="btn" href="/">Retour à l'accueil</a>
+<a class="btn line" href="/aide">Aide et contact</a></div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos rayons</h2></div><div class="grid">{sport_tiles()}</div></div></section>
+{grid_section("Nos meilleures ventes", BEST_SELLERS)}""")
+
+
 @shop.get("/")
 def home():
     notice = SEARCH_NOTICE if "q" in request.args else ""
-    sports = [("/natation", "Natation", "lunettes-natation"), ("/velo", "Vélo", "velo-chrono-race-900"),
-              ("/course-a-pied", "Course à pied", "chaussures-lacage-rapide"),
-              ("/triathlon", "Triathlon", "combinaison-tri-500")]
-    sp = "".join(f'<a class="tile" href="{h}"><span class="ph">{photo(art)}</span><span class="t">{n}</span></a>'
-                 for h, n, art in sports)
+    sp = sport_tiles()
     deals = [s for s in HOME_DEALS if PRODUCTS[s]["was"]][:4]
     sched = "".join(f"<tr><td>{t}</td><td>{w}</td><td>{l}</td></tr>" for t, w, l in SCHEDULE)
     body = f"""<section class="hero"><div class="in">
@@ -962,7 +985,8 @@ def cart():
  <p>La vente en ligne est suspendue pendant la compétition. Réservez vos articles en magasin, ils vous attendent
   à l'accueil.</p>
  <div class="btns"><a class="btn" href="/">Continuer mes achats</a><a class="btn line" href="/magasins">Nos magasins</a></div>
-</div></div></section>"""
+</div></div></section>
+{grid_section("Nos meilleures ventes", BEST_SELLERS)}"""
     return html(layout("Mon panier - DécaFlop", fr(body)))
 
 

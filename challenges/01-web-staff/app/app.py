@@ -14,7 +14,7 @@ from flask import Flask, Response
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling shop.py / intranet.py
 import intranet  # noqa: E402
-from shop import shop, layout, html  # noqa: E402
+from shop import shop, layout, html, not_found_body  # noqa: E402
 
 app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
@@ -69,11 +69,7 @@ Disallow: /sap/
 
 @app.errorhandler(404)
 def not_found(_e):
-    body = """<section class="page-hd"><div class="in"><h1>Page introuvable</h1>
- <p>Cette page n'existe pas ou a été déplacée.</p></div></section>
-<section class="sec"><div class="in btns"><a class="btn" href="/">Retour à l'accueil</a>
- <a class="btn line" href="/aide">Aide et contact</a></div></section>"""
-    return html(layout("Page introuvable - DécaFlop", body), 404)
+    return html(layout("Page introuvable - DécaFlop", not_found_body()), 404)
 
 @app.get("/robots.txt")
 def robots():
