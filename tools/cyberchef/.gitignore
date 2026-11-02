@@ -1,0 +1,3 @@
+# The CyberChef release bundle is fetched during prep, never committed.
+cyberchef.zip
+*.zip

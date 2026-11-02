@@ -11,8 +11,9 @@ public internet:
 - Put the Pi and all players on the travel router's LAN/Wi-Fi.
 - **Disable the router's WAN/uplink** (or just don't plug it in). Players don't
   need internet for any challenge — handouts and the scoreboard are local.
-  (Exception: if a team wants an online hash-cracker for 09, give them the
-  `wordlist.txt` instead so the event stays fully offline.)
+  No online tools are needed even for cracking: 09/10 are solvable fully offline
+  with the provided `wordlist.txt` plus the on-Pi browser toolbox (see
+  "Browser toolbox" below).
 - Give the Pi a static lease, e.g. `192.168.8.2`. Players start at
   `http://192.168.8.2:8080` (the cellule de crise), which links every challenge
   (`:8001` … `:8014`) and serves the handouts. Replace `<CTF-HOST>` in the
@@ -40,19 +41,68 @@ docker compose up -d --build
 > `python:3.12-slim` and `pip`/`apt` packages download then). After that the
 > whole thing runs offline.
 
+## Browser toolbox (for locked-down / corporate laptops)
+
+Players on managed laptops often can't install anything (no admin rights, EDR,
+a blocked terminal, download scanning). They don't have to: two extra services
+run **on the Pi** and are driven entirely from a browser.
+
+- **CyberChef** — `http://<PiIP>:8090`. A static, 100% client-side app: base64,
+  EXIF, unzip (including password-protected), file carving ("Extract Files"),
+  MD5, and JWT decode/sign/verify. Covers 02, 03, 05, 07, 09, 10 and 13 with no
+  install. Stateless — one shared instance, nothing to isolate between players.
+- **Terminal d'équipe (ttyd)** — `http://<PiIP>:8091`. A Linux shell in the
+  browser with `git-dumper`, `john`, `binwalk`, `foremost`, `exiftool`, `curl`,
+  `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
+  a shell. Each browser connection gets its own scratch workspace, the container
+  runs as a **non-root** user with **no repository, flags or challenge source
+  mounted**, and it's capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`), so one
+  player can't starve the others or read another challenge's answers.
+
+Both link from the cellule de crise's **Outils** tab and auto-point at the Pi's
+IP. Override the addresses with `CYBERCHEF_URL` / `TERMINAL_URL` on the `hub`
+service if you host them elsewhere.
+
+**One prep step (needs internet, before the event):** CyberChef ships as a
+release zip, not committed to this repo. Download it once and drop it in:
+
+```bash
+# grab the "CyberChef_vX.Y.Z.zip" asset from
+#   https://github.com/gchq/CyberChef/releases
+cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
+```
+
+`docker compose up -d --build` then builds both services locally (arm64). The
+`toolbox` image pulls its `apt`/`pip` tools and the `ttyd` binary at build time,
+so build it while you still have internet, same as the challenge images.
+
 ## Resource budget (4 GB)
 
 | Component | Approx RAM |
 |-----------|-----------|
 | 7 challenge containers + the hub + the file share (`mem_limit` 96–128 MB each) | ~0.5–0.8 GB actual |
-| CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
-| OS + Docker | ~0.5 GB |
+| CTFd (in docker-compose, SQLite + `WORKERS 1`, `mem_limit` 768 MB) | ~0.4–0.7 GB |
+| CyberChef (static, `mem_limit` 96 MB) | ~15–30 MB actual |
+| Terminal toolbox (`mem_limit` 512 MB, `cpus 2.0`) | ~0.15 GB idle, short bursts when cracking/carving |
+| OS + Docker | ~0.5–0.8 GB |
 
-Each container is capped in `docker-compose.yml` (the `share` service at 96 MB).
-One shared instance per challenge is fine for 6 players — these apps are
-stateless, so there's nothing for players to corrupt for each other. With CTFd,
-the full stack is ~1.5–2 GB in practice: comfortable on 4 GB, but test it
-before the event.
+Each container is capped in `docker-compose.yml`. One shared instance per
+challenge is fine for 6 players — these apps are stateless, so there's nothing
+for players to corrupt for each other. With CTFd and the browser toolbox, the
+full stack is ~2–2.5 GB in practice: comfortable on 4 GB, but test it before the
+event.
+
+The only way to push a 4 GB Pi is several players cracking at once. Our cracks
+are tiny (a 15-word `wordlist.txt`, a 1 MB carve) — keep it that way: **don't
+drop `rockyou.txt` in**, and the `toolbox` caps mean a runaway only OOM-kills its
+own container, not the Pi. As cheap insurance, enable compressed RAM swap once
+(prep, with internet):
+
+```bash
+sudo apt-get install -y zram-tools
+printf 'ALGO=zstd\nPERCENT=50\n' | sudo tee /etc/default/zramswap
+sudo systemctl restart zramswap        # ~2 GB of zram-backed swap, no SD wear
+```
 
 ## Serving the files
 
@@ -96,8 +146,10 @@ staff portal (01) and the share, so they can never drift. If a team is stuck on
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
+- [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
+      "Browser toolbox" above)
 - [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
-      + hub + share + CTFd)
+      + hub + share + CTFd + cyberchef + toolbox)
 - [ ] **`./scripts/build-handouts.sh` → 10 files in `handouts/dist/`. Run this
       BEFORE the checks below.** The poster, the race photo and every share
       download are served from that folder, so until it is built `:8001/presse`,
@@ -114,6 +166,9 @@ Run through this once, ideally the day before:
       byte-identical to `handouts/dist/`; a bad login is rejected
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
       `:8012` and `:8014` load
+- [ ] `:8090` opens CyberChef; `:8091` opens the terminal and drops you in a
+      shell (try `git-dumper --help`); the hub's **Outils** tab links both at
+      the Pi's IP
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
 - [ ] From a second device on the travel router, open

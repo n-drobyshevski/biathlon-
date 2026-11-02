@@ -2,8 +2,8 @@
 
 > During the post-incident audit, the crew finds DécaFlop's **Results API** —
 > the JSON service that's replacing the old web results admin. It hands out a
-> session token when you ask, and the official results are "admin only". The
-> token is a JWT — and whoever set it up used a secret you can guess.
+> session token when you ask, and the official results are "admin only". A guest
+> token won't get you in.
 
 **Connect:** `http://<CTF-HOST>:8010`
 
@@ -11,8 +11,8 @@ Get a guest token from `/api/token`, then reach `/api/results` as an **admin**.
 You'll need to forge your own token.
 
 _Alternate route: the signing secret may have leaked elsewhere in DécaFlop's
-infrastructure. Finding it there saves the cracking step — but you still forge
-the admin token and call the API yourself._
+infrastructure. Finding it there saves you recovering it the hard way — but you
+still forge the admin token and call the API yourself._
 
 **Flag format:** `TRIATHLON{...}`
 
