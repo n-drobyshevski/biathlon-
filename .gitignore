@@ -1,0 +1,19 @@
+# --- SECRETS: never commit these (they would spoil the CTF) ---
+.env
+*.env
+!.env.example
+
+# Generated challenge artifacts (built on the Pi from flags in .env)
+handouts/dist/
+challenges/**/flag.txt
+challenges/**/*.generated
+
+# Organizer-only solutions (shared privately, not pushed to a public repo)
+WRITEUPS/
+
+# Runtime / build junk
+__pycache__/
+*.pyc
+*.sqlite
+*.db
+.DS_Store
