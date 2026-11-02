@@ -97,7 +97,7 @@ def test_recovered_secret_equals_10_secret_and_forges_flag(tmp_path, monkeypatch
     token = _forge_hs256(recovered, {"role": "admin", "bib": 1042})
     r = jwt10.app.test_client().get("/api/results", headers={"Authorization": "Bearer " + token})
     assert r.status_code == 200
-    assert json.loads(r.data)["flag"] == "TRIATHLON{jwt_chain_flag}"
+    assert json.loads(r.data)["signature_officielle"] == "TRIATHLON{jwt_chain_flag}"
 
 
 def test_10_still_solvable_blind(monkeypatch):
@@ -108,10 +108,10 @@ def test_10_still_solvable_blind(monkeypatch):
     c = jwt10.app.test_client()
     # guest token has role=viewer -> no flag
     guest = json.loads(c.get("/api/token").data)["token"]
-    assert "flag" not in json.loads(c.get("/api/results", headers={"Authorization": "Bearer " + guest}).data)
+    assert "signature_officielle" not in json.loads(c.get("/api/results", headers={"Authorization": "Bearer " + guest}).data)
     # forge admin with the cracked default secret -> flag
     token = _forge_hs256(DEFAULT_SECRET, {"role": "admin"})
-    assert json.loads(c.get("/api/results", headers={"Authorization": "Bearer " + token}).data)["flag"] \
+    assert json.loads(c.get("/api/results", headers={"Authorization": "Bearer " + token}).data)["signature_officielle"] \
         == "TRIATHLON{jwt_blind_flag}"
 
 

@@ -129,9 +129,15 @@ def results():
                                                {"rang": 2, "athlete": "Mikkel Haugen", "temps": "1:02:51"}],
                                     "note": "Résultats publics. role=admin requis pour les données officielles."},
                                    ensure_ascii=False, indent=1), mimetype="application/json")
-    official = {"flag": FLAG,
-                "note": ("Jeton admin accepté. Le secret HS256 était trop faible. "
-                         "Signez toujours les JWT avec une clé longue et aléatoire.")}
+    official = {"role": "admin",
+                "epreuve": "Finale régionale de triathlon 2026",
+                "statut": "provisoire, en attente de publication",
+                "source": "SAP DFL, table ZRACE_RESULT",
+                "officiel": [{"rang": 1, "dossard": 1055, "athlete": "Astrid Bjornsen", "penalites": 0,
+                              "temps": "1:02:14"},
+                             {"rang": 2, "dossard": 1071, "athlete": "Mikkel Haugen", "penalites": 1,
+                              "temps": "1:02:51"}],
+                "signature_officielle": FLAG}
     return Response(json.dumps(official, ensure_ascii=False, indent=1), mimetype="application/json")
 
 

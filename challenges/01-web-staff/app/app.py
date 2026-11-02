@@ -63,7 +63,7 @@ STAFF_BODY = """<h1 class="h1">Équipe événement de la finale 2026</h1>
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
-# interne uniquement — ne pas indexer les outils de résultats
+# interne uniquement, ne pas indexer les outils de résultats
 Disallow: /sap/
 """
 

@@ -75,7 +75,7 @@ REGINFO = """# reginfo, Gateway registration ACL (DFL / sapgw00)
 #
 # Format: P TP=<program> HOST=<host> ACCESS=<host> CANCEL=<host>
 #
-# (vide — aucune règle définie)
+# (vide, aucune règle définie)
 #
 # NOTE Basis: ACL non configurée. Comportement par défaut = tout autorisé.
 #   Tout programme externe peut s'enregistrer (P TP=* HOST=* ...).

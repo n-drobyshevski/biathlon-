@@ -67,7 +67,7 @@ HTML
 # commit 1: the site, with a config file that still holds the secrets —
 # the results export token AND the results API's JWT signing secret
 cat > config.py <<CFG
-# DécaFlop chronométrage — configuration
+# Configuration du chronométrage DécaFlop
 DB_HOST = "db.decaflop.local"
 DB_USER = "timing"
 DB_PASS = "T1m1ng-db-2026"
@@ -81,7 +81,7 @@ git commit -q -m "Initial timing site + config"
 
 # commit 2: someone "removes" the secret — but git never forgets
 cat > config.py <<'CFG'
-# DécaFlop chronométrage — configuration
+# Configuration du chronométrage DécaFlop
 # Secrets déplacés vers des variables d'environnement (voir .env, non committé).
 import os
 DB_HOST = os.environ.get("DB_HOST", "db.decaflop.local")

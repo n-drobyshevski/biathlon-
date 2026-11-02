@@ -79,8 +79,9 @@ def ok_page():
  <section class="wp"><h2>Avis</h2><div class="log"><pre>AVIS SYSTÈME DE RÉSULTATS
 -------------------------
 Les résultats officiels sont stockés dans le SAP DFlop ERP (table ZRACE_RESULT).
-Cette admin web n'est qu'une interface. Pour savoir QUI a modifié le classement
-final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.
+Cette admin web n'est qu'une interface de consultation. Les modifications du
+classement sont tracées par utilisateur SAP (table USR02 du serveur ERP).
+Toute anomalie est à signaler à l'équipe Basis, poste 310.
 
 Migration en cours. Cette admin web est remplacée par une nouvelle API de
 résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div></section>
