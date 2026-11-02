@@ -33,7 +33,8 @@ input{width:100%;padding:10px;margin:6px 0 14px;border-radius:6px;border:1px sol
 button{background:#c77dff;color:#120d18;border:0;padding:10px 18px;border-radius:6px;
  font-weight:700;cursor:pointer}pre{white-space:pre-wrap;color:#e9d7ff}"""
 
-FORM = f"""<!doctype html><meta charset="utf-8"><title>DécaFlop Results Admin</title>
+def FORM(msg=""):
+    return f"""<!doctype html><meta charset="utf-8"><title>DécaFlop Results Admin</title>
 <style>{CSS}</style>
 <header><h1>🎯 DécaFlop · Results Admin</h1></header>
 <main><div class="card">
@@ -43,7 +44,7 @@ FORM = f"""<!doctype html><meta charset="utf-8"><title>DécaFlop Results Admin</
  <label>Password</label><input name="password" type="password">
  <button>Sign in</button>
 </form>
-{{msg}}
+{msg}
 </div></main>"""
 
 def ok_page():
@@ -62,7 +63,7 @@ pull the SAP user table (USR02) from the ERP host.</pre>
 
 @app.get("/")
 def home():
-    return Response(FORM.format(msg=""), mimetype="text/html")
+    return Response(FORM(msg=""), mimetype="text/html")
 
 @app.post("/login")
 def login():
@@ -73,11 +74,11 @@ def login():
     try:
         row = db().execute(q).fetchone()
     except sqlite3.Error as e:
-        return Response(FORM.format(msg=f"<pre>SQL error: {e}</pre>"),
+        return Response(FORM(msg=f"<pre>SQL error: {e}</pre>"),
                         mimetype="text/html")
     if row:
         return Response(ok_page(), mimetype="text/html")
-    return Response(FORM.format(msg="<pre>Invalid credentials.</pre>"),
+    return Response(FORM(msg="<pre>Invalid credentials.</pre>"),
                     mimetype="text/html")
 
 if __name__ == "__main__":
