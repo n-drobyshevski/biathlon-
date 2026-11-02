@@ -8,6 +8,8 @@ import subprocess
 import sys
 
 import pytest
+import re
+from html import unescape
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -100,3 +102,66 @@ def test_ctfd_setup_dry_run_links_share_not_hub():
         assert "connect=http://<CTF-HOST>:8020" in lines[num], num
     assert "Download" not in out            # dry-run prints no download links at all
     assert "/fichiers/" not in out
+
+
+# ---------------------------------------------------------------- Outils tab
+HUB_HOST = "http://10.0.0.7:8080"
+
+
+def _outils(hub, hub_module, monkeypatch, **conf):
+    for k in ("CYBERCHEF_PORT", "TERMINAL_PORT", "CYBERCHEF_URL", "TERMINAL_URL", "CTFD_PORT", "SCOREBOARD_URL"):
+        monkeypatch.setattr(hub_module, k, conf.get(k, ""))
+    return hub.get("/outils", base_url=HUB_HOST).data.decode()
+
+
+def test_outils_links_tools_on_the_players_host(hub, hub_module, monkeypatch):
+    page = _outils(hub, hub_module, monkeypatch, CYBERCHEF_PORT="8090", TERMINAL_PORT="8091", CTFD_PORT="8000")
+    for port in ("8090", "8091", "8000"):
+        url = f"http://10.0.0.7:{port}/"
+        assert f'class="open" href="{url}" target="_blank"' in page, port
+        assert f'data-copy="{url}"' in page and f'data-check="{url}"' in page, port
+    assert page.count('<article class="tile') == 3 and "Non configuré" not in page
+
+
+def test_outils_without_addresses_says_not_configured(hub, hub_module, monkeypatch):
+    page = _outils(hub, hub_module, monkeypatch)
+    assert page.count("Non configuré") == 3 and 'data-check="' not in page
+    assert 'class="open off"' in page and 'class="open" href' not in page
+
+
+def test_outils_url_override(hub, hub_module, monkeypatch):
+    page = _outils(hub, hub_module, monkeypatch, CYBERCHEF_URL="http://outils.local/chef", CYBERCHEF_PORT="8090")
+    assert 'href="http://outils.local/chef/"' in page and ":8090" not in page
+
+
+def test_outils_never_maps_tools_to_missions(hub, hub_module, monkeypatch):
+    # no spoilers: the tools say what they can do, never which mission they solve
+    page = _outils(hub, hub_module, monkeypatch, CYBERCHEF_PORT="8090", TERMINAL_PORT="8091", CTFD_PORT="8000")
+    main = page.split('<main', 1)[1].split('</main>', 1)[0]     # the sheet, not the tab labels
+    text = re.sub(r"<[^>]+>", " ", main)
+    assert not re.search(r"\bmission", text, re.I) and "#mission-" not in page
+    assert ".git" not in text
+
+
+def test_hub_pages_use_plain_punctuation(hub, hub_module, monkeypatch):
+    monkeypatch.setattr(hub_module, "CTFD_PORT", "8000")
+    for path, code in (("/", 200), ("/contexte", 200), ("/outils", 200), ("/contacts", 200), ("/nope", 404)):
+        r = hub.get(path)
+        assert r.status_code == code, path
+        text = unescape(re.sub(r"<[^>]+>", " ", r.data.decode()))
+        for ch in ("—", "–", "…", "·", "↗", "→"):
+            assert ch not in text, (path, repr(ch))
+    banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text()
+    for ch in ("—", "–", "→"):
+        assert ch not in banner, repr(ch)
+
+
+def test_terminal_banner_gives_no_mission_technique():
+    # the banner's example is generic: no challenge port, no .git, no dump recipe
+    banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text().split("BANNER", 2)[1]
+    for bad in (".git", ":8011", "git-dumper http", " dump"):
+        assert bad not in banner, bad
+    # ttyd shows about 48 columns on a 390 px phone: keep every line within 46
+    for line in banner.strip("'\n").splitlines():
+        assert len(line) <= 46, line
+    assert len(" Espace de travail : /work/session-XXXXXX") <= 46
