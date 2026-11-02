@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, Response, abort, request, send_from_directory
 
-from packshots import DRAW, packshot, ui
+from icons import ui
 
 shop = Blueprint("shop", __name__)
 NB = "\u00a0"   # non-breaking space (French typography, prices)
@@ -50,18 +50,18 @@ TU = ["TU"]   # taille unique
 PRODUCTS = {
     # ------------------------------------------------------------ natation
     "lunettes-natation": P(
-        "natation", "Nageflop", "Lunettes de natation anti-buée verres teintés", "14,99", "", 3.9, 1048, "low",
-        "8 553 902", [("Bleu", "#2f7fd6"), ("Fumé", "#4a4f5c"), ("Miroir doré", "#c99b2d")], TU, [],
-        "Des verres teintés pour nager face au soleil levant et un joint souple qui tient sans serrer. "
+        "natation", "Nageflop", "Lunettes de natation anti-buée verres clairs", "14,99", "", 3.9, 1048, "low",
+        "8 553 902", [("Blanc et bleu", "#2f63c8")], TU, [],
+        "Des verres clairs à large champ de vision et un joint souple qui tient sans serrer. "
         "La sangle double se règle en quelques secondes, même avec un bonnet.",
-        [("Vision", "Verres teintés anti-UV, adaptés à l'eau libre par temps clair."),
+        [("Vision", "Verres clairs anti-UV, champ de vision large en piscine comme en eau libre."),
          ("Étanchéité", "Joints en silicone souple sur tout le contour de l'œil."),
          ("Réglage", "Sangle double et pont de nez interchangeable, trois tailles fournies.")],
-        [("Verres", "Polycarbonate teinté, traitement anti-buée"), ("Joints", "Silicone"),
+        [("Verres", "Polycarbonate clair, traitement anti-buée"), ("Joints", "Silicone"),
          ("Sangle", "Double, en silicone, réglage par boucle"), ("Pont de nez", "3 tailles fournies"),
          ("Étui", "Inclus"), ("Garantie", "2 ans")],
-        [(4, "Bonne vision en extérieur", "Je les utilise au lac le matin, les verres teintés font vraiment la "
-          "différence. L'anti-buée tient une petite heure, ensuite il faut rincer.", "Camille", "19/09/2026",
+        [(4, "Bonne vision en extérieur", "Je les utilise au lac le matin, on voit bien même par temps gris. "
+          "L'anti-buée tient une petite heure, ensuite il faut rincer.", "Camille", "19/09/2026",
           "Nage en eau libre"),
          (3, "Correctes pour le prix", "Elles prennent un peu l'eau si la sangle n'est pas assez serrée. Une fois "
           "bien réglées, rien à redire pour l'entraînement.", "Thomas", "03/08/2026", "Piscine")],
@@ -69,25 +69,25 @@ PRODUCTS = {
          "Non, ce modèle se porte directement sur le visage. Des verres correcteurs adaptables peuvent être "
          "commandés en magasin.")),
     "bonnet-silicone": P(
-        "natation", "Nageflop", "Bonnet de bain en silicone haute visibilité", "6,99", "", 4.5, 212, None,
-        "8 553 127", [("Jaune fluo", "#f2e600"), ("Orange", "#ff7a1a"), ("Rose", "#ff5fa2")], TU, [],
-        "Un bonnet épais et très coloré pour être repéré facilement par les bateaux de sécurité en eau "
-        "libre. Le silicone ne tire pas les cheveux et garde la chaleur.",
-        [("Visibilité", "Coloris fluo repérable de loin, même avec du clapot."),
+        "natation", "Nageflop", "Bonnet de bain en silicone", "6,99", "", 4.5, 212, None,
+        "8 553 127", [("Blanc", "#f4f4f4")], TU, [],
+        "Un bonnet épais en silicone qui ne tire pas les cheveux et garde la chaleur, pour la piscine comme "
+        "pour l'eau libre.",
+        [("Tenue", "Reste en place pendant les virages et les plongeons."),
          ("Confort", "Silicone épais qui ne tire pas les cheveux."),
          ("Chaleur", "Limite la perte de chaleur par la tête dans une eau fraîche.")],
         [("Matière", "Silicone 100 %"), ("Épaisseur", "0,8 mm"), ("Taille", "Unique, adulte"),
          ("Entretien", "Rincer à l'eau claire et sécher à l'ombre"), ("Garantie", "2 ans")],
         [(5, "Indestructible", "Trois saisons de piscine et toujours comme neuf. Il se met facilement, même "
           "avec les cheveux longs.", "Léa", "28/09/2026", "Piscine"),
-         (4, "Bien visible", "Imposé par mon club pour l'eau libre. Un peu chaud en été, mais c'est le but en "
-          "octobre.", "Marc", "11/10/2026", "Nage en eau libre")],
+         (4, "Chaud et confortable", "Je le porte en eau libre jusqu'en octobre, il garde bien la chaleur. "
+          "Un peu chaud en été.", "Marc", "11/10/2026", "Nage en eau libre")],
         ("Le bonnet est-il accepté en compétition ?",
          "Oui. Lors des épreuves officielles, l'organisation fournit un bonnet de couleur imposée à porter "
          "par-dessus.")),
     "combinaison-tri-500": P(
         "natation", "Nageflop", "Combinaison néoprène de triathlon Tri 500 homme", "199,99", "249,99", 4.3, 96,
-        None, "8 571 234", [("Noir et bleu", "#1a1d24"), ("Noir et menthe", "#22352c")],
+        None, "8 571 234", [("Noir et bleu marine", "#1b2a5e")],
         ["XS", "S", "M", "L", "XL", "XXL"], ["XXL"],
         "Une combinaison en néoprène de 5 mm sur le torse et les cuisses pour garder les jambes en surface, "
         "avec des épaules en 2 mm pour une rotation complète. La fermeture dorsale à cordon permet de "
@@ -108,7 +108,7 @@ PRODUCTS = {
          "et la taille conseillés.")),
     "pull-buoy": P(
         "natation", "Nageflop", "Pull-buoy en mousse pour l'entraînement des bras", "9,99", "", 4.6, 157, "new",
-        "8 612 045", [("Bleu et noir", "#3643ba")], TU, [],
+        "8 612 045", [("Bleu et blanc", "#3b8de0")], TU, [],
         "Calé entre les cuisses, il maintient les jambes à la surface pour travailler uniquement les bras. "
         "La mousse EVA reste ferme et ne se gorge pas d'eau.",
         [("Travail des bras", "Isole le haut du corps pour progresser sur la traction."),
@@ -123,7 +123,7 @@ PRODUCTS = {
          "Oui, pour les éducatifs de jambes, même s'il porte moins qu'une planche classique.")),
     "sac-etanche-30l": P(
         "natation", "Nageflop", "Sac étanche de triathlon 30 L avec bretelle", "24,99", "29,99", 4.4, 73, None,
-        "8 598 310", [("Bleu", "#3643ba"), ("Noir", "#1d2129")], TU, [],
+        "8 598 310", [("Bleu marine et blanc", "#1b2a5e")], TU, [],
         "Un sac à fermeture enroulable pour garder les affaires au sec au bord de l'eau et au parc à vélos. "
         "La bretelle se règle et se retire.",
         [("Étanche", "Fermeture enroulable sur trois tours et soudures étanches."),
@@ -140,7 +140,7 @@ PRODUCTS = {
     # ----------------------------------------------------------------- vélo
     "velo-chrono-race-900": P(
         "velo", "Pédalo", "Vélo de chrono Race 900 aluminium, prolongateurs réglables", "1 299,00", "1 499,00",
-        4.1, 212, None, "8 604 117", [("Bleu", "#3643ba")], ["S", "M", "L", "XL"], ["XL"],
+        4.1, 212, None, "8 604 117", [("Bleu marine et noir", "#1b2a5e")], ["S", "M", "L", "XL"], ["XL"],
         "Un cadre en aluminium aux formes aérodynamiques, des prolongateurs réglables et une transmission "
         "2 x 11 vitesses. Livré avec une roue arrière lenticulaire pour les épreuves contre la montre.",
         [("Aérodynamisme", "Tubes profilés et roue arrière lenticulaire."),
@@ -159,7 +159,7 @@ PRODUCTS = {
          "prévoyez alors une roue arrière à rayons.")),
     "casque-aero": P(
         "velo", "Pédalo", "Casque aéro de triathlon à visière magnétique", "89,99", "", 4.0, 57, None,
-        "8 604 522", [("Blanc et bleu", "#f2f3f7"), ("Noir", "#1d2129")], ["S-M", "M-L"], [],
+        "8 604 522", [("Blanc et bleu", "#2f63c8")], ["S-M", "M-L"], [],
         "Un profil allongé pour gagner quelques secondes en position et une visière magnétique qui se clipse "
         "d'une main. La molette arrière ajuste le tour de tête.",
         [("Profil aéro", "Queue courte qui reste efficace même tête baissée."),
@@ -176,7 +176,7 @@ PRODUCTS = {
          "lunettes.")),
     "bidon-750": P(
         "velo", "Bofbof", "Bidon de vélo 750 ml à valve anti-fuite", "4,99", "6,99", 3.9, 87, None, "8 590 731",
-        [("Translucide", "#d8e4f0"), ("Bleu", "#3643ba"), ("Noir", "#1d2129")], TU, [],
+        [("Translucide et bleu", "#d8e4f0")], TU, [],
         "Un bidon souple sans BPA avec une valve à débit rapide utilisable d'une main en roulant. Le bouchon "
         "se dévisse en entier pour le nettoyage.",
         [("Débit rapide", "Valve qui s'ouvre avec les dents et se referme seule."),
@@ -192,7 +192,7 @@ PRODUCTS = {
          "Non, ce bidon est prévu pour des boissons froides ou à température ambiante.")),
     "kit-reparation": P(
         "velo", "Pédalo", "Kit de réparation crevaison avec démonte-pneus", "7,99", "", 4.5, 241, None,
-        "8 590 118", [("Noir", "#1d2129")], TU, [],
+        "8 590 118", [("Bleu marine", "#1b2a5e")], TU, [],
         "Tout pour réparer une chambre à air au bord de la route, dans une pochette qui se glisse sous la "
         "selle ou dans la poche du maillot.",
         [("Complet", "Deux démonte-pneus, six rustines, de la colle et du papier abrasif."),
@@ -208,7 +208,7 @@ PRODUCTS = {
          "Non, il est prévu pour les chambres à air. Pour le tubeless, demandez un kit de mèches à l'atelier.")),
     "gants-velo": P(
         "velo", "Pédalo", "Gants de vélo courts Road 500", "14,99", "", 4.2, 64, "last", "8 604 903",
-        [("Noir", "#1d2129"), ("Bleu", "#3643ba")], ["XS", "S", "M", "L", "XL"], ["XS"],
+        [("Blanc et noir", "#f4f4f4")], ["XS", "S", "M", "L", "XL"], ["XS"],
         "Des gants courts avec une paume rembourrée pour limiter les fourmillements sur les longues sorties. "
         "Le dos en maille respire.",
         [("Confort", "Mousse sous la paume aux points d'appui."), ("Respirant", "Dos en maille aérée."),
@@ -225,7 +225,7 @@ PRODUCTS = {
     # ------------------------------------------------------- course à pied
     "chaussures-lacage-rapide": P(
         "course-a-pied", "Runflop", "Chaussures de running à laçage rapide Tri Speed", "59,99", "", 4.6, 33, None,
-        "8 611 270", [("Bleu", "#3643ba"), ("Gris", "#9aa0aa")],
+        "8 611 270", [("Bleu", "#2f63c8")],
         ["39", "40", "41", "42", "43", "44", "45", "46"], ["39", "46"],
         "Des lacets élastiques à serrage rapide pour enfiler les chaussures en quelques secondes au parc à "
         "vélos, une semelle amortissante et une tirette au talon.",
@@ -258,7 +258,7 @@ PRODUCTS = {
          "Oui, au poignet. Une ceinture cardio peut être ajoutée pour plus de précision en natation.")),
     "ceinture-dossard": P(
         "course-a-pied", "Runflop", "Ceinture porte-dossard avec attaches pour gels", "9,99", "", 4.7, 301, None,
-        "8 611 402", [("Noir", "#1d2129"), ("Bleu", "#3643ba")], TU, [],
+        "8 611 402", [("Noir", "#1d2129")], TU, [],
         "Fixez votre dossard sans épingles et tournez-le dans le dos pour la partie vélo. Trois passants "
         "accueillent des gels énergétiques.",
         [("Sans épingles", "Deux attaches tiennent le dossard sans le déchirer."),
@@ -274,7 +274,7 @@ PRODUCTS = {
          "les dossards sans trous.")),
     "casquette-running": P(
         "course-a-pied", "Runflop", "Casquette de running légère et respirante", "9,99", "", 4.3, 88, "last",
-        "8 611 633", [("Blanc", "#f2f3f7"), ("Bleu", "#3643ba")], TU, [],
+        "8 611 633", [("Blanc", "#f4f4f4")], TU, [],
         "Une casquette légère avec des panneaux en maille pour évacuer la chaleur et une visière souple qui "
         "se range dans une poche.",
         [("Respirante", "Panneaux latéraux en maille."), ("Légère", "45 g, visière souple."),
@@ -312,7 +312,20 @@ KIND = {"lunettes-natation": "Lunettes", "bonnet-silicone": "Bonnets", "combinai
         "ceinture-dossard": "Ceintures porte-dossard", "casquette-running": "Casquettes",
         "gels-energetiques": "Nutrition"}
 
-DRAW_OK = set(DRAW)   # every catalogue product has a drawing (checked by the tests)
+# Product photos live in static/img/p/<name>.jpg (square studio shots on light
+# grey). The first one is the main photo; extra names are more views.
+PHOTO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "img", "p")
+EXTRA_VIEWS = {"velo-chrono-race-900": ["velo-chrono-race-900-2"]}
+
+
+def photos(slug):
+    return [slug] + EXTRA_VIEWS.get(slug, [])
+
+
+def photo(name, alt="", lazy=True):
+    load = ' loading="lazy" decoding="async"' if lazy else ""
+    return f'<img src="/static/img/p/{name}.jpg" alt="{escape(alt)}" width="424" height="424"{load}>'
+
 
 HOME_DEALS = ["combinaison-tri-500", "velo-chrono-race-900", "lunettes-natation", "montre-gps",
               "sac-etanche-30l", "bidon-750"]
@@ -406,7 +419,7 @@ def card(slug):
     p = PRODUCTS[slug]
     dots = "".join(f'<i style="--c:{c}"></i>' for _n, c in p["colors"][:3])
     more = f'<span>{len(p["colors"])} coloris</span>' if len(p["colors"]) > 1 else ""
-    return (f'<a class="card" href="/produit/{slug}"><div class="ph">{packshot(slug)}{badge(p)}</div>'
+    return (f'<a class="card" href="/produit/{slug}"><div class="ph">{photo(slug)}{badge(p)}</div>'
             f'<div class="cb"><span class="brand">{p["brand"]}</span><span class="t">{p["title"]}</span>'
             f'{stars(p["rating"], p["reviews"])}{price_block(p)}<div class="swatches">{dots}{more}</div>'
             '<span class="pick">Retrait gratuit en magasin</span></div></a>')
@@ -586,12 +599,11 @@ def news_card(p):
 @shop.get("/")
 def home():
     notice = SEARCH_NOTICE if "q" in request.args else ""
-    hero_ink = dict(ink="#ffffff", paper="#3643ba")
     sports = [("/natation", "Natation", "lunettes-natation"), ("/velo", "Vélo", "velo-chrono-race-900"),
               ("/course-a-pied", "Course à pied", "chaussures-lacage-rapide"),
               ("/triathlon", "Triathlon", "combinaison-tri-500"), ("/location", "Location", "casque-aero"),
               ("/destockage", "Déstockage", "etiquette")]
-    sp = "".join(f'<li><a href="{h}"><span class="c">{packshot(art)}</span>{n}</a></li>' for h, n, art in sports)
+    sp = "".join(f'<li><a href="{h}"><span class="c">{photo(art)}</span>{n}</a></li>' for h, n, art in sports)
     sched = "".join(f"<tr><td>{t}</td><td>{w}</td><td>{l}</td></tr>" for t, w, l in SCHEDULE)
     body = f"""<section class="hero"><div class="in">
  <div><span class="eyebrow">Sponsor titre du Championnat régional</span>
@@ -599,10 +611,8 @@ def home():
   <p>Combinaisons, vélos de chrono et tout le petit matériel de transition. Retrait gratuit en magasin, prêt en 1 h.</p>
   <div class="ctas"><a class="btn light" href="/triathlon#equipement">L'équipement triathlon</a>
    <a class="btn ghost" href="/triathlon">Programme de la course</a></div></div>
- <div class="art" aria-hidden="true"><span class="disc"></span>
-  <span class="a1">{packshot("velo-chrono-race-900", **hero_ink)}</span>
-  <span class="a2">{packshot("combinaison-tri-500", **hero_ink)}</span>
-  <span class="a3">{packshot("lunettes-natation", **hero_ink)}</span></div>
+ <a class="hero-shot" href="/produit/velo-chrono-race-900">{photo("velo-chrono-race-900-2", "Vélo de chrono Race 900", lazy=False)}
+  <span class="hero-tag"><b>Vélo de chrono Race 900</b><span>1 299,00{NB}€ au lieu de 1 499,00{NB}€</span></span></a>
 </div></section>
 <section class="sec"><div class="in"><div class="sec-hd"><h2>Nos sports</h2></div><ul class="sports">{sp}</ul></div></section>
 <section class="sec grey"><div class="in"><div class="sec-hd"><h2>Prix bas sur l'équipement de course</h2>
@@ -744,7 +754,6 @@ def clearance():
 # Product page
 # --------------------------------------------------------------------------
 NA = ' class="na"'
-VIEWS = [None, (70, 70, 260, 260), (40, 150, 200, 200), (160, 150, 200, 200)]
 
 
 def distribution(r, n):
@@ -765,12 +774,14 @@ def product(slug):
     st = stock(slug)
     pickup = next((STORES[i][1] for i, (k, _t) in enumerate(st) if k == "ok"), STORES[0][1])
     # gallery: CSS-only view switcher (radio + label), no script
+    shots = photos(slug)
     radios = "".join(f'<input class="sr" type="radio" name="vue" id="vue{i}"{" checked" if i == 0 else ""}>'
-                     for i in range(len(VIEWS)))
-    thumbs = "".join(f'<label for="vue{i}" title="Vue {i + 1}">{packshot(slug, crop=c)}</label>'
-                     for i, c in enumerate(VIEWS))
-    views = "".join(f'<div class="view v{i}">{packshot(slug, crop=c, label=p["title"] if i == 0 else "")}</div>'
-                    for i, c in enumerate(VIEWS))
+                     for i in range(len(shots))) if len(shots) > 1 else ""
+    thumbs = ('<div class="thumbs">' + "".join(f'<label for="vue{i}" title="Vue {i + 1}">{photo(n)}</label>'
+                                              for i, n in enumerate(shots)) + '</div>') if len(shots) > 1 else ""
+    views = "".join(f'<div class="view v{i}">{photo(n, p["title"] if i == 0 else "", lazy=False)}</div>'
+                    for i, n in enumerate(shots))
+    single = "" if len(shots) > 1 else " single"
     if p["sizes"] == TU:
         sizes = '<p class="tu">Taille unique</p>'
     else:
@@ -799,7 +810,7 @@ def product(slug):
     body = f"""<div class="in">
 {crumbs(("/", "Accueil"), (f"/{p['cat']}", cat_name), (None, KIND[slug]))}
 <div class="pdp">
- <div class="gallery">{radios}<div class="thumbs">{thumbs}</div><div class="main-ph">{views}{badge(p)}</div></div>
+ <div class="gallery{single}">{radios}{thumbs}<div class="main-ph">{views}{badge(p)}</div></div>
  <div class="buy">
   <span class="brand"><a href="/{p['cat']}?marque={BRAND_SLUG[p['brand']]}">{p["brand"]}</a></span>
   <h1>{p["title"]}</h1>
@@ -847,7 +858,7 @@ def product(slug):
 @shop.get("/triathlon")
 def championship():
     legs = "".join(
-        f'<div class="panel"><div class="leg-art">{packshot(art)}</div><h2>{name}<span class="dist-tag">{dist}</span></h2>'
+        f'<div class="panel"><div class="leg-art">{photo(art)}</div><h2>{name}<span class="dist-tag">{dist}</span></h2>'
         f'<p>{text}</p></div>'
         for art, name, dist, text in [
             ("lunettes-natation", "Natation", "1,5 km", "Départ en vagues depuis la plage, deux boucles balisées par des bouées jaunes."),

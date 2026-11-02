@@ -1,5 +1,6 @@
 """DécaFlop storefront redesign: read-only shop, whitelisted filters, product
 pages, and copy free of the old nudges and of long dashes."""
+import os
 import re
 import sys
 from html import unescape
@@ -31,9 +32,10 @@ def test_every_product_page(shop_module, shop):
     catalogue = sys.modules["shop"]
     assert len(catalogue.PRODUCTS) == 15
     for slug in catalogue.PRODUCTS:
-        assert slug in catalogue.DRAW_OK, slug
+        for name in catalogue.photos(slug):
+            assert os.path.isfile(os.path.join(catalogue.PHOTO_DIR, name + ".jpg")), name
         page = shop.get(f"/produit/{slug}").data.decode()
-        assert "<svg" in page and 'name="vue"' in page
+        assert f'<img src="/static/img/p/{slug}.jpg"' in page
         assert ('name="taille"' in page) or ("Taille unique" in page)
         assert 'aria-disabled="true">Ajouter au panier' in page
         assert "Disponibilité en magasin" in page and "DécaFlop Stade" in page
@@ -71,3 +73,14 @@ def test_intranet_pages_have_no_long_dashes(share):
         text = unescape(re.sub(r"<[^>]+>", " ", share.get(url).data.decode()))
         for ch in ("—", "–", "·"):
             assert ch not in text, (url, repr(ch))
+
+
+def test_every_image_on_the_site_loads(shop):
+    _, pages = crawl(shop)
+    srcs = {src for body in pages.values() for src in re.findall(r'<img src="(/[^"]+)"', body)}
+    assert len(srcs) >= 17
+    for src in srcs:
+        if src.startswith("/medias/"):
+            continue                                   # press/news files, covered by test_shop_media
+        r = shop.get(src)
+        assert r.status_code == 200 and r.mimetype == "image/jpeg", src
