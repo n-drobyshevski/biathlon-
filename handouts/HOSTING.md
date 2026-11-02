@@ -98,6 +98,11 @@ Run through this once, ideally the day before:
 - [ ] `uname -m` is `aarch64`
 - [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
       + hub + share + CTFd)
+- [ ] **`./scripts/build-handouts.sh` → 10 files in `handouts/dist/`. Run this
+      BEFORE the checks below.** The poster, the race photo and every share
+      download are served from that folder, so until it is built `:8001/presse`,
+      `:8001/actualites` and the `:8020` share show "pas encore disponible" and
+      the files 404. (No restart needed afterwards — the mount is read-only.)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path; opening that
       staff portal shows the Partage DFlop address (`:8020`) and the share login
       (the same one the share accepts)
@@ -109,7 +114,6 @@ Run through this once, ideally the day before:
       byte-identical to `handouts/dist/`; a bad login is rejected
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
       `:8012` and `:8014` load
-- [ ] `./scripts/build-handouts.sh` → 10 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
 - [ ] From a second device on the travel router, open
