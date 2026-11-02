@@ -403,26 +403,10 @@ def price_block(p):
     return f'<div class="price"><b>{euros(p["price"])}</b>{old}</div>'
 
 
-BADGES = {"new": ("new", "Nouveau"), "low": ("low", "Prix bas"), "last": ("last", "Dernière chance")}
-
-
-def badge(p):
-    if p["was"]:
-        return f'<span class="badge sale">-{pct_off(p)}{NB}%</span>'
-    if p["badge"]:
-        cls, label = BADGES[p["badge"]]
-        return f'<span class="badge {cls}">{label}</span>'
-    return ""
-
-
 def card(slug):
     p = PRODUCTS[slug]
-    dots = "".join(f'<i style="--c:{c}"></i>' for _n, c in p["colors"][:3])
-    more = f'<span>{len(p["colors"])} coloris</span>' if len(p["colors"]) > 1 else ""
-    return (f'<a class="card" href="/produit/{slug}"><div class="ph">{photo(slug)}{badge(p)}</div>'
-            f'<div class="cb"><span class="brand">{p["brand"]}</span><span class="t">{p["title"]}</span>'
-            f'{stars(p["rating"], p["reviews"])}{price_block(p)}<div class="swatches">{dots}{more}</div>'
-            '<span class="pick">Retrait gratuit en magasin</span></div></a>')
+    return (f'<a class="card" href="/produit/{slug}"><span class="ph">{photo(slug)}</span>'
+            f'<span class="brand">{p["brand"]}</span><span class="t">{p["title"]}</span>{price_block(p)}</a>')
 
 
 def crumbs(*items):
@@ -439,81 +423,47 @@ def page_head(title, text="", items=()):
 # --------------------------------------------------------------------------
 # Layout
 # --------------------------------------------------------------------------
-SUBNAV = [("/natation", "Natation"), ("/velo", "Vélo"), ("/course-a-pied", "Course à pied"),
-          ("/triathlon", "Triathlon"), ("/location", "Location"), ("/atelier", "Atelier vélo"),
-          ("/magasins", "Magasins")]
-
-
-def mega_menu():
-    cols = []
-    for cat, (name, _i) in CATEGORIES.items():
-        items = "".join(f'<li><a href="/produit/{s}">{KIND[s]}</a></li>'
-                        for s, p in PRODUCTS.items() if p["cat"] == cat)
-        cols.append(f'<div><h3>{name}</h3><ul><li><a href="/{cat}">Tout le rayon {name.lower()}</a></li>'
-                    f'{items}</ul></div>')
-    cols.append('<div><h3>Services et infos</h3><ul><li><a href="/triathlon">Le championnat</a></li>'
-                '<li><a href="/location">Location de vélos</a></li><li><a href="/atelier">Atelier vélo</a></li>'
-                '<li><a href="/destockage">Déstockage</a></li><li><a href="/magasins">Nos magasins</a></li>'
-                '<li><a href="/aide">Aide et contact</a></li></ul></div>')
-    return ('<details class="mega"><summary>' + ui("menu", 18) + '<span class="lbl">Tous les sports</span>'
-            '</summary><div class="mega-panel"><div class="in">' + "".join(cols) + '</div></div></details>')
+NAV = [("/natation", "Natation"), ("/velo", "Vélo"), ("/course-a-pied", "Course à pied"),
+       ("/triathlon", "Triathlon"), ("/magasins", "Magasins"), ("/destockage", "Déstockage")]
 
 
 def footer():
     cols = [
         ("Aide", [("/aide#commande", "Suivi de commande"), ("/aide#retours", "Retours et échanges"),
-                  ("/aide#garantie", "Garantie"), ("/aide#tailles", "Guide des tailles"),
-                  ("/aide#contact", "Nous contacter")]),
-        ("Services", [("/location", "Location de vélos"), ("/atelier", "Atelier vélo"),
-                      ("/aide#retrait", "Retrait en magasin"), ("/destockage", "Déstockage")]),
+                  ("/aide#garantie", "Garantie"), ("/aide#tailles", "Guide des tailles")]),
+        ("Services", [("/aide#retrait", "Retrait en magasin"), ("/location", "Location de vélos"),
+                      ("/atelier", "Atelier vélo"), ("/destockage", "Déstockage")]),
         ("Magasins", [(f"/magasins#{k}", n) for k, n, *_r in STORES]),
         ("Entreprise", [("/actualites", "Actualités"), ("/presse", "Espace presse"),
                         ("/recrutement", "Recrutement"), ("/triathlon", "Sponsoring triathlon")]),
     ]
     c = "".join(f'<div><h3>{t}</h3><ul>' + "".join(f'<li><a href="{h}">{x}</a></li>' for h, x in items) +
                 '</ul></div>' for t, items in cols)
-    return ('<section class="reassure" aria-label="Nos engagements"><ul>'
-            f'<li>{ui("store")}<div><b>Retrait gratuit</b><span>Dans nos 3 magasins, prêt en 1 h</span></div></li>'
-            f'<li>{ui("return")}<div><b>Retours sous 30 jours</b><span>En magasin, avec le ticket</span></div></li>'
-            f'<li>{ui("shield")}<div><b>Garantie 2 ans</b><span>5 ans sur les cadres de vélo</span></div></li>'
-            f'<li>{ui("card")}<div><b>Paiement sécurisé</b><span>Carte bancaire et chèque-cadeau</span></div></li>'
-            '</ul></section>'
-            '<footer class="foot"><div class="in cols">' + c +
+    return ('<footer class="foot"><div class="in cols">' + c +
             '<div><h3>Service client</h3><p class="tel">0 800 FLOP FLOP</p>'
-            '<p style="margin:0">Du lundi au vendredi, de 9 h à 18 h. Service et appel gratuits.</p>'
-            '<div class="pay"><span>CB</span><span>VISA</span><span>Mastercard</span><span>PayPal</span>'
-            '<span>Chèque-cadeau</span></div></div></div>'
-            '<div class="legal"><div class="in"><span>© 2026 DécaFlop SAS</span>'
-            '<nav aria-label="Informations légales">'
+            '<p>Du lundi au vendredi, de 9 h à 18 h. Service et appel gratuits.</p></div></div>'
+            '<div class="in legal"><span>© 2026 DécaFlop SAS</span><nav aria-label="Informations légales">'
             '<a href="/informations-legales#mentions">Mentions légales</a>'
             '<a href="/informations-legales#cgv">Conditions générales de vente</a>'
             '<a href="/informations-legales#cookies">Cookies</a>'
             '<a href="/informations-legales#accessibilite">Accessibilité partiellement conforme</a>'
-            '</nav></div></div></footer>')
+            '</nav></div></footer>')
 
 
 def layout(title, body, current="", notice=""):
-    sub = "".join(f'<li><a href="{h}"{CUR if h == current else ""}>{label}</a></li>' for h, label in SUBNAV)
-    deal_cur = CUR if current == "/destockage" else ""
-    sub += f'<li><a class="deal" href="/destockage"{deal_cur}>Déstockage</a></li>'
+    nav = "".join(f'<a href="{h}"{CUR if h == current else ""}>{label}</a>' for h, label in NAV)
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
 <a class="skip" href="#main">Aller au contenu</a>
-<div class="promo"><div class="in"><span>Retrait gratuit en magasin en 1 h</span><span>Retours sous 30 jours</span>
-<span>Garantie 2 ans sur tout le matériel</span><span>Finale régionale de triathlon dimanche.
-<a href="/triathlon">Voir le programme</a></span></div></div>
 <header class="hd"><div class="in">
-{mega_menu()}
-<a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
-<form class="search" action="/" role="search">{ui("search", 20)}<input name="q" aria-label="Rechercher"
- placeholder="Rechercher un produit, un sport, une marque"><button type="submit">Rechercher</button></form>
-<nav class="acct" aria-label="Mon espace">
-<a href="/magasins">{ui("pin")}<span class="lbl">Magasins</span></a>
-<a href="/compte">{ui("user")}<span class="lbl">Mon compte</span></a>
-<a href="/panier">{ui("bag")}<span class="count">0</span><span class="lbl">Panier</span></a>
-</nav></div></header>
-<nav class="subnav" aria-label="Rayons"><ul>{sub}</ul></nav>
+<a class="mark" href="/">DÉCA<i>FLOP</i></a>
+<nav class="nav" aria-label="Rayons">{nav}</nav>
+<form class="search" action="/" role="search">{ui("search", 18)}<input name="q" aria-label="Rechercher"
+ placeholder="Rechercher"></form>
+<nav class="acct" aria-label="Mon espace"><a href="/compte">{ui("user", 20)}<span>Compte</span></a>
+<a href="/panier">{ui("bag", 20)}<span>Panier (0)</span></a></nav>
+</div></header>
 {notice}
 <main id="main">{body}</main>
 {footer()}
@@ -613,38 +563,37 @@ def home():
     notice = SEARCH_NOTICE if "q" in request.args else ""
     sports = [("/natation", "Natation", "lunettes-natation"), ("/velo", "Vélo", "velo-chrono-race-900"),
               ("/course-a-pied", "Course à pied", "chaussures-lacage-rapide"),
-              ("/triathlon", "Triathlon", "combinaison-tri-500"), ("/location", "Location", "casque-aero"),
-              ("/destockage", "Déstockage", "etiquette")]
-    sp = "".join(f'<li><a href="{h}"><span class="c">{photo(art)}</span>{n}</a></li>' for h, n, art in sports)
+              ("/triathlon", "Triathlon", "combinaison-tri-500")]
+    sp = "".join(f'<a class="tile" href="{h}"><span class="ph">{photo(art)}</span><span class="t">{n}</span></a>'
+                 for h, n, art in sports)
+    deals = [s for s in HOME_DEALS if PRODUCTS[s]["was"]][:4]
     sched = "".join(f"<tr><td>{t}</td><td>{w}</td><td>{l}</td></tr>" for t, w, l in SCHEDULE)
     body = f"""<section class="hero"><div class="in">
- <div><span class="eyebrow">Sponsor titre du Championnat régional</span>
+ <div><p class="kicker">Championnat régional de triathlon, finale le 2 novembre</p>
   <h1>Prêts pour la finale{NB}?</h1>
-  <p>Combinaisons, vélos de chrono et tout le petit matériel de transition. Retrait gratuit en magasin, prêt en 1 h.</p>
-  <div class="ctas"><a class="btn light" href="/triathlon#equipement">L'équipement triathlon</a>
-   <a class="btn ghost" href="/triathlon">Programme de la course</a></div></div>
+  <p>Combinaisons, vélos de chrono et petit matériel de transition. Retrait gratuit en magasin, prêt en 1 h.</p>
+  <div class="ctas"><a class="btn" href="/triathlon#equipement">L'équipement triathlon</a>
+   <a class="txt" href="/triathlon">Programme de la course</a></div></div>
  <div class="hero-art" aria-hidden="true"><img src="/static/img/hero-finale.jpg" alt="" width="900" height="849"></div>
 </div></section>
-<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos sports</h2></div><ul class="sports">{sp}</ul></div></section>
-<section class="sec grey"><div class="in"><div class="sec-hd"><h2>Prix bas sur l'équipement de course</h2>
- <a href="/destockage">Tout voir</a></div><div class="rail">{"".join(card(s) for s in HOME_DEALS)}</div></div></section>
-<section class="sec"><div class="in"><div class="services">
- <a class="service" href="/aide#retrait">{ui("store", 40)}<div><b>Retrait en 1 h</b><span>Réservez en ligne, retirez en magasin le jour même.</span></div></a>
- <a class="service" href="/location">{ui("bike", 40)}<div><b>Location de vélos</b><span>Vélos de chrono réglés à votre taille, casque inclus.</span></div></a>
- <a class="service" href="/atelier">{ui("wrench", 40)}<div><b>Atelier vélo</b><span>Révision express avant la course, sans rendez-vous.</span></div></a>
- <a class="service" href="/destockage">{ui("tag", 40)}<div><b>Déstockage</b><span>Fins de séries et matériel de location d'occasion.</span></div></a>
-</div></div></section>
-<section class="sec grey"><div class="in event">
- <div><span class="kicker">Championnat régional de triathlon</span><h2>La finale, c'est dimanche</h2>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos sports</h2></div><div class="grid">{sp}</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Prix réduits</h2><a href="/destockage">Tout voir</a></div>
+ <div class="grid">{"".join(card(s) for s in deals)}</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Pour le jour de la course</h2>
+ <a href="/course-a-pied">Tout voir</a></div><div class="grid">{"".join(card(s) for s in RACE_DAY)}</div></div></section>
+<section class="sec"><div class="in event">
+ <div><p class="kicker">Championnat régional de triathlon</p><h2>La finale, c'est dimanche</h2>
   <p>1,5 km de natation, 40 km de vélo et 10 km de course à pied. DécaFlop est sponsor titre de l'édition 2026
    et tient un stand de réparation au parc à vélos.</p>
-  <a class="btn" href="/triathlon">Le championnat</a></div>
- <div class="sched"><table>{sched}</table></div>
+  <a class="txt" href="/triathlon">Le championnat</a></div>
+ <table class="sched">{sched}</table>
 </div></section>
-<section class="sec"><div class="in"><div class="sec-hd"><h2>Pour le jour de la course</h2>
- <a href="/course-a-pied">Tout le rayon course à pied</a></div>
- <div class="grid">{"".join(card(s) for s in RACE_DAY)}</div></div></section>
-<section class="sec grey"><div class="in"><div class="sec-hd"><h2>Actualités</h2>
+<section class="sec"><div class="in"><div class="services">
+ <div><h3>Retrait en 1 h</h3><p>Réservez, puis retirez en magasin le jour même.</p><a href="/aide#retrait">En savoir plus</a></div>
+ <div><h3>Location de vélos</h3><p>Vélos de chrono réglés à votre taille, casque inclus.</p><a href="/location">Voir les tarifs</a></div>
+ <div><h3>Atelier vélo</h3><p>Révision express avant la course, sans rendez-vous.</p><a href="/atelier">Voir les prestations</a></div>
+</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Actualités</h2>
  <a href="/actualites">Toutes les actualités</a></div>
  <div class="news-list">{"".join(news_card(p) for p in NEWS)}</div></div></section>"""
     return html(layout("DécaFlop, sponsor du Championnat régional de triathlon", fr(body), notice=notice))
@@ -767,15 +716,6 @@ def clearance():
 NA = ' class="na"'
 
 
-def distribution(r, n):
-    # Skewed toward 5 stars with a small 1-star tail, like real review counts.
-    w = {k: 2.71828 ** (-((k - (r + 0.4)) ** 2) / 1.4) + (0.03 if k == 1 else 0) for k in range(1, 6)}
-    tot = sum(w.values())
-    counts = {k: int(n * v / tot) for k, v in w.items()}
-    counts[max(w, key=w.get)] += n - sum(counts.values())
-    return counts
-
-
 @shop.get("/produit/<slug>")
 def product(slug):
     if slug not in PRODUCTS:
@@ -786,30 +726,23 @@ def product(slug):
     pickup = next((STORES[i][1] for i, (k, _t) in enumerate(st) if k == "ok"), STORES[0][1])
     # gallery: CSS-only view switcher (radio + label), no script
     shots = photos(slug)
-    radios = "".join(f'<input class="sr" type="radio" name="vue" id="vue{i}"{" checked" if i == 0 else ""}>'
-                     for i in range(len(shots))) if len(shots) > 1 else ""
+    many = len(shots) > 1
+    radios = "".join(f'<input type="radio" name="vue" id="vue{i}"{" checked" if i == 0 else ""}>'
+                     for i in range(len(shots))) if many else ""
     thumbs = ('<div class="thumbs">' + "".join(f'<label for="vue{i}" title="Vue {i + 1}">{photo(n)}</label>'
-                                              for i, n in enumerate(shots)) + '</div>') if len(shots) > 1 else ""
+                                              for i, n in enumerate(shots)) + '</div>') if many else ""
     views = "".join(f'<div class="view v{i}">{photo(n, p["title"] if i == 0 else "", lazy=False)}</div>'
                     for i, n in enumerate(shots))
-    single = "" if len(shots) > 1 else " single"
     if p["sizes"] == TU:
-        sizes = '<p class="tu">Taille unique</p>'
+        sizes = '<p class="opt-l">Taille <b>Taille unique</b></p>'
     else:
-        sizes = '<div class="opts">' + "".join(
-            f'<label{NA if s in p["na"] else ""}><input type="radio" name="taille" '
-            f'value="{s}"{" disabled" if s in p["na"] else ""}><span class="sz">{s}</span></label>'
-            for s in p["sizes"]) + '</div>'
-    guide = '<a href="/aide#tailles">Guide des tailles</a>' if p["sizes"] != TU else ""
-    colors = "".join(f'<label title="{n}"><input type="radio" name="coloris"{" checked" if i == 0 else ""}>'
-                     f'<span class="sw"><i style="--c:{c}"></i></span><span class="sr">{n}</span></label>'
-                     for i, (n, c) in enumerate(p["colors"]))
+        sizes = ('<p class="opt-l"><span>Taille</span><a href="/aide#tailles">Guide des tailles</a></p><div class="opts">' +
+                 "".join(f'<label{NA if s in p["na"] else ""}><input type="radio" name="taille" value="{s}"'
+                         f'{" disabled" if s in p["na"] else ""}><span class="sz">{s}</span></label>'
+                         for s in p["sizes"]) + '</div>')
+    colours = ", ".join(n for n, _c in p["colors"])
     points = "".join(f"<li><b>{t}</b><span>{d}</span></li>" for t, d in p["points"])
     specs = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in p["specs"])
-    dist = distribution(p["rating"], p["reviews"])
-    bars = "".join(f'<li><span>{k} étoile{"s" if k > 1 else ""}</span><span class="bar"><i style="--w:'
-                   f'{dist[k] / p["reviews"] * 100:.0f}%"></i></span><span>{dist[k]}</span></li>'
-                   for k in range(5, 0, -1))
     revs = "".join(f'<article class="review">{stars(s, plain=True)}<h3>{t}</h3><p>{txt}</p>'
                    f'<p class="by"><span>{who}, le {d}</span><span>{use}</span><span class="ver">Acheteur vérifié</span></p></article>'
                    for s, t, txt, who, d, use in p["revs"])
@@ -818,46 +751,37 @@ def product(slug):
                          for i, (k, t) in enumerate(st))
     related = [s for s, x in PRODUCTS.items() if x["cat"] == p["cat"] and s != slug][:4]
     rc = f"{p['reviews']:,}".replace(",", NB)
+    ref = p["ref"].replace(" ", NB)
     body = f"""<div class="in">
 {crumbs(("/", "Accueil"), (f"/{p['cat']}", cat_name), (None, KIND[slug]))}
 <div class="pdp">
- <div class="gallery{single}">{radios}{thumbs}<div class="main-ph">{views}{badge(p)}</div></div>
+ <div class="gallery{"" if many else " single"}">{radios}{thumbs}<div class="main-ph">{views}</div></div>
  <div class="buy">
-  <span class="brand"><a href="/{p['cat']}?marque={BRAND_SLUG[p['brand']]}">{p["brand"]}</a></span>
+  <p class="brand"><a href="/{p['cat']}?marque={BRAND_SLUG[p['brand']]}">{p["brand"]}</a></p>
   <h1>{p["title"]}</h1>
-  <div class="meta">{stars(p["rating"])}<a href="#avis">{rc} avis</a><span>Réf. {p["ref"].replace(" ", NB)}</span></div>
-  {price_block(p)}<p class="vat">Prix TTC, éco-participation incluse.</p>
-  <fieldset class="opt"><legend>Coloris <span>{len(p["colors"])} au choix</span></legend><div class="opts">{colors}</div></fieldset>
-  <fieldset class="opt"><legend>Taille {guide}</legend>{sizes}</fieldset>
-  <div class="hold"><b>Vente en ligne suspendue pendant la compétition.</b> Réservez l'article dans l'un de nos
-   magasins, il vous attend à l'accueil.</div>
-  <div class="cta"><span class="btn wide off" aria-disabled="true">Ajouter au panier</span>
-   <a class="btn wide line" href="#magasins">Réserver en magasin</a></div>
-  <div class="deliv">
-   <div>{ui("store")}<p><b>Retrait en magasin</b><span>Gratuit. </span><span class="ok">Disponible aujourd'hui à {pickup}</span></p></div>
-   <div>{ui("truck")}<p><b>Livraison à domicile</b><span>Reprend le lundi 9 novembre</span></p></div>
-  </div>
-  <ul class="trust"><li>{ui("return")}Retours sous 30 jours</li><li>{ui("shield")}Garantie 2 ans</li><li>{ui("card")}Paiement sécurisé</li></ul>
+  {price_block(p)}
+  <p class="rating"><a href="#avis">{rating_txt(p["rating"])} sur 5, {rc} avis</a><span>Réf. {ref}</span></p>
+  <p class="desc">{p["desc"]}</p>
+  <p class="opt-l">Coloris <b>{colours}</b></p>
+  {sizes}
+  <a class="btn wide" href="#magasins">Réserver en magasin</a>
+  <p class="note">Vente en ligne suspendue pendant la compétition. Disponible aujourd'hui à {pickup}.</p>
+  <ul class="facts"><li>Retrait gratuit en magasin, prêt en 1 h</li><li>Retours sous 30 jours</li>
+   <li>Garantie 2 ans{", 5 ans sur le cadre" if p["cat"] == "velo" and "chrono" in slug else ""}</li></ul>
  </div>
 </div></div>
-<nav class="tabs" aria-label="Sections de la fiche"><div class="in"><ul>
- <li><a href="#points-forts">Points forts</a></li><li><a href="#caracteristiques">Caractéristiques</a></li>
- <li><a href="#avis">Avis ({rc})</a></li><li><a href="#questions">Questions</a></li>
- <li><a href="#magasins">Disponibilité</a></li></ul></div></nav>
-<div class="in">
-<section class="pd-sec" id="points-forts"><h2>Points forts</h2><p class="desc">{p["desc"]}</p><ul class="highlights">{points}</ul></section>
+<div class="in details">
+<section class="pd-sec" id="points-forts"><h2>Points forts</h2><ul class="highlights">{points}</ul></section>
 <section class="pd-sec" id="caracteristiques"><h2>Caractéristiques</h2><table class="specs"><tbody>
- <tr><th>Marque</th><td>{p["brand"]}</td></tr><tr><th>Référence</th><td>{p["ref"].replace(" ", NB)}</td></tr>{specs}</tbody></table></section>
-<section class="pd-sec" id="avis"><h2>Avis clients</h2><div class="reviews">
- <div><div class="avg">{rating_txt(p["rating"])}<small>/5</small></div>{stars(p["rating"], plain=True)}
-  <p class="small mute">{rc} avis publiés sur les trois dernières années</p><ul class="dist">{bars}</ul></div>
- <div>{revs}</div></div></section>
+ <tr><th>Marque</th><td>{p["brand"]}</td></tr><tr><th>Référence</th><td>{ref}</td></tr>{specs}</tbody></table></section>
+<section class="pd-sec" id="avis"><h2>Avis clients</h2><div>
+ <p class="avg-line"><b>{rating_txt(p["rating"])}/5</b>{rc} avis publiés sur les trois dernières années</p>{revs}</div></section>
 <section class="pd-sec" id="questions"><h2>Questions et réponses</h2><dl class="qa"><dt>{q}</dt>
  <dd>{a}<small>Réponse de l'équipe DécaFlop</small></dd></dl></section>
-<section class="pd-sec" id="magasins"><h2>Disponibilité en magasin</h2><ul class="stock">{stock_list}</ul>
- <p class="small mute" style="margin-top:10px">Stock indicatif, mis à jour toutes les heures. <a href="/magasins">Horaires et adresses</a></p></section>
+<section class="pd-sec" id="magasins"><h2>Disponibilité en magasin</h2><div><ul class="stock">{stock_list}</ul>
+ <p class="small mute" style="margin-top:10px">Stock indicatif, mis à jour toutes les heures. <a href="/magasins">Horaires et adresses</a></p></div></section>
 </div>
-<section class="sec grey"><div class="in"><div class="sec-hd"><h2>Les clients ont aussi consulté</h2>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Vous aimerez aussi</h2>
  <a href="/{p['cat']}">Tout le rayon {cat_name.lower()}</a></div>
  <div class="grid">{"".join(card(s) for s in related)}</div></div></section>"""
     return html(layout(f"{p['title']} - DécaFlop", fr(body), current=f"/{p['cat']}"))

@@ -37,7 +37,7 @@ def test_every_product_page(shop_module, shop):
         page = shop.get(f"/produit/{slug}").data.decode()
         assert f'<img src="/static/img/p/{slug}.jpg"' in page
         assert ('name="taille"' in page) or ("Taille unique" in page)
-        assert 'aria-disabled="true">Ajouter au panier' in page
+        assert 'href="#magasins">Réserver en magasin' in page and "Vente en ligne suspendue" in page
         assert "Disponibilité en magasin" in page and "DécaFlop Stade" in page
         assert "Acheteur vérifié" in page
 
