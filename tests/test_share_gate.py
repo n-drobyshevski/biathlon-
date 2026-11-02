@@ -1,9 +1,9 @@
-"""Challenge 01's staff portal hands out the Partage DFlop login (soft gate).
+"""Challenge 01's staff portal hands out the Intranet DFlop login (soft gate).
 
-The share's own authentication is unchanged; only the source of the credentials
-moves (hub -> staff portal). docker-compose feeds the SAME env to both the staff
-(01) and share containers, so the login shown on the portal is exactly the one
-the share accepts.
+The intranet's own authentication is unchanged; only the source of the
+credentials moves (hub -> staff portal). docker-compose feeds the SAME env to
+both the staff (01) and intranet containers, so the login shown on the portal is
+exactly the one the intranet accepts.
 """
 import importlib.util
 import pathlib

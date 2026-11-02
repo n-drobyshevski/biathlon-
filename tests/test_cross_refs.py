@@ -14,7 +14,6 @@ import pathlib
 import re
 import subprocess
 import sys
-from urllib.parse import quote
 
 import pytest
 
@@ -154,22 +153,18 @@ def test_13_sap_shortcut_identity_and_base64(dist):
     assert "production" in sap.lower()
 
 
-# ---------------------------------------------------------------- Ref 2: share decoy
-def test_share_decoy_breadcrumb(share, share_module):
-    note = next((f for f in share_module.FILES if f["name"] == "notes_basis.txt"), None)
-    assert note is not None and note["decoy"]
-    text = note["text"]
-    # it points at the gateway monitor port and the ABAP dev folder
-    assert "8014" in text
-    assert "Developpements" in text or "Développements" in text
-    # but holds no secrets, flags or payloads
-    assert "TRIATHLON{" not in text
-    assert DEFAULT_SECRET not in text
-    assert "mot de passe" not in text.lower() and "password" not in text.lower()
-    # and it downloads as plain text
-    url = "/telecharger/" + "/".join(quote(s) for s in note["path"])
-    r = share.get(url)
-    assert r.status_code == 200 and r.mimetype == "text/plain"
+# ---------------------------------------------------------------- Ref 2: wiki breadcrumbs
+def test_wiki_breadcrumb_cross_refs(share):
+    # Basis SAP "Export USR02" page points at the gateway monitor (:8014) and
+    # links the Développements page — service names/ports only, no secrets.
+    basis = share.get("/espace/basis/export-usr02").data.decode()
+    assert "8014" in basis
+    assert "/espace/basis/developpements" in basis
+    assert "TRIATHLON{" not in basis and DEFAULT_SECRET not in basis
+    # IT "Sauvegardes postes" notes the saved SAP shortcut relates to DFL/001.
+    sauv = share.get("/espace/it/sauvegardes-postes").data.decode()
+    assert "DFL" in sauv and "001" in sauv
+    assert "TRIATHLON{" not in sauv and DEFAULT_SECRET not in sauv
 
 
 # ---------------------------------------------------------------- ctfd still parses 14

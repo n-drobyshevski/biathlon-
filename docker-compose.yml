@@ -42,11 +42,12 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
-  # ---- Internal file share (Partage DFlop) ------------------------------
-  # http://<PiIP>:8020 — DécaFlop's internal document share. Not a challenge:
-  # the crew logs in and browses folders to find the evidence files, served
-  # byte-for-byte from the same handouts/dist. The cellule de crise hands out
-  # the login (see the Contexte sheet).
+  # ---- Internal wiki (Intranet DFlop) -----------------------------------
+  # http://<PiIP>:8020 — DécaFlop's event intranet / wiki. Not a challenge:
+  # the crew logs in and browses one space per team; each page describes its
+  # part of the incident with the evidence files attached, served byte-for-byte
+  # from the same handouts/dist. The challenge-01 staff portal hands out the
+  # login (see the Contexte sheet).
   share:
     build: ./share
     environment:

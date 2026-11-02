@@ -4,11 +4,12 @@ challenge). One page that briefs the emergency IT crew and lists every mission,
 with a link to each live service.
 
 - The hub itself serves NO handout files. The evidence files live on the
-  internal share "Partage DFlop" (:8020); the poster and race photo live on the
+  internal wiki "Intranet DFlop" (:8020); the poster and race photo live on the
   DécaFlop site (:8001). Every mission is reached through a live service.
 - Links to the live services reuse the host the player typed, with the default
   ports; override with <KEY>_URL (e.g. IDOR_URL, SHARE_URL) if needed.
-- The crew login for the share is given in the Contexte sheet.
+- The Intranet DFlop login is handed out by the challenge-01 staff portal; the
+  Contexte sheet points there (it does not print the credentials).
 - Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
   overrides the address. Teams submit flags there.
 - ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
@@ -126,7 +127,7 @@ def scoreboard_url():
     return ""
 
 # The hub no longer serves any files: the poster/photo are on the DécaFlop site
-# (:8001) and every evidence file is on the internal share "Partage DFlop"
+# (:8001) and every evidence file is on the internal wiki "Intranet DFlop"
 # (:8020). Each mission below is reached through a live service.
 
 # (number, title, category, level, points, brief, live service key, files)
@@ -154,7 +155,7 @@ MISSIONS = [
     ("05", "La cabine de chronométrage", "Forensics", "Moyen", 100,
      "La cabine envoie les temps intermédiaires sur le Wi-Fi staff, et sa "
      "connexion passe encore en HTTP en clair. Nous avons capturé le trafic : "
-     "la capture est dans le partage interne (Chronométrage / Captures). "
+     "la capture est sur l'intranet DFlop (espace Chronométrage). "
      "Retrouvez ce que la cabine envoyait.", "share", []),
     ("06", "Admin résultats", "Web", "Moyen", 125,
      "Les résultats officiels passent par l'admin résultats. « Réservé au staff "
@@ -162,15 +163,15 @@ MISSIONS = [
      "à la hâte la veille de la course.", "sqli", []),
     ("07", "La clé USB de l'arbitre", "Forensics", "Moyen", 125,
      "Un arbitre a oublié sa clé USB dans la cabine et jure avoir « tout supprimé ». "
-     "Supprimer un fichier n'efface pas ses octets. Notre image de la clé est dans "
-     "le partage interne (Arbitrage / Pièces) : récupérez ce qui a été effacé.",
+     "Supprimer un fichier n'efface pas ses octets. Notre image de la clé est sur "
+     "l'intranet DFlop (espace Arbitrage) : récupérez ce qui a été effacé.",
      "share", []),
     ("09", "Qui a truqué la course ?", "SAP", "Difficile", 250,
      "La table des résultats ZRACE_RESULT a été modifiée la veille de la finale. "
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
-     "connexions et anciens hachages de mots de passe. Tout est dans le partage "
-     "interne : l'export et la note dans Basis SAP / Exports, la liste de mots dans "
-     "IT / Outils, le dossier chiffré dans Direction de course / Dossier incident. "
+     "connexions et anciens hachages de mots de passe. Tout est sur l'intranet "
+     "DFlop : l'export et la note dans l'espace Basis SAP, la liste de mots dans "
+     "l'espace IT, le dossier chiffré dans l'espace Direction de course. "
      "Prouvez qui a fait le coup.", "share", []),
     # --- Audit complémentaire : failles trouvées après l'enquête ---
     ("10", "Identifiants forgés", "Web", "Difficile", 175,
@@ -187,8 +188,8 @@ MISSIONS = [
      "pas (injection de gabarit).", "ssti", []),
     ("13", "Enregistré par confort", "SAP", "Facile", 75,
      "Un raccourci SAP GUI (.sap) trouvé sur un portable de l'équipe a "
-     "« enregistré le mot de passe » du DFlop ERP. Il est dans le partage interne "
-     "(IT / Sauvegardes postes / portable-equipe-03). Récupérez-le.", "share", []),
+     "« enregistré le mot de passe » du DFlop ERP. Il est sur l'intranet DFlop "
+     "(espace IT, page Sauvegardes postes). Récupérez-le.", "share", []),
     ("14", "Le gateway ouvert", "SAP", "Moyen", 150,
      "Le moniteur du gateway SAP DFlop est exposé et ses ACL reginfo/secinfo "
      "sont par défaut. Lisez l'état de sécurité, puis faites ce qu'une ACL "
@@ -196,8 +197,8 @@ MISSIONS = [
     ("15", "En dur", "SAP", "Moyen", 150,
      "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
      "Son jeton d'export « non committé » est pourtant dans le code, assemblé "
-     "morceau par morceau. La source est dans le partage interne "
-     "(Basis SAP / Développements). Relisez la source.", "share", []),
+     "morceau par morceau. La source est sur l'intranet DFlop "
+     "(espace Basis SAP, page Développements). Relisez la source.", "share", []),
 ]
 
 PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
@@ -205,7 +206,7 @@ PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
          "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
 
 # Guidance-only prerequisites (a client-side signpost, NOT enforcement). These
-# are the share-gated missions: their files live on Partage DFlop, whose login
+# are the share-gated missions: their files live on Intranet DFlop, whose login
 # you only get by solving mission 01 (the staff portal). The hub renders them
 # "locked" until 01 is marked Résolu in the browser. Soft feeders (03/04/06)
 # are deliberately NOT locked. Keep in sync with the live=="share" missions.
@@ -222,7 +223,7 @@ def service_url(key):
 
 
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
-LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Partage DFlop", ":8020"),
+LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Intranet DFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
               "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
@@ -341,9 +342,9 @@ def context():
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
-        ("Partage interne", "Les fichiers de preuve sont sur « Partage DFlop », l'espace documentaire "
-                            "interne (:8020). L'identifiant de connexion est affiché sur le portail "
-                            "staff du site DécaFlop (mission 01)."),
+        ("Intranet interne", "Les fichiers de preuve sont joints aux pages de « Intranet DFlop », "
+                             "l'intranet de l'événement (:8020). L'identifiant de connexion est affiché "
+                             "sur le portail staff du site DécaFlop (mission 01)."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Tableau des scores", score),
     ]]

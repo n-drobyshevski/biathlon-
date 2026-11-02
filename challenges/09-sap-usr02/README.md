@@ -5,7 +5,7 @@
 > table **USR02** — every account, its last logon, and its (weak, legacy)
 > password hash. Prove who did it.
 
-**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**. The files are split across folders: `Basis SAP / Exports` (`SAP_USR02_export.csv`, `sap_hint.txt`), `IT / Outils` (`wordlist.txt`) and `Direction de course / Dossier incident` (`case_file.zip`). Credentials are on the DécaFlop staff portal — see challenge 01.
+**Connect:** `http://<CTF-HOST>:8020` — internal wiki **Intranet DFlop**. The files are attached across spaces: **Basis SAP** → « Export USR02 » (`SAP_USR02_export.csv`, `sap_hint.txt`), **IT** → « Outils » (`wordlist.txt`) and **Direction de course** → « Dossier incident » (`case_file.zip`). Credentials are on the DécaFlop staff portal — see challenge 01.
 
 This export is from system **DFL**, client **001** — the same production ERP the
 saved SAP GUI shortcut in challenge 13 points at.
