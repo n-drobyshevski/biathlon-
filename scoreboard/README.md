@@ -2,36 +2,55 @@
 
 You need somewhere for teams to submit flags and see the board. Two options.
 
-## Option A — CTFd (full-featured, heavier)
+## Option A — CTFd (default, included)
 
-CTFd is the classic Jeopardy scoreboard. On a 4 GB Pi, run it **slim**: SQLite
-instead of MySQL, and Redis optional. It fits alongside the 4 challenge
-containers, but it's the heaviest single piece — test it before the event.
+CTFd handles **teams, flag checking, the point-costed hints and the live
+scoreboard**. It's part of `docker-compose.yml` (image `ctfd/ctfd:3.8.8`,
+arm64-native, SQLite, data in the `ctfd-data` volume, ~0.5–0.7 GB RAM), so
+`docker compose up -d --build` starts it with everything else on port **8000**.
+Pull the images once while you still have internet.
 
-```bash
-git clone https://github.com/CTFd/CTFd   # do this WITH internet, before the event
-cd CTFd
-# docker-compose.yml ships with MySQL+Redis; for a Pi, prefer the single
-# container with SQLite:
-docker run -d -p 8000:8000 \
-  -e DATABASE_URL=sqlite:////data/ctfd.db \
-  -v "$PWD/ctfd-data:/data" \
-  --memory=768m --name ctfd ctfd/ctfd:latest
-```
+**One-time setup (≈5 minutes):**
 
-Then in the CTFd admin UI:
+1. Open `http://<PiIP>:8000` and complete the setup wizard: event name, **user
+   mode "Teams"**, your admin account. Leave registration open so teams can
+   sign up themselves.
+2. In CTFd, open **Settings → Access Tokens** (your admin profile) and generate
+   a token. Put it in `.env`, with the address players use:
+   ```
+   CTFD_TOKEN=ctfd_...
+   CTF_HOST=192.168.8.2
+   ```
+3. Load the challenges:
+   ```bash
+   python3 scripts/ctfd-setup.py
+   ```
+   It reads every `challenges/*/README.md` and creates the 9 challenges with
+   category, points, description (with the connection link and download links
+   to the cellule de crise), the flag from `.env` and the hints with their
+   costs. It also sets CTFd's default language to French (`--locale` to change).
+   Add `--dry-run` to see what it would do without touching CTFd.
 
-1. Create challenges matching `challenges/*/README.md` (title, category,
-   points, description, hints with their point costs).
-2. Set each flag to the matching value from your `.env`
-   (`FLAG_01_STAFF` … `FLAG_09_SAP_USR02`). **Static, case-sensitive.**
-3. Upload the handout files (02/03/05/07/09) as challenge files, or point to
-   your static file server.
-4. For the live web/SAP challenges, put the connection URL
-   (`http://<PiIP>:8001` …) in the description.
+**Cross links (set up by the script):**
 
-> Flags change every time you run `gen-flags.sh`. Re-enter them in CTFd after
-> rotating, or keep the flags fixed between runs by not re-running gen-flags.
+- **CTFd → hub:** a "Cellule de crise" item in CTFd's top menu (opens the hub
+  in a new tab), and each challenge description links to its own row in the
+  hub (`:8080/#mission-04`, highlighted on arrival).
+- **Hub → CTFd:** a "Tableau des scores" button, and on every mission a
+  "Soumettre le flag" link that opens **that challenge** in CTFd. The script
+  writes the CTFd challenge ids to `handouts/dist/ctfd_ids.json` for this;
+  without it, the links open the challenge list instead.
+
+The menu link uses `CTF_HOST`: if the Pi's address changes, re-run the script.
+
+**After rotating flags** (`./scripts/gen-flags.sh`), just re-run
+`python3 scripts/ctfd-setup.py`: it replaces the flags and updates the texts in
+place (your token and host are kept in `.env`). Re-running is safe even
+during play: solves and unlocked hints are kept, because hints are updated in
+place rather than recreated.
+
+**Reset between events:** `docker compose down -v` wipes CTFd's database (and
+nothing else that matters), then redo the one-time setup.
 
 ## Option B — rCTF / static board (lightest)
 

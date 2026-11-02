@@ -13,9 +13,10 @@ public internet:
   need internet for any challenge — handouts and the scoreboard are local.
   (Exception: if a team wants an online hash-cracker for 09, give them the
   `wordlist.txt` instead so the event stays fully offline.)
-- Give the Pi a static lease, e.g. `192.168.8.2`. Players reach challenges at
-  `http://192.168.8.2:8001` … `:8008`. Replace `<CTF-HOST>` in the challenge
-  READMEs / scoreboard with that IP.
+- Give the Pi a static lease, e.g. `192.168.8.2`. Players start at
+  `http://192.168.8.2:8080` (the cellule de crise), which links every challenge
+  (`:8001` … `:8008`) and serves the handouts. Replace `<CTF-HOST>` in the
+  challenge READMEs / scoreboard with that IP.
 
 ## Setup
 
@@ -32,6 +33,7 @@ cd biathlon-
 ./scripts/gen-flags.sh
 docker compose up -d --build
 ./scripts/build-handouts.sh
+# then the scoreboard: see scoreboard/README.md (setup wizard + ctfd-setup.py)
 ```
 
 > Build the images **once while you still have internet** (the base
@@ -42,8 +44,8 @@ docker compose up -d --build
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 4 challenge containers (`mem_limit` 128–160 MB each) | ~0.3–0.5 GB actual |
-| CTFd (if used) | ~0.4–0.7 GB |
+| 4 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.3–0.5 GB actual |
+| CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
@@ -53,29 +55,31 @@ for each other.
 
 ## Serving the handout files
 
-Any of these work on the LAN:
+Nothing to do: `docker-compose.yml` mounts `handouts/dist/` (read-only) into
+the hub container, and the cellule de crise offers each file as a download.
+Missions whose files aren't built yet show "pas encore disponible" until you
+run `./scripts/build-handouts.sh`, with no restart needed.
 
-```bash
-# simplest: a static file server from handouts/dist
-cd handouts/dist && python3 -m http.server 8080
-# players download from http://192.168.8.2:8080/
-```
-
-Or attach them as files in CTFd, or drop them on a USB stick and pass it around.
+You can still attach them as files in CTFd, or drop them on a USB stick.
 
 ## Pre-event test checklist
 
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] `docker compose up -d --build` → all 4 containers `Up`
+- [ ] `docker compose up -d --build` → all 5 containers `Up` (4 challenges + hub)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
 - [ ] `curl -s localhost:8008/sap/public/info` returns the SAP note
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
-- [ ] From a second device on the travel router, reach `http://<PiIP>:8001`
-- [ ] Scoreboard loads and accepts a test flag
+- [ ] From a second device on the travel router, open
+      `http://<PiIP>:8080`: 9 missions, every download works,
+      every "Ouvrir…" button reaches its challenge
+- [ ] CTFd at `:8000`: setup wizard done (Teams mode), `ctfd-setup.py` loaded
+      9 challenges; a test team can register, submit a flag and unlock a hint
+- [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
+      open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
 
 ## During the event

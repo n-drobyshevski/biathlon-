@@ -9,6 +9,20 @@
 # ============================================================================
 
 services:
+  # ---- Players' entry point (not a challenge) ----------------------------
+  # http://<PiIP>:8080 — the "cellule de crise": briefs the team, lists every
+  # mission, links the live ones and serves the handout files.
+  hub:
+    build: ./hub
+    environment:
+      CTFD_PORT: "8000"                       # links to the CTFd scoreboard on the same host
+      SCOREBOARD_URL: "${SCOREBOARD_URL:-}"   # optional override, e.g. http://192.168.8.2:8000
+    volumes:
+      - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
+    ports: ["8080:5000"]
+    mem_limit: 96m
+    restart: unless-stopped
+
   # ---- 01 · Web · easy ---------------------------------------------------
   staff:
     build: ./challenges/01-web-staff
@@ -44,3 +58,22 @@ services:
     ports: ["8008:5000"]
     mem_limit: 160m
     restart: unless-stopped
+
+  # ---- Scoreboard: CTFd (teams, flags, hints, scores) --------------------
+  # http://<PiIP>:8000 — finish the setup wizard once, then load the
+  # challenges with: python3 scripts/ctfd-setup.py --host <PiIP>
+  ctfd:
+    image: ctfd/ctfd:3.8.8
+    environment:
+      SECRET_KEY: "${CTFD_SECRET_KEY}"          # from .env (gen-flags.sh)
+      DATABASE_URL: "sqlite:////var/uploads/ctfd.db"
+      UPLOAD_FOLDER: /var/uploads
+      WORKERS: "1"
+    volumes:
+      - ctfd-data:/var/uploads                   # database + uploads; `down -v` wipes it
+    ports: ["8000:8000"]
+    mem_limit: 768m
+    restart: unless-stopped
+
+volumes:
+  ctfd-data:
