@@ -1,14 +1,14 @@
 # 11 · Deleted, Not Gone — `Web` · Hard · 150 pts
 
-> The DécaFlop timing site is deployed with `git pull` straight onto the server
-> — and the `.git` folder came along for the ride. Someone did clean the secrets
-> out of the config "to be safe". Git, however, keeps everything.
+> The DécaFlop timing site was pushed live in a hurry, straight onto the server.
+> Someone cleaned an export secret out of its config "to be safe" just before
+> go-live. On a deploy done that fast, though, "removed" rarely means gone.
 
 **Connect:** `http://<CTF-HOST>:8011`
 
-The site's `.git` directory is reachable. Recover it, read the history, and find
-the secret that was removed. That old config held **more than the export
-token** — worth reading every line of it.
+Recover the export secret that was taken out of the config before go-live. What
+you pull back held **more than the export token** — worth reading every line of
+it.
 
 **Flag format:** `TRIATHLON{...}`
 
