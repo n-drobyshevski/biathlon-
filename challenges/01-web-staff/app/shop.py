@@ -1,185 +1,491 @@
 """
 DécaFlop public storefront for challenge 01 (decor only: nothing here is part
-of the challenge). Every page is static; no user input is echoed back, so the
-storefront offers no rabbit holes. The challenge itself (robots.txt + the
-staff portal) lives in app.py.
+of the challenge). The challenge itself (robots.txt + the staff portal) lives
+in app.py.
+
+The site follows the layout of a large sports retailer: announcement bar,
+header with search, product rails, filterable category pages and detailed
+product pages. It is read-only on purpose. Online sales are "suspended during
+the race", so there is no cart, account or checkout to poke at, and the only
+form is the search box, which never echoes what was typed. Filter and sort
+parameters are mapped to known values and never echoed either.
 """
 import os
+import zlib
+from html import escape
+from urllib.parse import urlencode
 
 from flask import Blueprint, Response, abort, request, send_from_directory
 
+from icons import ui
+
 shop = Blueprint("shop", __name__)
+NB = "\u00a0"   # non-breaking space (French typography, prices)
+CUR = ' aria-current="page"'
+ON = ' aria-current="true"'
+
 
 # --------------------------------------------------------------------------
-# Line pictograms (inline SVG; the Pi has no internet, so no image assets)
-# --------------------------------------------------------------------------
-_SVG = ('<svg width="{s}" height="{s}" viewBox="0 0 96 96" fill="none" stroke="currentColor" '
-        'stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">')
-_PATHS = {
-    "bike": '<circle cx="22" cy="62" r="15"/><circle cx="74" cy="62" r="15"/><path d="M22 62 40 36 48 62Z"/><path d="M40 36h24L48 62"/><path d="M64 36l10 26"/><path d="M64 36l3-9h9"/><path d="M33 31h13"/>',
-    "goggle": '<rect x="12" y="38" width="30" height="20" rx="10"/><rect x="54" y="38" width="30" height="20" rx="10"/><path d="M42 46q6-5 12 0"/><path d="M12 48H5M84 48h7"/>',
-    "bottle": '<path d="M44 9h8v9h-8z"/><path d="M38 18h20l4 9v53a5 5 0 0 1-5 5H39a5 5 0 0 1-5-5V27z"/><path d="M34 42h28M34 56h28"/>',
-    "shoe": '<path d="M9 64c0-9 5-15 9-19l5-13 13 4c3 8 10 12 21 14l20 4c8 2 11 6 11 10v4H9z"/><path d="M9 72h79"/><path d="M29 40l7 4M34 33l7 4"/>',
-    "cap": '<path d="M14 66c0-22 15-38 34-38s34 16 34 38z"/><path d="M14 66h68"/><path d="M48 30v36"/>',
-    "wetsuit": '<path d="M36 12h24l14 12-8 10-6-6v58H50V58h-4v28H36V28l-6 6-8-10z"/><path d="M48 12v30"/>',
-    "helmet": '<path d="M10 62c0-20 16-34 38-34 18 0 30 10 36 26l-22 10H10z"/><path d="M30 42h14M24 50h12"/><path d="M28 64v8h18"/>',
-    "watch": '<rect x="30" y="30" width="36" height="36" rx="8"/><path d="M38 30l3-18h14l3 18M38 66l3 18h14l3-18"/><path d="M48 39v10l6 4"/>',
-    "bib": '<path d="M26 22h44l4 56H22z"/><path d="M8 48h14M74 48h14"/><path d="M38 44h20M38 56h12"/>',
-    "pin": '<path d="M48 86s26-26 26-46a26 26 0 0 0-52 0c0 20 26 46 26 46z"/><circle cx="48" cy="40" r="9"/>',
-    "clock": '<circle cx="48" cy="48" r="34"/><path d="M48 28v20l12 8"/>',
-    "wave": '<path d="M8 40q10-10 20 0t20 0 20 0 20 0M8 58q10-10 20 0t20 0 20 0 20 0"/>',
-}
-
-def icon(name, size=96):
-    return _SVG.format(s=size) + _PATHS[name] + "</svg>"
-
-# --------------------------------------------------------------------------
-# Catalogue. Prices in euros; "was" is the crossed-out price ("" = none).
+# Catalogue
 # --------------------------------------------------------------------------
 CATEGORIES = {
-    "natation": ("Natation", "Tout pour la première épreuve : lunettes, bonnets et "
-                 "combinaisons pour l'eau libre."),
-    "velo": ("Vélo", "Vélos de chrono, casques et bidons pour les 40 km de la "
-             "deuxième épreuve."),
-    "course-a-pied": ("Course à pied", "Chaussures, montres et accessoires pour "
-                      "finir en courant les 10 derniers kilomètres."),
+    "natation": ("Natation", "Lunettes, bonnets, combinaisons et matériel d'entraînement pour la piscine "
+                 "et l'eau libre."),
+    "velo": ("Vélo", "Vélos de chrono, casques, bidons et tout ce qu'il faut pour réparer au bord de la route."),
+    "course-a-pied": ("Course à pied", "Chaussures, montres GPS et accessoires pour les dix derniers kilomètres."),
 }
+BRANDS = {"nageflop": "Nageflop", "pedalo": "Pédalo", "bofbof": "Bofbof", "runflop": "Runflop"}
+BRAND_SLUG = {v: k for k, v in BRANDS.items()}
 
-# slug: (category, icon, brand, title, price, was, rating, reviews, description, features)
+
+def P(cat, brand, title, price, was, rating, reviews, badge, ref, colors, sizes, na, desc,
+      points, specs, revs, qa):
+    return dict(cat=cat, brand=brand, title=title, price=price, was=was, rating=rating, reviews=reviews,
+                badge=badge, ref=ref, colors=colors, sizes=sizes, na=set(na), desc=desc, points=points,
+                specs=specs, revs=revs, qa=qa)
+
+
+TU = ["TU"]   # taille unique
+
 PRODUCTS = {
-    "lunettes-natation": ("natation", "goggle", "Nageflop",
-        "Lunettes de natation anti-buée (buée vendue séparément)", "14", "", "3,2", "1 048",
-        "Verres teintés pour nager face au soleil levant, joints souples et sangle "
-        "double réglable en quelques secondes.",
-        ["Verres anti-UV", "Sangle double en silicone", "Étui de rangement inclus"]),
-    "bonnet-silicone": ("natation", "cap", "Nageflop",
-        "Bonnet de bain en silicone, visible de loin", "6", "", "4,5", "212",
-        "Un bonnet épais et coloré pour que les bateaux de sécurité vous repèrent "
-        "facilement en eau libre.",
-        ["Silicone 100 %", "Coloris jaune fluo", "Taille unique"]),
-    "combinaison-tri-500": ("natation", "wetsuit", "Nageflop",
-        "Combinaison néoprène Tri 500", "199", "249", "4,3", "96",
-        "Néoprène 3/5 mm pour flotter sans effort et une fermeture dorsale "
-        "pensée pour une transition rapide.",
-        ["Néoprène 3/5 mm", "Fermeture dorsale à cordon", "Eau de 14 à 22 °C"]),
-    "velo-chrono-race-900": ("velo", "bike", "Pédalo",
-        "Vélo de chrono Race 900, presque carbone", "1 299", "1 499", "4,1", "212",
-        "Cadre aluminium aux formes aéro, prolongateurs réglables et "
-        "transmission 2 × 11 vitesses.",
-        ["Cadre aluminium 6061", "Prolongateurs réglables", "Transmission 2 × 11"]),
-    "casque-aero": ("velo", "helmet", "Pédalo",
-        "Casque aéro de triathlon", "89", "", "4,0", "57",
-        "Profil allongé pour gagner quelques secondes en position, visière "
-        "magnétique amovible.",
-        ["Visière magnétique", "Molette de réglage", "Normes EN 1078"]),
-    "bidon-750": ("velo", "bottle", "Bofbof",
-        "Bidon 750 mL, garde l'eau à peu près fraîche", "5", "7", "3,9", "87",
-        "Bidon souple sans BPA, valve à débit rapide utilisable d'une main "
-        "en roulant.",
-        ["Sans BPA", "Valve anti-fuite", "Compatible lave-vaisselle"]),
-    "chaussures-lacage-rapide": ("course-a-pied", "shoe", "Runflop",
-        "Chaussures de course à laçage rapide (lacets lents)", "59", "", "4,6", "33",
-        "Lacets élastiques à serrage rapide pour enfiler les chaussures en "
-        "quelques secondes au parc de transition.",
-        ["Lacets élastiques", "Drop 8 mm", "Semelle amortissante"]),
-    "montre-gps": ("course-a-pied", "watch", "Runflop",
-        "Montre GPS multisport", "79", "99", "4,2", "140",
-        "Mode triathlon qui enchaîne natation, vélo et course d'une simple "
-        "pression, autonomie de 12 h en GPS.",
-        ["Mode multisport", "Étanche 50 m", "Autonomie 12 h en GPS"]),
-    "ceinture-dossard": ("course-a-pied", "bib", "Runflop",
-        "Ceinture porte-dossard élastique", "9", "", "4,7", "301",
-        "Fixez votre dossard sans épingles et tournez-le dans le dos pour la "
-        "partie vélo.",
-        ["Élastique réglable", "Attaches pour gels", "Sans épingles"]),
+    # ------------------------------------------------------------ natation
+    "lunettes-natation": P(
+        "natation", "Nageflop", "Lunettes de natation anti-buée verres teintés", "14,99", "", 3.9, 1048, "low",
+        "8 553 902", [("Bleu", "#2f63c8")], TU, [],
+        "Des verres teintés pour nager face au soleil levant et un joint souple qui tient sans serrer. "
+        "La sangle double se règle en quelques secondes, même avec un bonnet.",
+        [("Vision", "Verres teintés anti-UV, adaptés à l'eau libre par temps clair."),
+         ("Étanchéité", "Joints en silicone souple sur tout le contour de l'œil."),
+         ("Réglage", "Sangle double et pont de nez interchangeable, trois tailles fournies.")],
+        [("Verres", "Polycarbonate teinté, traitement anti-buée"), ("Joints", "Silicone"),
+         ("Sangle", "Double, en silicone, réglage par boucle"), ("Pont de nez", "3 tailles fournies"),
+         ("Étui", "Inclus"), ("Garantie", "2 ans")],
+        [(4, "Bonne vision en extérieur", "Je les utilise au lac le matin, les verres teintés font vraiment la "
+          "différence. L'anti-buée tient une petite heure, ensuite il faut rincer.", "Camille", "19/09/2026",
+          "Nage en eau libre"),
+         (3, "Correctes pour le prix", "Elles prennent un peu l'eau si la sangle n'est pas assez serrée. Une fois "
+          "bien réglées, rien à redire pour l'entraînement.", "Thomas", "03/08/2026", "Piscine")],
+        ("Peut-on les porter par-dessus des lunettes de vue ?",
+         "Non, ce modèle se porte directement sur le visage. Des verres correcteurs adaptables peuvent être "
+         "commandés en magasin.")),
+    "bonnet-silicone": P(
+        "natation", "Nageflop", "Bonnet de bain en silicone", "6,99", "", 4.5, 212, None,
+        "8 553 127", [("Blanc", "#f4f4f4")], TU, [],
+        "Un bonnet épais en silicone qui ne tire pas les cheveux et garde la chaleur, pour la piscine comme "
+        "pour l'eau libre.",
+        [("Tenue", "Reste en place pendant les virages et les plongeons."),
+         ("Confort", "Silicone épais qui ne tire pas les cheveux."),
+         ("Chaleur", "Limite la perte de chaleur par la tête dans une eau fraîche.")],
+        [("Matière", "Silicone 100 %"), ("Épaisseur", "0,8 mm"), ("Taille", "Unique, adulte"),
+         ("Entretien", "Rincer à l'eau claire et sécher à l'ombre"), ("Garantie", "2 ans")],
+        [(5, "Indestructible", "Trois saisons de piscine et toujours comme neuf. Il se met facilement, même "
+          "avec les cheveux longs.", "Léa", "28/09/2026", "Piscine"),
+         (4, "Chaud et confortable", "Je le porte en eau libre jusqu'en octobre, il garde bien la chaleur. "
+          "Un peu chaud en été.", "Marc", "11/10/2026", "Nage en eau libre")],
+        ("Le bonnet est-il accepté en compétition ?",
+         "Oui. Lors des épreuves officielles, l'organisation fournit un bonnet de couleur imposée à porter "
+         "par-dessus.")),
+    "combinaison-tri-500": P(
+        "natation", "Nageflop", "Combinaison néoprène de triathlon Tri 500 homme", "199,99", "249,99", 4.3, 96,
+        None, "8 571 234", [("Noir et bleu marine", "#1b2a5e")],
+        ["XS", "S", "M", "L", "XL", "XXL"], ["XXL"],
+        "Une combinaison en néoprène de 5 mm sur le torse et les cuisses pour garder les jambes en surface, "
+        "avec des épaules en 2 mm pour une rotation complète. La fermeture dorsale à cordon permet de "
+        "l'enlever vite en transition.",
+        [("Flottabilité", "Néoprène de 5 mm sur le torse et les cuisses pour garder les jambes en surface."),
+         ("Transition rapide", "Fermeture dorsale à cordon et chevilles coupées pour l'enlever en quelques "
+          "secondes."),
+         ("Liberté d'épaules", "Panneaux de 2 mm sous les bras pour une rotation complète.")],
+        [("Épaisseur", "5 mm torse et cuisses, 2 mm épaules et bras"), ("Fermeture", "Dorsale, à cordon"),
+         ("Température de l'eau", "De 14 à 22 °C"), ("Doublure", "Jersey intérieur"),
+         ("Conformité", "Règlement fédéral des épreuves avec combinaison"), ("Garantie", "2 ans")],
+        [(5, "Très bonne flottabilité", "Utilisée pour deux triathlons distance M. On flotte très bien et elle "
+          "s'enlève vite en transition. Prendre sa taille habituelle.", "Julien", "14/09/2026", "Triathlon"),
+         (4, "Bon rapport qualité-prix", "Un peu serrée aux épaules les premières sorties, ça s'assouplit "
+          "ensuite. Attention aux ongles en l'enfilant.", "Sandrine", "02/08/2026", "Triathlon")],
+        ("Quelle taille choisir quand on est entre deux tailles ?",
+         "Prenez la plus petite. Le néoprène se détend un peu à l'usage. Le guide des tailles indique le poids "
+         "et la taille conseillés.")),
+    "pull-buoy": P(
+        "natation", "Nageflop", "Pull-buoy en mousse pour l'entraînement des bras", "9,99", "", 4.6, 157, "new",
+        "8 612 045", [("Bleu marine et blanc", "#1b2a5e")], TU, [],
+        "Calé entre les cuisses, il maintient les jambes à la surface pour travailler uniquement les bras. "
+        "La mousse EVA reste ferme et ne se gorge pas d'eau.",
+        [("Travail des bras", "Isole le haut du corps pour progresser sur la traction."),
+         ("Tenue", "Forme en huit qui reste en place entre les cuisses."),
+         ("Durabilité", "Mousse EVA fermée qui ne prend pas l'eau.")],
+        [("Matière", "Mousse EVA"), ("Dimensions", "23 x 14 x 9 cm"), ("Poids", "110 g"), ("Garantie", "2 ans")],
+        [(5, "Indispensable", "Je l'utilise à chaque séance de piscine. Il ne glisse pas et la mousse n'a pas "
+          "bougé en un an.", "Hugo", "06/10/2026", "Piscine"),
+         (4, "Simple et efficace", "Un peu gros pour mon petit gabarit au début, on s'y habitue vite.", "Inès",
+          "21/07/2026", "Piscine")],
+        ("Peut-on l'utiliser comme planche ?",
+         "Oui, pour les éducatifs de jambes, même s'il porte moins qu'une planche classique.")),
+    "sac-etanche-30l": P(
+        "natation", "Nageflop", "Sac étanche de triathlon 30 L avec bretelle", "24,99", "29,99", 4.4, 73, None,
+        "8 598 310", [("Bleu marine et blanc", "#1b2a5e")], TU, [],
+        "Un sac à fermeture enroulable pour garder les affaires au sec au bord de l'eau et au parc à vélos. "
+        "La bretelle se règle et se retire.",
+        [("Étanche", "Fermeture enroulable sur trois tours et soudures étanches."),
+         ("Pratique", "Bretelle réglable et amovible, poignée sur le dessus."),
+         ("Visible", "Bande réfléchissante pour le retrouver au parc à vélos.")],
+        [("Volume", "30 litres"), ("Matière", "PVC enduit"), ("Fermeture", "Enroulable, boucle clipsable"),
+         ("Poids", "480 g"), ("Garantie", "2 ans")],
+        [(5, "Tout reste au sec", "Testé sous une grosse averse au parc à vélos, rien n'a pris l'eau. La "
+          "bretelle est confortable.", "Nathalie", "15/09/2026", "Triathlon"),
+         (4, "Bon sac", "Le volume est juste pour une combinaison et des chaussures, mais ça passe.", "Olivier",
+          "30/08/2026", "Triathlon")],
+        ("Le sac flotte-t-il ?",
+         "Fermé avec de l'air à l'intérieur, oui. Il n'est pas conçu pour être tracté en nageant.")),
+    # ----------------------------------------------------------------- vélo
+    "velo-chrono-race-900": P(
+        "velo", "Pédalo", "Vélo de chrono Race 900 aluminium, prolongateurs réglables", "1 299,00", "1 499,00",
+        4.1, 212, None, "8 604 117", [("Bleu marine et noir", "#1b2a5e")], ["S", "M", "L", "XL"], ["XL"],
+        "Un cadre en aluminium aux formes aérodynamiques, des prolongateurs réglables et une transmission "
+        "2 x 11 vitesses. Livré avec une roue arrière lenticulaire pour les épreuves contre la montre.",
+        [("Aérodynamisme", "Tubes profilés et roue arrière lenticulaire."),
+         ("Position", "Prolongateurs et repose-bras réglables en hauteur et en largeur."),
+         ("Transmission", "2 x 11 vitesses, plateaux 53/39 et cassette 11-28.")],
+        [("Cadre", "Aluminium 6061, câbles internes"), ("Fourche", "Carbone"), ("Transmission", "2 x 11 vitesses"),
+         ("Roues", "Arrière lenticulaire, avant jante de 60 mm"), ("Poids", "9,4 kg en taille M"),
+         ("Garantie", "5 ans sur le cadre, 2 ans sur les composants")],
+        [(4, "Très bon premier vélo de chrono", "La position se trouve facilement grâce au réglage des "
+          "prolongateurs. Un peu lourd en montée mais très stable sur le plat.", "Antoine", "09/09/2026",
+          "Triathlon"),
+         (5, "Gros gain de vitesse", "Deux km/h de mieux sur mon parcours habituel. Faites régler la position en "
+          "magasin, ça vaut le coup.", "Pauline", "17/08/2026", "Contre-la-montre")],
+        ("La roue lenticulaire est-elle autorisée partout ?",
+         "Elle est autorisée en triathlon sans aspiration-abri. Par vent fort, l'organisation peut l'interdire, "
+         "prévoyez alors une roue arrière à rayons.")),
+    "casque-aero": P(
+        "velo", "Pédalo", "Casque aéro de triathlon à visière magnétique", "89,99", "", 4.0, 57, None,
+        "8 604 522", [("Blanc et bleu", "#2f63c8")], ["S-M", "M-L"], [],
+        "Un profil allongé pour gagner quelques secondes en position et une visière magnétique qui se clipse "
+        "d'une main. La molette arrière ajuste le tour de tête.",
+        [("Profil aéro", "Queue courte qui reste efficace même tête baissée."),
+         ("Visière", "Magnétique, se retire et se remet d'une main en transition."),
+         ("Ventilation", "Deux entrées d'air frontales pour les journées chaudes.")],
+        [("Tours de tête", "S-M de 53 à 57 cm, M-L de 57 à 61 cm"), ("Poids", "340 g en taille M-L"),
+         ("Visière", "Polycarbonate, fixation magnétique"), ("Norme", "EN 1078"), ("Garantie", "2 ans")],
+        [(4, "Visière très pratique", "Elle se met en place toute seule grâce aux aimants. Un peu chaud au-delà "
+          "de 28 degrés.", "Romain", "25/08/2026", "Triathlon"),
+         (4, "Bon casque", "Il taille un peu petit, j'ai pris M-L pour 57 cm de tour de tête.", "Élise",
+          "12/07/2026", "Contre-la-montre")],
+        ("La visière est-elle compatible avec des lunettes de vue ?",
+         "Avec des montures fines, oui, la visière se porte par-dessus. Essayez-le en magasin avec vos "
+         "lunettes.")),
+    "bidon-750": P(
+        "velo", "Bofbof", "Bidon de vélo 750 ml à valve anti-fuite", "4,99", "6,99", 3.9, 87, None, "8 590 731",
+        [("Translucide et bleu", "#d8e4f0")], TU, [],
+        "Un bidon souple sans BPA avec une valve à débit rapide utilisable d'une main en roulant. Le bouchon "
+        "se dévisse en entier pour le nettoyage.",
+        [("Débit rapide", "Valve qui s'ouvre avec les dents et se referme seule."),
+         ("Prise en main", "Corps souple avec une zone de préhension marquée."),
+         ("Entretien", "Passe au lave-vaisselle, bouchon démontable.")],
+        [("Contenance", "750 ml"), ("Matière", "Polyéthylène sans BPA"), ("Valve", "Anti-fuite, débit rapide"),
+         ("Compatibilité", "Porte-bidons standards"), ("Garantie", "2 ans")],
+        [(4, "Fait le job", "Pas de fuite dans le sac et la valve est facile à utiliser en roulant.", "Kevin",
+          "02/10/2026", "Vélo de route"),
+         (3, "Goût de plastique au début", "Il faut le laver deux ou trois fois avant que le goût disparaisse. "
+          "Sinon rien à dire.", "Marion", "18/06/2026", "VTT")],
+        ("Peut-on y mettre une boisson chaude ?",
+         "Non, ce bidon est prévu pour des boissons froides ou à température ambiante.")),
+    "kit-reparation": P(
+        "velo", "Pédalo", "Kit de réparation crevaison avec démonte-pneus", "7,99", "", 4.5, 241, None,
+        "8 590 118", [("Bleu marine", "#1b2a5e")], TU, [],
+        "Tout pour réparer une chambre à air au bord de la route, dans une pochette qui se glisse sous la "
+        "selle ou dans la poche du maillot.",
+        [("Complet", "Deux démonte-pneus, six rustines, de la colle et du papier abrasif."),
+         ("Compact", "Pochette zippée de la taille d'une carte postale."),
+         ("Solide", "Démonte-pneus en nylon renforcé qui ne marquent pas les jantes.")],
+        [("Contenu", "2 démonte-pneus, 6 rustines, 1 tube de colle, 1 abrasif"), ("Dimensions", "14 x 9 x 3 cm"),
+         ("Poids", "55 g"), ("Garantie", "2 ans")],
+        [(5, "A sauvé ma sortie", "Crevaison à 40 km de chez moi, réparée en dix minutes. Les démonte-pneus sont "
+          "solides.", "Bruno", "27/09/2026", "Vélo de route"),
+         (4, "Pratique", "La colle sèche vite une fois ouverte, pensez à la changer chaque saison.", "Claire",
+          "14/05/2026", "Vélotaf")],
+        ("Le kit convient-il aux pneus tubeless ?",
+         "Non, il est prévu pour les chambres à air. Pour le tubeless, demandez un kit de mèches à l'atelier.")),
+    "gants-velo": P(
+        "velo", "Pédalo", "Gants de vélo courts Road 500", "14,99", "", 4.2, 64, "last", "8 604 903",
+        [("Blanc et noir", "#f4f4f4")], ["XS", "S", "M", "L", "XL"], ["XS"],
+        "Des gants courts avec une paume rembourrée pour limiter les fourmillements sur les longues sorties. "
+        "Le dos en maille respire.",
+        [("Confort", "Mousse sous la paume aux points d'appui."), ("Respirant", "Dos en maille aérée."),
+         ("Pratique", "Tirettes entre les doigts pour les retirer facilement.")],
+        [("Paume", "Synthétique, mousse de 4 mm"), ("Dos", "Maille polyester"),
+         ("Fermeture", "Patte auto-agrippante"), ("Entretien", "Lavable en machine à 30 °C"),
+         ("Garantie", "2 ans")],
+        [(4, "Bons gants d'été", "Confortables et la paume amortit bien. La taille correspond au guide.",
+          "Stéphane", "08/08/2026", "Vélo de route"),
+         (5, "Parfaits pour le triathlon", "Je les enfile en roulant après la transition, ils tiennent bien.",
+          "Aurélie", "10/09/2026", "Triathlon")],
+        ("Peut-on utiliser un téléphone sans les retirer ?",
+         "Oui, ces gants courts laissent le bout des doigts libre.")),
+    # ------------------------------------------------------- course à pied
+    "chaussures-lacage-rapide": P(
+        "course-a-pied", "Runflop", "Chaussures de running à laçage rapide Tri Speed", "59,99", "", 4.6, 33, None,
+        "8 611 270", [("Bleu", "#2f63c8")],
+        ["39", "40", "41", "42", "43", "44", "45", "46"], ["39", "46"],
+        "Des lacets élastiques à serrage rapide pour enfiler les chaussures en quelques secondes au parc à "
+        "vélos, une semelle amortissante et une tirette au talon.",
+        [("Laçage rapide", "Lacets élastiques et bloqueur, pas de nœud à faire."),
+         ("Amorti", "Semelle intermédiaire en mousse EVA, drop de 8 mm."),
+         ("Sans chaussettes", "Intérieur doux et sans couture pour courir pieds nus.")],
+        [("Drop", "8 mm"), ("Poids", "255 g en pointure 42"), ("Tige", "Maille respirante"),
+         ("Semelle", "EVA et caoutchouc"), ("Usage", "Route, entraînement et compétition"), ("Garantie", "2 ans")],
+        [(5, "Gain de temps en transition", "Je les mets en dix secondes. Confortables sans chaussettes sur "
+          "10 km.", "Mathieu", "22/09/2026", "Triathlon"),
+         (4, "Bon amorti", "Elles taillent normalement. Un peu justes en largeur pour mes pieds.", "Sophie",
+          "05/09/2026", "Course sur route")],
+        ("Peut-on remplacer les lacets élastiques par des lacets classiques ?",
+         "Oui, les œillets sont standards. Les lacets classiques sont vendus séparément.")),
+    "montre-gps": P(
+        "course-a-pied", "Runflop", "Montre GPS multisport Tri 200", "79,99", "99,99", 4.2, 140, None, "8 611 845",
+        [("Noir", "#1d2129")], TU, [],
+        "Un mode triathlon qui enchaîne natation, vélo et course d'une seule pression, avec les temps de "
+        "transition. L'autonomie atteint 12 heures en GPS.",
+        [("Multisport", "Passage d'une discipline à l'autre d'un appui sur le bouton."),
+         ("Autonomie", "12 heures en GPS, 10 jours en mode montre."),
+         ("Étanche", "Jusqu'à 50 mètres, comptage des longueurs en piscine.")],
+        [("GPS", "Oui"), ("Autonomie", "12 h en GPS, 10 jours en mode montre"), ("Étanchéité", "50 m"),
+         ("Écran", "Rond, lisible en plein soleil"), ("Bracelet", "Silicone, 22 mm"), ("Garantie", "2 ans")],
+        [(4, "Simple et fiable", "Le mode triathlon fonctionne bien et les transitions sont séparées. "
+          "L'application est basique.", "Damien", "16/09/2026", "Triathlon"),
+         (4, "Très bien pour débuter", "Le GPS met parfois une minute à capter en ville.", "Laura", "29/07/2026",
+          "Course sur route")],
+        ("La montre mesure-t-elle la fréquence cardiaque ?",
+         "Oui, au poignet. Une ceinture cardio peut être ajoutée pour plus de précision en natation.")),
+    "ceinture-dossard": P(
+        "course-a-pied", "Runflop", "Ceinture porte-dossard avec attaches pour gels", "9,99", "", 4.7, 301, None,
+        "8 611 402", [("Noir", "#1d2129")], TU, [],
+        "Fixez votre dossard sans épingles et tournez-le dans le dos pour la partie vélo. Trois passants "
+        "accueillent des gels énergétiques.",
+        [("Sans épingles", "Deux attaches tiennent le dossard sans le déchirer."),
+         ("Transition", "Se clipse en une seconde à la sortie du parc à vélos."),
+         ("Ravitaillement", "Trois passants élastiques pour les gels.")],
+        [("Tour de taille", "Réglable de 65 à 120 cm"), ("Matière", "Élastique polyester"),
+         ("Attaches", "2 pour le dossard, 3 pour les gels"), ("Poids", "35 g"), ("Garantie", "2 ans")],
+        [(5, "Indispensable en triathlon", "Plus besoin d'épingles et le dossard tourne facilement. Les passants "
+          "tiennent bien les gels.", "Fabien", "13/09/2026", "Triathlon"),
+         (5, "Parfait", "Légère, on l'oublie pendant la course.", "Céline", "04/10/2026", "Trail")],
+        ("Le dossard peut-il se déchirer avec les attaches ?",
+         "Non, les attaches passent dans les trous prévus du dossard. Deux œillets adhésifs sont fournis pour "
+         "les dossards sans trous.")),
+    "casquette-running": P(
+        "course-a-pied", "Runflop", "Casquette de running légère et respirante", "9,99", "", 4.3, 88, "last",
+        "8 611 633", [("Blanc", "#f4f4f4")], TU, [],
+        "Une casquette légère avec des panneaux en maille pour évacuer la chaleur et une visière souple qui "
+        "se range dans une poche.",
+        [("Respirante", "Panneaux latéraux en maille."), ("Légère", "45 g, visière souple."),
+         ("Réglable", "Bande élastique et boucle à l'arrière.")],
+        [("Matière", "Polyester recyclé"), ("Poids", "45 g"), ("Tour de tête", "Réglable de 54 à 60 cm"),
+         ("Entretien", "Lavage à la main"), ("Garantie", "2 ans")],
+        [(4, "Légère", "On ne la sent pas en courant et elle sèche vite.", "Yann", "21/08/2026",
+          "Course sur route"),
+         (5, "Top par temps chaud", "Je la mouille aux ravitaillements, elle garde la tête au frais.", "Amandine",
+          "06/07/2026", "Triathlon")],
+        ("La casquette passe-t-elle en machine ?",
+         "Un lavage à la main à l'eau froide est conseillé pour ne pas déformer la visière.")),
+    "gels-energetiques": P(
+        "course-a-pied", "Bofbof", "Gels énergétiques goût citron, lot de 4", "5,99", "", 4.1, 52, "new",
+        "8 590 977", [("Citron", "#f2e600")], TU, [],
+        "Quatre gels de 32 g à prendre pendant l'effort, avec une texture liquide qui s'avale sans eau. Chaque "
+        "gel apporte 22 g de glucides.",
+        [("Énergie", "22 g de glucides par gel."), ("Texture", "Liquide, se prend sans eau."),
+         ("Format", "Sachet avec encoche, s'ouvre d'une main.")],
+        [("Contenu", "4 gels de 32 g"), ("Glucides", "22 g par gel"), ("Sodium", "50 mg par gel"),
+         ("Goût", "Citron"), ("Conservation", "À l'abri de la chaleur")],
+        [(4, "Bon goût", "Pas trop sucré, il passe bien même en fin de course.", "Nicolas", "18/09/2026",
+          "Triathlon"),
+         (4, "Pratique", "L'encoche s'ouvre bien avec des mains mouillées.", "Emma", "01/10/2026", "Trail")],
+        ("Combien de gels prévoir sur un triathlon distance olympique ?",
+         "En général un gel toutes les 40 à 45 minutes à partir de la partie vélo. Testez toujours à "
+         "l'entraînement avant la course.")),
 }
 
-HOME_DEALS = ["velo-chrono-race-900", "lunettes-natation", "bidon-750", "chaussures-lacage-rapide"]
+# Product type, used for the menu and the breadcrumb.
+KIND = {"lunettes-natation": "Lunettes", "bonnet-silicone": "Bonnets", "combinaison-tri-500": "Combinaisons",
+        "pull-buoy": "Pull-buoys", "sac-etanche-30l": "Sacs étanches", "velo-chrono-race-900": "Vélos de chrono",
+        "casque-aero": "Casques", "bidon-750": "Bidons", "kit-reparation": "Réparation", "gants-velo": "Gants",
+        "chaussures-lacage-rapide": "Chaussures", "montre-gps": "Montres GPS",
+        "ceinture-dossard": "Ceintures porte-dossard", "casquette-running": "Casquettes",
+        "gels-energetiques": "Nutrition"}
+
+# Product photos live in static/img/p/<name>.jpg (square studio shots on light
+# grey). The first one is the main photo; extra names are more views.
+PHOTO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "img", "p")
+
+
+def photos(slug):
+    """Main photo first, then the extra views <slug>-2.jpg, <slug>-3.jpg if present."""
+    return [slug] + [f"{slug}-{i}" for i in (2, 3) if os.path.isfile(os.path.join(PHOTO_DIR, f"{slug}-{i}.jpg"))]
+
+
+def photo(name, alt="", lazy=True):
+    load = ' loading="lazy" decoding="async"' if lazy else ""
+    return f'<img src="/static/img/p/{name}.jpg" alt="{escape(alt)}" width="424" height="424"{load}>'
+
+
+HOME_DEALS = ["combinaison-tri-500", "velo-chrono-race-900", "lunettes-natation", "montre-gps",
+              "sac-etanche-30l", "bidon-750"]
+RACE_DAY = ["ceinture-dossard", "chaussures-lacage-rapide", "gels-energetiques", "casquette-running"]
+FINAL_KIT = ["combinaison-tri-500", "velo-chrono-race-900", "casque-aero", "ceinture-dossard",
+             "chaussures-lacage-rapide"]
 
 STORES = [
-    ("DécaFlop Stade", "2 allée du Stade", "Lun–sam 9 h – 20 h · dim 9 h – 13 h",
+    ("stade", "DécaFlop Stade", "2 allée du Stade",
+     [("Du lundi au samedi", "9 h à 20 h"), ("Dimanche", "9 h à 13 h")],
      ["Atelier vélo", "Location de vélos", "Retrait des commandes"]),
-    ("DécaFlop Centre-ville", "14 rue du Port", "Lun–sam 10 h – 19 h",
-     ["Retrait des commandes", "Essayage combinaisons"]),
-    ("DécaFlop Déstockage", "Parking du Stade, entrée nord", "Ven–dim 9 h – 18 h",
+    ("centre-ville", "DécaFlop Centre-ville", "14 rue du Port",
+     [("Du lundi au samedi", "10 h à 19 h"), ("Dimanche", "10 h à 13 h")],
+     ["Retrait des commandes", "Essayage des combinaisons"]),
+    ("destockage", "DécaFlop Déstockage", "Parking du Stade, entrée nord",
+     [("Du vendredi au dimanche", "9 h à 18 h")],
      ["Fins de séries", "Matériel de location d'occasion"]),
 ]
+STOCK_PATTERNS = [
+    [("ok", "En stock"), ("low", "Plus que 2"), ("out", "Rupture")],
+    [("ok", "En stock"), ("ok", "En stock"), ("low", "Plus que 1")],
+    [("low", "Plus que 3"), ("ok", "En stock"), ("out", "Rupture")],
+]
+
+
+def num(price):
+    return float(price.replace(" ", "").replace(NB, "").replace(",", "."))
+
+
+def pct_off(p):
+    return round((1 - num(p["price"]) / num(p["was"])) * 100) if p["was"] else 0
+
+
+def stock(slug):
+    return STOCK_PATTERNS[zlib.crc32(slug.encode()) % len(STOCK_PATTERNS)]
+
 
 # --------------------------------------------------------------------------
-# Layout
+# Small builders
 # --------------------------------------------------------------------------
-NAV = [("/triathlon", "Triathlon"), ("/natation", "Natation"), ("/velo", "Vélo"),
-       ("/course-a-pied", "Course à pied"), ("/destockage", "Déstockage"),
-       ("/recrutement", "Recrutement")]
+def fr(text):
+    """French typography: non-breaking spaces inside « » and before : ? !"""
+    for a, b in (("« ", "«" + NB), (" »", NB + "»"), (" :", NB + ":"), (" ?", NB + "?"), (" !", NB + "!")):
+        text = text.replace(a, b)
+    return text
 
-def layout(title, body, current="", notice=""):
-    here = ' aria-current="page"'
-    cats = "".join(
-        f'<li><a href="{href}"{here if href == current else ""}>{label}</a></li>'
-        for href, label in NAV)
-    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<a class="skip" href="#main">Aller au contenu</a>
-<div class="strip"><div class="in"><span>Retrait gratuit dans nos 3 magasins</span>
-<span>Retours sous 30 jours*  ·  *voir conditions, en gros</span></div></div>
-<header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
- <form class="search" action="/" role="search"><input name="q" aria-label="Rechercher"
-   placeholder="Rechercher parmi 40 000 produits et 3 sports"><button>Rechercher</button></form>
- <nav class="acct"><a class="opt" href="/aide">Aide</a><a href="/magasins">Magasins</a></nav>
-</div></header>
-<nav class="cats" aria-label="Rayons"><ul>{cats}</ul></nav>
-{notice}
-<main id="main">{body}</main>
-<footer class="foot"><div class="in">
- <div><b>Aide</b><ul><li><a href="/aide#commande">Suivi de commande</a></li><li><a href="/aide#retours">Retours</a></li><li><a href="/aide#garantie">Garantie</a></li></ul></div>
- <div><b>Magasins</b><ul><li><a href="/magasins">DécaFlop Stade</a></li><li><a href="/magasins">DécaFlop Centre-ville</a></li><li><a href="/magasins">DécaFlop Déstockage (sur le parking)</a></li></ul></div>
- <div><b>Entreprise</b><ul><li><a href="/actualites">Actualités</a></li><li><a href="/presse">Espace presse</a></li><li><a href="/recrutement">Recrutement</a></li><li><a href="/triathlon">Sponsoring</a></li></ul></div>
- <div><b>Service client</b>0 800 FLOP FLOP<br><span class="small">Du lundi au vendredi, 9 h – 18 h</span></div>
-</div>
-<div class="legal"><div class="in"><span>© DécaFlop. Tous flops réservés.</span>
-<span>Robots d'indexation bienvenus — voir <a href="/robots.txt">/robots.txt</a></span></div></div>
-</footer></body></html>"""
 
 def html(page, status=200):
     return Response(page, status=status, mimetype="text/html")
 
-def price_tag(price, was):
-    old = f"<s>{was} €</s>" if was else ""
-    return f'<span class="price">{price} €{old}</span>'
+
+def euros(s):
+    return s.replace(" ", NB) + NB + "€"
+
+
+def rating_txt(r):
+    return f"{r:.1f}".replace(".", ",")
+
+
+def stars(r, count=None, plain=False):
+    pct = f"{r / 5 * 100:.0f}%"
+    txt = ""
+    if not plain:
+        txt = f"<b>{rating_txt(r)}</b>"
+        if count is not None:
+            txt += f" ({count:,})".replace(",", NB)
+    return (f'<span class="stars"><span class="s" style="--p:{pct}" role="img" '
+            f'aria-label="Note de {rating_txt(r)} sur 5"></span>{txt}</span>')
+
+
+def price_block(p):
+    old = ""
+    if p["was"]:
+        old = f'<s>{euros(p["was"])}</s><span class="off">-{pct_off(p)}{NB}%</span>'
+    return f'<div class="price"><b>{euros(p["price"])}</b>{old}</div>'
+
 
 def card(slug):
-    cat, ic, brand, title, price, was, rating, reviews, _d, _f = PRODUCTS[slug]
-    return f"""<a class="prod" href="/produit/{slug}"><div class="ph">{icon(ic)}</div>
-<div class="b"><div class="brand">{brand}</div><div class="t">{title}</div>
-{price_tag(price, was)}<div class="rate">★ {rating} · {reviews} avis</div></div></a>"""
+    p = PRODUCTS[slug]
+    return (f'<a class="card" href="/produit/{slug}"><span class="ph">{photo(slug)}</span>'
+            f'<span class="brand">{p["brand"]}</span><span class="t">{p["title"]}</span>{price_block(p)}</a>')
+
 
 def crumbs(*items):
     parts = [f'<a href="{h}">{t}</a>' if h else f"<span>{t}</span>" for h, t in items]
-    return '<nav class="crumb" aria-label="Fil d\'Ariane">' + " / ".join(parts) + "</nav>"
+    return ('<nav class="crumb" aria-label="Fil d\'Ariane">' +
+            '<span class="sep" aria-hidden="true"></span>'.join(parts) + "</nav>")
 
-def fr(text):
-    """French typography: non-breaking spaces inside « » and before : ? !"""
-    nb = chr(160)  # non-breaking space
-    for a, b in (("« ", "«" + nb), (" »", nb + "»"), (" :", nb + ":"), (" ?", nb + "?"), (" !", nb + "!")):
-        text = text.replace(a, b)
-    return text
+
+def page_head(title, text="", items=()):
+    return (f'<section class="page-hd"><div class="in">{crumbs(("/", "Accueil"), *items, (None, title))}'
+            f'<h1>{title}</h1>{"<p>" + text + "</p>" if text else ""}</div></section>')
+
+
+# --------------------------------------------------------------------------
+# Layout
+# --------------------------------------------------------------------------
+NAV = [("/natation", "Natation"), ("/velo", "Vélo"), ("/course-a-pied", "Course à pied"),
+       ("/triathlon", "Triathlon"), ("/magasins", "Magasins"), ("/destockage", "Déstockage")]
+
+
+def footer():
+    cols = [
+        ("Aide", [("/aide#commande", "Suivi de commande"), ("/aide#retours", "Retours et échanges"),
+                  ("/aide#garantie", "Garantie"), ("/aide#tailles", "Guide des tailles")]),
+        ("Services", [("/aide#retrait", "Retrait en magasin"), ("/location", "Location de vélos"),
+                      ("/atelier", "Atelier vélo"), ("/destockage", "Déstockage")]),
+        ("Magasins", [(f"/magasins#{k}", n) for k, n, *_r in STORES]),
+        ("Entreprise", [("/actualites", "Actualités"), ("/presse", "Espace presse"),
+                        ("/recrutement", "Recrutement"), ("/triathlon", "Sponsoring triathlon")]),
+    ]
+    c = "".join(f'<div><h3>{t}</h3><ul>' + "".join(f'<li><a href="{h}">{x}</a></li>' for h, x in items) +
+                '</ul></div>' for t, items in cols)
+    return ('<footer class="foot"><div class="in cols">' + c +
+            '<div><h3>Service client</h3><p class="tel">0 800 FLOP FLOP</p>'
+            '<p>Du lundi au vendredi, de 9 h à 18 h. Service et appel gratuits.</p></div></div>'
+            '<div class="in legal"><span>© 2026 DécaFlop SAS</span><nav aria-label="Informations légales">'
+            '<a href="/informations-legales#mentions">Mentions légales</a>'
+            '<a href="/informations-legales#cgv">Conditions générales de vente</a>'
+            '<a href="/informations-legales#cookies">Cookies</a>'
+            '<a href="/informations-legales#accessibilite">Accessibilité partiellement conforme</a>'
+            '</nav></div></footer>')
+
+
+def layout(title, body, current="", notice=""):
+    nav = "".join(f'<a href="{h}"{CUR if h == current else ""}>{label}</a>' for h, label in NAV)
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="hd"><div class="in">
+<a class="mark" href="/">DÉCA<i>FLOP</i></a>
+<nav class="nav" aria-label="Rayons">{nav}</nav>
+<form class="search" action="/" role="search">{ui("search", 18)}<input name="q" aria-label="Rechercher"
+ placeholder="Rechercher"></form>
+<nav class="acct" aria-label="Mon espace"><a href="/compte">{ui("user", 20)}<span>Compte</span></a>
+<a href="/panier">{ui("bag", 20)}<span>Panier (0)</span></a></nav>
+</div></header>
+{notice}
+<main id="main">{body}</main>
+{footer()}
+</body></html>"""
+
 
 # --------------------------------------------------------------------------
 # Press / news media. The poster (02) and the race photo (03) are built into
 # handouts/dist and mounted read-only at HANDOUT_DIR (see docker-compose). Only
-# these two files are ever served, byte-for-byte — the stego trailer and the
+# these two files are ever served, byte-for-byte. The stego trailer and the
 # EXIF must survive, so nothing here re-encodes or resizes them.
 # --------------------------------------------------------------------------
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 MEDIA = {"decaflop_poster.png", "transition_shot.jpg"}
 
+
 def media_available(name):
     return os.path.isfile(os.path.join(HANDOUT_DIR, name))
 
+
 # Actualités: three short posts, newest first. The race-eve post shows a photo
-# the event crew shared and links its full-size original — like many event
+# the event crew shared and links its full-size original. Like on many event
 # sites, nothing strips the metadata.
 NEWS = [
     {"slug": "parc-a-velos-pret", "date": "1 novembre 2026",
@@ -198,6 +504,7 @@ NEWS = [
      ]},
     {"slug": "navettes-spectateurs", "date": "30 octobre 2026",
      "title": "Des navettes gratuites pour les spectateurs", "photo": False,
+     "image": "/static/img/actu/navettes-spectateurs.jpg", "alt": "Une navette gratuite devant le stade",
      "lede": "Pour venir encourager les finalistes sans galérer à se garer, des navettes "
              "relient le centre-ville au stade tout le week-end.",
      "body": [
@@ -210,7 +517,8 @@ NEWS = [
      ]},
     {"slug": "magasins-ouverts-week-end", "date": "27 octobre 2026",
      "title": "Nos trois magasins ouverts tout le week-end", "photo": False,
-     "lede": "Combinaison qui fuit, lacet cassé, bidon oublié : nos magasins restent "
+     "image": "/static/img/actu/magasins-ouverts-week-end.jpg", "alt": "Le rayon natation et triathlon du magasin Stade",
+     "lede": "Combinaison qui fuit, lacet cassé, bidon oublié. Nos magasins restent "
              "ouverts pour parer aux imprévus d'avant-course.",
      "body": [
         "Les magasins DécaFlop Stade, Centre-ville et Déstockage gardent leurs portes "
@@ -224,265 +532,488 @@ NEWS = [
 ]
 NEWS_BY_SLUG = {p["slug"]: p for p in NEWS}
 
-# --------------------------------------------------------------------------
-# Pages
-# --------------------------------------------------------------------------
-SEARCH_NOTICE = """<div class="in" style="padding-top:12px"><p class="note db" role="status"
- style="margin:0">La recherche en ligne est indisponible pendant la compétition.
- Nos vendeurs vous attendent en magasin.</p></div>"""
 
-SPORT_ICON = {"natation": "goggle", "velo": "bike", "course-a-pied": "shoe"}
-SPORT_DIST = {"natation": "1,5 km", "velo": "40 km", "course-a-pied": "10 km"}
+# --------------------------------------------------------------------------
+# Home
+# --------------------------------------------------------------------------
+SEARCH_NOTICE = ('<div class="in notice-wrap"><p class="notice" role="status">La recherche en ligne est '
+                 'indisponible pendant la compétition. Nos vendeurs vous renseignent en magasin.</p></div>')
+
+SCHEDULE = [("7 h 00", "Ouverture du parc à vélos", "Transition"), ("8 h 30", "Départ finale femmes", "Plage"),
+            ("10 h 30", "Départ finale hommes", "Plage"), ("15 h 00", "Podium", "Grand chapiteau")]
+
+
+def news_thumb(p):
+    if p.get("image"):
+        return f'<img src="{p["image"]}" alt="" loading="lazy">'
+    if p["photo"] and media_available("transition_shot.jpg"):
+        return '<img src="/medias/transition_shot.jpg" alt="" loading="lazy">'
+    return ""
+
+
+def news_card(p):
+    thumb = news_thumb(p)
+    thumb = f'<span class="news-ph">{thumb}</span>' if thumb else ""
+    return (f'<a class="news" href="/actualites/{p["slug"]}">{thumb}<span class="date">{p["date"]}</span>'
+            f'<b>{p["title"]}</b><p>{p["lede"]}</p><span class="more">Lire l\'article</span></a>')
+
+
+SPORT_TILES = [("/natation", "Natation", "lunettes-natation"), ("/velo", "Vélo", "velo-chrono-race-900"),
+               ("/course-a-pied", "Course à pied", "chaussures-lacage-rapide"),
+               ("/triathlon", "Triathlon", "combinaison-tri-500")]
+BEST_SELLERS = ["ceinture-dossard", "gels-energetiques", "kit-reparation", "bonnet-silicone"]
+
+
+def sport_tiles():
+    return "".join(f'<a class="tile" href="{h}"><span class="ph">{photo(art)}</span><span class="t">{n}</span></a>'
+                   for h, n, art in SPORT_TILES)
+
+
+def grid_section(title, slugs, link=("", "")):
+    more = f'<a href="{link[0]}">{link[1]}</a>' if link[0] else ""
+    return (f'<section class="sec"><div class="in"><div class="sec-hd"><h2>{title}</h2>{more}</div>'
+            f'<div class="grid">{"".join(card(s) for s in slugs)}</div></div></section>')
+
+
+def not_found_body():
+    """Body of the shop's 404 page (used by app.py's error handler)."""
+    return fr(f"""<section class="page-hd"><div class="in"><h1>Page introuvable</h1>
+<p>La page que vous cherchez n'existe pas ou a changé d'adresse. Le produit a peut-être été retiré de la vente.</p>
+<div class="btns" style="margin-top:20px"><a class="btn" href="/">Retour à l'accueil</a>
+<a class="btn line" href="/aide">Aide et contact</a></div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos rayons</h2></div><div class="grid">{sport_tiles()}</div></div></section>
+{grid_section("Nos meilleures ventes", BEST_SELLERS)}""")
+
 
 @shop.get("/")
 def home():
     notice = SEARCH_NOTICE if "q" in request.args else ""
-    latest = NEWS[0]
-    sports = "".join(
-        f"""<a class="sport" href="/{slug}"><span class="ic">{icon(SPORT_ICON[slug], 56)}</span>
-<span><b class="h">{name}</b><small>{SPORT_DIST[slug]} · voir le rayon</small></span></a>"""
-        for slug, (name, _intro) in CATEGORIES.items())
-    body = f"""<section class="banner"><div class="in">
- <div>
-  <span class="tagline">Sponsor titre · Championnat régional de triathlon</span>
-  <h1 class="h">La finale,<br>c'est <em>demain</em></h1>
-  <p>Bienvenue sur le site officiel de <b>DécaFlop</b>, fier sponsor titre du
-     Championnat régional de triathlon. Vélos, combinaisons, politique de retour discutable.</p>
-  <a class="btn" href="#shop">L'équipement course</a><a class="btn line" href="/triathlon">Infos course</a>
- </div>
- <div class="sched">
-  <h2 class="h">Programme du jour J</h2>
-  <table><tr><td>7 h 00</td><td>Ouverture du parc à vélos</td><td>Transition</td></tr>
-   <tr><td>8 h 30</td><td>Départ finale femmes</td><td>Plage</td></tr>
-   <tr><td>10 h 30</td><td>Départ finale hommes</td><td>Plage</td></tr>
-   <tr><td>15 h 00</td><td>Podium</td><td>Grand chapiteau</td></tr></table>
-  <p class="small mute" style="margin:10px 0 0">Listes de départ, chronométrage et résultats
-   sont gérés par notre équipe événement. Le programme public arrive bientôt.</p>
- </div>
+    sp = sport_tiles()
+    deals = [s for s in HOME_DEALS if PRODUCTS[s]["was"]][:4]
+    sched = "".join(f"<tr><td>{t}</td><td>{w}</td><td>{l}</td></tr>" for t, w, l in SCHEDULE)
+    body = f"""<section class="hero"><div class="in">
+ <div><p class="kicker">Championnat régional de triathlon, finale le 2 novembre</p>
+  <h1>Prêts pour la finale{NB}?</h1>
+  <p>Combinaisons, vélos de chrono et petit matériel de transition. Retrait gratuit en magasin, prêt en 1 h.</p>
+  <div class="ctas"><a class="btn" href="/triathlon#equipement">L'équipement triathlon</a>
+   <a class="txt" href="/triathlon">Programme de la course</a></div></div>
+ <div class="hero-art" aria-hidden="true"><img src="/static/img/hero-finale.jpg" alt="" width="900" height="849"></div>
 </div></section>
-
-<section class="sec"><div class="in">
- <h2 class="h">Nos rayons</h2>
- <div class="sports">{sports}</div>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos sports</h2></div><div class="grid">{sp}</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Prix réduits</h2><a href="/destockage">Tout voir</a></div>
+ <div class="grid">{"".join(card(s) for s in deals)}</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Pour le jour de la course</h2>
+ <a href="/course-a-pied">Tout voir</a></div><div class="grid">{"".join(card(s) for s in RACE_DAY)}</div></div></section>
+<section class="sec"><div class="in event">
+ <div><p class="kicker">Championnat régional de triathlon</p><h2>La finale, c'est dimanche</h2>
+  <p>1,5 km de natation, 40 km de vélo et 10 km de course à pied. DécaFlop est sponsor titre de l'édition 2026
+   et tient un stand de réparation au parc à vélos.</p>
+  <a class="txt" href="/triathlon">Le championnat</a></div>
+ <table class="sched">{sched}</table>
 </div></section>
+<section class="sec"><div class="in"><div class="services">
+ <div><h3>Retrait en 1 h</h3><p>Réservez, puis retirez en magasin le jour même.</p><a href="/aide#retrait">En savoir plus</a></div>
+ <div><h3>Location de vélos</h3><p>Vélos de chrono réglés à votre taille, casque inclus.</p><a href="/location">Voir les tarifs</a></div>
+ <div><h3>Atelier vélo</h3><p>Révision express avant la course, sans rendez-vous.</p><a href="/atelier">Voir les prestations</a></div>
+</div></div></section>
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Actualités</h2>
+ <a href="/actualites">Toutes les actualités</a></div>
+ <div class="news-list">{"".join(news_card(p) for p in NEWS)}</div></div></section>"""
+    return html(layout("DécaFlop, sponsor du Championnat régional de triathlon", fr(body), notice=notice))
 
-<section class="sec grey" id="shop"><div class="in">
- <div class="row"><h2 class="h">Les bons plans de la semaine</h2><a href="/destockage">Tout voir</a></div>
- <div class="grid">{"".join(card(s) for s in HOME_DEALS)}</div>
-</div></section>
 
-<section class="sec"><div class="in two">
- <div class="tile"><h3 class="h">Location de vélos</h3>
-  <p>Vélos de chrono réglés course pour le week-end. Casque inclus.</p>
-  <a class="btn blue" href="/magasins">Trouver un magasin</a></div>
- <div class="tile dark"><h3 class="h">Recrutement</h3>
-  <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé
-     au personnel sur ce site. Merci de ne pas le chercher.</p>
-  <a href="/recrutement">Offres d'emploi (0)</a></div>
-</div></section>
+# --------------------------------------------------------------------------
+# Category pages (filters and sort are links; values are whitelisted)
+# --------------------------------------------------------------------------
+PRICE_BANDS = {"moins-20": ("Moins de 20 €", lambda v: v < 20),
+               "20-100": ("De 20 à 100 €", lambda v: 20 <= v <= 100),
+               "plus-100": ("Plus de 100 €", lambda v: v > 100)}
+NOTES = {"4": ("4 étoiles et plus", 4.0), "3": ("3 étoiles et plus", 3.0)}
+SORTS = {"pertinence": "Pertinence", "prix-croissant": "Prix croissant", "prix-decroissant": "Prix décroissant",
+         "note": "Meilleures notes"}
 
-<section class="sec grey"><div class="in">
- <div class="row"><h2 class="h">Actualités</h2><a href="/actualites">Toutes les actualités</a></div>
- <a class="news-teaser" href="/actualites/{latest['slug']}">
-  <span class="date">{latest['date']}</span>
-  <b class="h">{latest['title']}</b>
-  <span class="more">Lire l'article →</span>
- </a>
-</div></section>"""
-    return html(layout("DécaFlop · Sponsor officiel du Championnat régional de triathlon",
-                       body, notice=notice))
 
-def listing(title, intro, slugs, current, crumb_label):
-    count = f"{len(slugs)} produit{'s' if len(slugs) > 1 else ''}"
-    body = f"""<section class="cathead"><div class="in">
- {crumbs(("/", "Accueil"), (None, crumb_label))}
- <h1 class="h">{title}</h1><p>{intro}</p>
-</div></section>
-<section class="sec"><div class="in">
- <p class="small mute" style="margin:0 0 14px">{count}</p>
- <div class="grid">{"".join(card(s) for s in slugs)}</div>
-</div></section>"""
-    return html(layout(f"{title} · DécaFlop", body, current=current))
+def read_filters():
+    a = request.args
+    return {"marque": a.get("marque") if a.get("marque") in BRANDS else None,
+            "prix": a.get("prix") if a.get("prix") in PRICE_BANDS else None,
+            "note": a.get("note") if a.get("note") in NOTES else None,
+            "tri": a.get("tri") if a.get("tri") in SORTS else "pertinence"}
+
+
+def matches(slug, f, skip=None):
+    p = PRODUCTS[slug]
+    if f["marque"] and skip != "marque" and BRAND_SLUG[p["brand"]] != f["marque"]:
+        return False
+    if f["prix"] and skip != "prix" and not PRICE_BANDS[f["prix"]][1](num(p["price"])):
+        return False
+    if f["note"] and skip != "note" and p["rating"] < NOTES[f["note"]][1]:
+        return False
+    return True
+
+
+def sort_slugs(slugs, tri):
+    if tri == "prix-croissant":
+        return sorted(slugs, key=lambda s: num(PRODUCTS[s]["price"]))
+    if tri == "prix-decroissant":
+        return sorted(slugs, key=lambda s: -num(PRODUCTS[s]["price"]))
+    if tri == "note":
+        return sorted(slugs, key=lambda s: -PRODUCTS[s]["rating"])
+    return list(slugs)
+
+
+def link(path, f, **changes):
+    g = dict(f)
+    g.update(changes)
+    params = [(k, g[k]) for k in ("marque", "prix", "note", "tri") if g.get(k) and not (k == "tri" and
+                                                                                       g[k] == "pertinence")]
+    return escape(path + ("?" + urlencode(params) if params else ""))
+
+
+def facets(path, slugs, f):
+    def block(title, key, options):
+        lis = []
+        for value, label in options:
+            n = sum(1 for s in slugs if matches(s, {**f, key: value}))
+            on = f[key] == value
+            if not n and not on:
+                lis.append(f'<li><span class="dim"><span>{label}</span><small>0</small></span></li>')
+                continue
+            href = link(path, f, **{key: None if on else value})
+            cur = ON if on else ""
+            lis.append(f'<li><a href="{href}"{cur}><span>{label}</span><small>{n}</small></a></li>')
+        return f'<div class="facet"><h3>{title}</h3><ul>{"".join(lis)}</ul></div>'
+    brands = sorted({BRAND_SLUG[PRODUCTS[s]["brand"]] for s in slugs}, key=lambda b: BRANDS[b])
+    return (block("Marque", "marque", [(b, BRANDS[b]) for b in brands]) +
+            block("Prix", "prix", [(k, v[0]) for k, v in PRICE_BANDS.items()]) +
+            block("Note des clients", "note", [(k, v[0]) for k, v in NOTES.items()]))
+
+
+def listing(title, intro, slugs, path, current):
+    f = read_filters()
+    shown = sort_slugs([s for s in slugs if matches(s, f)], f["tri"])
+    count = f"{len(shown)} produit{'s' if len(shown) > 1 else ''}"
+    sort = "".join(f'<a href="{link(path, f, tri=k)}"{ON if f["tri"] == k else ""}>{v}</a>' for k, v in SORTS.items())
+    chips = []
+    if f["marque"]:
+        chips.append(f'<a href="{link(path, f, marque=None)}">{BRANDS[f["marque"]]}</a>')
+    if f["prix"]:
+        chips.append(f'<a href="{link(path, f, prix=None)}">{PRICE_BANDS[f["prix"]][0]}</a>')
+    if f["note"]:
+        chips.append(f'<a href="{link(path, f, note=None)}">{NOTES[f["note"]][0]}</a>')
+    if chips:
+        chips.append(f'<a class="clear" href="{link(path, f, marque=None, prix=None, note=None)}">Tout effacer</a>')
+    chips_html = f'<div class="chips">{"".join(chips)}</div>' if chips else ""
+    fac = facets(path, slugs, f)
+    grid = (f'<div class="grid three">{"".join(card(s) for s in shown)}</div>' if shown else
+            '<p class="empty">Aucun produit ne correspond à ces filtres.</p>')
+    active = sum(1 for k in ("marque", "prix", "note") if f[k])
+    body = f"""<div class="in">
+{crumbs(("/", "Accueil"), (None, title))}
+<div class="plp-hd"><h1>{title}</h1><p>{intro}</p></div>
+<div class="plp"><aside class="filters" aria-label="Filtres"><h2>Filtrer</h2>{fac}</aside>
+<div><details class="mfilters"><summary>Filtrer{f" ({active})" if active else ""}</summary><div class="filters">{fac}</div></details>
+ <div class="toolbar"><span class="count">{count}</span><div class="sort"><span>Trier par</span>{sort}</div></div>
+ {chips_html}{grid}</div></div>
+</div>"""
+    return html(layout(f"{title} - DécaFlop", fr(body), current=current))
+
 
 @shop.get("/<any(natation, velo, 'course-a-pied'):cat>")
 def category(cat):
     name, intro = CATEGORIES[cat]
-    slugs = [s for s, p in PRODUCTS.items() if p[0] == cat]
-    return listing(name, intro, slugs, f"/{cat}", name)
+    slugs = [s for s, p in PRODUCTS.items() if p["cat"] == cat]
+    return listing(name, intro, slugs, f"/{cat}", f"/{cat}")
+
 
 @shop.get("/destockage")
 def clearance():
-    slugs = [s for s, p in PRODUCTS.items() if p[5]]
-    return listing("Déstockage", "Fins de séries et prix barrés, tant qu'il y en a.",
-                   slugs, "/destockage", "Déstockage")
+    slugs = [s for s, p in PRODUCTS.items() if p["was"] or p["badge"] in ("last", "low")]
+    return listing("Déstockage", "Prix barrés, fins de séries et derniers stocks, dans la limite des quantités "
+                   "disponibles.", slugs, "/destockage", "/destockage")
 
-STOCK = [("DécaFlop Stade", "En stock", "ok"), ("DécaFlop Centre-ville", "Plus que 2", "low"),
-         ("DécaFlop Déstockage", "Rupture", "out")]
+
+# --------------------------------------------------------------------------
+# Product page
+# --------------------------------------------------------------------------
+NA = ' class="na"'
+
 
 @shop.get("/produit/<slug>")
 def product(slug):
     if slug not in PRODUCTS:
         abort(404)
-    cat, ic, brand, title, price, was, rating, reviews, desc, feats = PRODUCTS[slug]
-    cat_name = CATEGORIES[cat][0]
-    stock = "".join(f'<li><span>{s}</span><span class="st {k}">{t}</span></li>' for s, t, k in STOCK)
-    related = [s for s, p in PRODUCTS.items() if p[0] == cat and s != slug]
-    body = f"""<div class="in pdp-wrap">
- {crumbs(("/", "Accueil"), (f"/{cat}", cat_name), (None, title))}
- <div class="pdp">
-  <div class="pdp-img">{icon(ic, 220)}</div>
-  <div class="pdp-info">
-   <div class="brand">{brand}</div>
-   <h1>{title}</h1>
-   <div class="rate">★ {rating} · {reviews} avis</div>
-   <div class="pdp-price">{price_tag(price, was)}</div>
-   <p>{desc}</p>
-   <ul class="feats">{"".join(f"<li>{f}</li>" for f in feats)}</ul>
-   <div class="instore"><b>Disponible en magasin uniquement</b>
-    <p class="small">Pendant la compétition, la boutique en ligne est fermée.
-     Réservez l'article à l'accueil de votre magasin.</p>
-    <ul class="stock">{stock}</ul></div>
-  </div>
+    p = PRODUCTS[slug]
+    cat_name = CATEGORIES[p["cat"]][0]
+    st = stock(slug)
+    pickup = next((STORES[i][1] for i, (k, _t) in enumerate(st) if k == "ok"), STORES[0][1])
+    # gallery: CSS-only view switcher (radio + label), no script
+    shots = photos(slug)
+    many = len(shots) > 1
+    radios = "".join(f'<input type="radio" name="vue" id="vue{i}"{" checked" if i == 0 else ""}>'
+                     for i in range(len(shots))) if many else ""
+    thumbs = ('<div class="thumbs">' + "".join(f'<label for="vue{i}" title="Vue {i + 1}">{photo(n)}</label>'
+                                              for i, n in enumerate(shots)) + '</div>') if many else ""
+    views = "".join(f'<div class="view v{i}">{photo(n, p["title"] if i == 0 else "", lazy=False)}</div>'
+                    for i, n in enumerate(shots))
+    if p["sizes"] == TU:
+        sizes = '<p class="opt-l">Taille <b>Taille unique</b></p>'
+    else:
+        sizes = ('<p class="opt-l"><span>Taille</span><a href="/aide#tailles">Guide des tailles</a></p><div class="opts">' +
+                 "".join(f'<label{NA if s in p["na"] else ""}><input type="radio" name="taille" value="{s}"'
+                         f'{" disabled" if s in p["na"] else ""}><span class="sz">{s}</span></label>'
+                         for s in p["sizes"]) + '</div>')
+    colours = ", ".join(n for n, _c in p["colors"])
+    points = "".join(f"<li><b>{t}</b><span>{d}</span></li>" for t, d in p["points"])
+    specs = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in p["specs"])
+    revs = "".join(f'<article class="review">{stars(s, plain=True)}<h3>{t}</h3><p>{txt}</p>'
+                   f'<p class="by"><span>{who}, le {d}</span><span>{use}</span><span class="ver">Acheteur vérifié</span></p></article>'
+                   for s, t, txt, who, d, use in p["revs"])
+    q, a = p["qa"]
+    stock_list = "".join(f'<li><span>{STORES[i][1]}</span><span class="st {k}">{t}</span></li>'
+                         for i, (k, t) in enumerate(st))
+    related = [s for s, x in PRODUCTS.items() if x["cat"] == p["cat"] and s != slug][:4]
+    rc = f"{p['reviews']:,}".replace(",", NB)
+    ref = p["ref"].replace(" ", NB)
+    body = f"""<div class="in">
+{crumbs(("/", "Accueil"), (f"/{p['cat']}", cat_name), (None, KIND[slug]))}
+<div class="pdp">
+ <div class="gallery{"" if many else " single"}">{radios}{thumbs}<div class="main-ph">{views}</div></div>
+ <div class="buy">
+  <p class="brand"><a href="/{p['cat']}?marque={BRAND_SLUG[p['brand']]}">{p["brand"]}</a></p>
+  <h1>{p["title"]}</h1>
+  {price_block(p)}
+  <p class="rating"><a href="#avis">{rating_txt(p["rating"])} sur 5, {rc} avis</a><span>Réf. {ref}</span></p>
+  <p class="desc">{p["desc"]}</p>
+  <p class="opt-l">Coloris <b>{colours}</b></p>
+  {sizes}
+  <a class="btn wide" href="#magasins">Réserver en magasin</a>
+  <p class="note">Vente en ligne suspendue pendant la compétition. Disponible aujourd'hui à {pickup}.</p>
+  <ul class="facts"><li>Retrait gratuit en magasin, prêt en 1 h</li><li>Retours sous 30 jours</li>
+   <li>Garantie 2 ans{", 5 ans sur le cadre" if p["cat"] == "velo" and "chrono" in slug else ""}</li></ul>
  </div>
+</div></div>
+<div class="in details">
+<section class="pd-sec" id="points-forts"><h2>Points forts</h2><ul class="highlights">{points}</ul></section>
+<section class="pd-sec" id="caracteristiques"><h2>Caractéristiques</h2><table class="specs"><tbody>
+ <tr><th>Marque</th><td>{p["brand"]}</td></tr><tr><th>Référence</th><td>{ref}</td></tr>{specs}</tbody></table></section>
+<section class="pd-sec" id="avis"><h2>Avis clients</h2><div>
+ <p class="avg-line"><b>{rating_txt(p["rating"])}/5</b>{rc} avis publiés sur les trois dernières années</p>{revs}</div></section>
+<section class="pd-sec" id="questions"><h2>Questions et réponses</h2><dl class="qa"><dt>{q}</dt>
+ <dd>{a}<small>Réponse de l'équipe DécaFlop</small></dd></dl></section>
+<section class="pd-sec" id="magasins"><h2>Disponibilité en magasin</h2><div><ul class="stock">{stock_list}</ul>
+ <p class="small mute" style="margin-top:10px">Stock indicatif, mis à jour toutes les heures. <a href="/magasins">Horaires et adresses</a></p></div></section>
 </div>
-<section class="sec grey"><div class="in">
- <h2 class="h">Dans le même rayon</h2>
- <div class="grid">{"".join(card(s) for s in related)}</div>
-</div></section>"""
-    return html(layout(f"{title} · DécaFlop", body, current=f"/{cat}"))
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Vous aimerez aussi</h2>
+ <a href="/{p['cat']}">Tout le rayon {cat_name.lower()}</a></div>
+ <div class="grid">{"".join(card(s) for s in related)}</div></div></section>"""
+    return html(layout(f"{p['title']} - DécaFlop", fr(body), current=f"/{p['cat']}"))
 
+
+# --------------------------------------------------------------------------
+# Championship, stores, help, services
+# --------------------------------------------------------------------------
 @shop.get("/triathlon")
 def championship():
     legs = "".join(
-        f"""<div class="leg"><span class="ic">{icon(ic, 64)}</span><b class="h">{name}</b>
-<span class="dist">{dist}</span><p>{text}</p></div>"""
-        for ic, name, dist, text in [
-            ("wave", "Natation", "1,5 km", "Départ en vagues depuis la plage, deux boucles balisées par des bouées jaunes."),
-            ("bike", "Vélo", "40 km", "Quatre tours d'un circuit fermé à la circulation. Drafting interdit."),
-            ("shoe", "Course à pied", "10 km", "Trois boucles le long du port, arrivée devant le grand chapiteau."),
+        f'<div class="panel"><div class="leg-art">{photo(art)}</div><h2>{name}<span class="dist-tag">{dist}</span></h2>'
+        f'<p>{text}</p></div>'
+        for art, name, dist, text in [
+            ("lunettes-natation", "Natation", "1,5 km", "Départ en vagues depuis la plage, deux boucles balisées par des bouées jaunes."),
+            ("velo-chrono-race-900", "Vélo", "40 km", "Quatre tours d'un circuit fermé à la circulation. Aspiration-abri interdite."),
+            ("chaussures-lacage-rapide", "Course à pied", "10 km", "Trois boucles le long du port, arrivée devant le grand chapiteau."),
         ])
-    body = f"""<section class="banner slim"><div class="in">
- <div>{crumbs(("/", "Accueil"), (None, "Le championnat"))}
-  <span class="tagline">Distance olympique</span>
-  <h1 class="h">Championnat régional<br>de <em>triathlon</em></h1>
-  <p>Deux finales, trois disciplines, un seul parc à vélos. DécaFlop est fier
-     d'être sponsor titre de l'édition 2026.</p></div>
+    prog = "".join(f"<tr><td>{t}</td><td>{w}</td></tr>" for t, w in [
+        ("6 h 30", "Retrait des dossards et des puces"), ("7 h 00", "Ouverture du parc à vélos"),
+        ("8 h 15", "Briefing des athlètes"), ("8 h 30", "Départ finale femmes"), ("10 h 30", "Départ finale hommes"),
+        ("13 h 30", "Fermeture du parc à vélos"), ("15 h 00", "Podium et remise des prix")])
+    body = f"""{page_head("Championnat régional de triathlon", "Deux finales, trois disciplines et un seul parc à vélos. DécaFlop est fier d'être sponsor titre de l'édition 2026.")}
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Le format, distance olympique</h2></div>
+ <div class="cols3 legs">{legs}</div></div></section>
+<section class="sec grey"><div class="in cols2">
+ <div class="panel"><h2>Programme complet</h2><table class="std"><tbody>{prog}</tbody></table></div>
+ <div class="panel"><h2>Règlement en bref</h2><ul class="ticks">
+  <li>Puce de chronométrage obligatoire, portée à la cheville gauche.</li>
+  <li>Casque attaché avant de toucher le vélo et jusqu'à l'avoir reposé.</li>
+  <li>Aspiration-abri interdite sur la partie vélo, sous peine d'une minute de pénalité.</li>
+  <li>Combinaison autorisée si l'eau est sous 22 °C.</li></ul>
+  <p class="small mute" style="margin-top:12px">Les résultats officiels seront publiés ici après la course.</p></div>
 </div></section>
-<section class="sec"><div class="in">
- <h2 class="h">Le format</h2>
- <div class="legs">{legs}</div>
-</div></section>
-<section class="sec grey"><div class="in two">
- <div class="panel">
-  <h2 class="h">Programme complet</h2>
-  <table class="std"><tbody>
-   <tr><td>6 h 30</td><td>Retrait des dossards et des puces</td></tr>
-   <tr><td>7 h 00</td><td>Ouverture du parc à vélos</td></tr>
-   <tr><td>8 h 15</td><td>Briefing des athlètes</td></tr>
-   <tr><td>8 h 30</td><td>Départ finale femmes</td></tr>
-   <tr><td>10 h 30</td><td>Départ finale hommes</td></tr>
-   <tr><td>13 h 30</td><td>Fermeture du parc à vélos</td></tr>
-   <tr><td>15 h 00</td><td>Podium et remise des prix</td></tr>
-  </tbody></table>
- </div>
- <div class="panel">
-  <h2 class="h">Règlement en bref</h2>
-  <ul class="feats">
-   <li>Puce de chronométrage obligatoire, portée à la cheville gauche.</li>
-   <li>Casque attaché avant de toucher le vélo, et jusqu'à l'avoir reposé.</li>
-   <li>Drafting interdit sur la partie vélo : 1 minute de pénalité.</li>
-   <li>Combinaison autorisée si l'eau est sous 22 °C.</li>
-  </ul>
-  <p class="small mute" style="margin:12px 0 0">Les résultats officiels seront
-   publiés ici après la course.</p>
- </div>
-</div></section>
-<section class="sec"><div class="in">
- <h2 class="h">Venir en spectateur</h2>
- <div class="two">
-  <div class="tile"><h3 class="h">Accès</h3><p>Navettes gratuites depuis le
-   centre-ville toutes les 15 minutes. Parking vélo surveillé près du stade.</p></div>
-  <div class="tile"><h3 class="h">Sur place</h3><p>Écran géant au grand chapiteau,
-   village partenaires et stand de réparation DécaFlop ouvert toute la journée.</p></div>
- </div>
- <p class="small mute" style="margin:16px 0 0">Médias et supporters : l'affiche
-  officielle de la finale est à télécharger dans notre <a href="/presse">espace
-  presse</a>.</p>
+<section class="sec" id="equipement"><div class="in"><div class="sec-hd"><h2>L'équipement de la finale</h2>
+ <a href="/natation">Voir les rayons</a></div><div class="grid">{"".join(card(s) for s in FINAL_KIT[:4])}</div></div></section>
+<section class="sec grey"><div class="in"><div class="sec-hd"><h2>Venir en spectateur</h2></div><div class="cols2">
+ <div class="panel"><h2>Accès</h2><p>Navettes gratuites depuis le centre-ville toutes les 15 minutes. Parking vélo
+  surveillé près du stade.</p></div>
+ <div class="panel"><h2>Sur place</h2><p>Écran géant au grand chapiteau, village partenaires et stand de réparation
+  DécaFlop ouvert toute la journée.</p></div></div>
+ <p class="small mute" style="margin:16px 0 0">Médias et supporters, l'affiche officielle de la finale est à
+  télécharger dans notre <a href="/presse">espace presse</a>.</p>
 </div></section>"""
-    return html(layout("Le championnat · DécaFlop", body, current="/triathlon"))
+    return html(layout("Le championnat - DécaFlop", fr(body), current="/triathlon"))
+
 
 @shop.get("/magasins")
 def stores():
     cards = "".join(
-        f"""<div class="store"><h2 class="h">{name}</h2>
-<p class="li">{icon("pin", 20)}<span>{addr}</span></p>
-<p class="li">{icon("clock", 20)}<span>{hours}</span></p>
-<ul class="chips">{"".join(f"<li>{s}</li>" for s in services)}</ul></div>"""
-        for name, addr, hours, services in STORES)
-    body = f"""<section class="cathead"><div class="in">
- {crumbs(("/", "Accueil"), (None, "Magasins"))}
- <h1 class="h">Nos magasins</h1>
- <p>Trois magasins autour du stade, tous ouverts pendant le week-end de course.</p>
-</div></section>
-<section class="sec"><div class="in"><div class="stores">{cards}</div></div></section>"""
-    return html(layout("Magasins · DécaFlop", body))
+        f'<div class="store-card" id="{key}"><img class="store-ph" src="/static/img/magasins/{key}.jpg" alt="Magasin {name}" '
+        f'loading="lazy"><h2>{name}</h2><span class="open">Ouvert tout le week-end de la finale</span>'
+        f'<p class="li">{ui("pin", 20)}<span>{addr}</span></p>'
+        f'<table class="hours"><tbody>{"".join(f"<tr><th>{d}</th><td>{h}</td></tr>" for d, h in hours)}</tbody></table>'
+        f'<ul class="tags">{"".join(f"<li>{s}</li>" for s in services)}</ul></div>'
+        for key, name, addr, hours, services in STORES)
+    body = f"""{page_head("Nos magasins", "Trois magasins autour du stade, tous ouverts pendant le week-end de course avec des horaires élargis.")}
+<section class="sec"><div class="in"><div class="cols3">{cards}</div>
+<p class="small mute" style="margin-top:18px">Service client au 0 800 FLOP FLOP, du lundi au vendredi de 9 h à 18 h.</p></div></section>"""
+    return html(layout("Magasins - DécaFlop", fr(body), current="/magasins"))
+
 
 FAQ = [
     ("commande", "Où en est ma commande ?",
-     "Les commandes passées avant la compétition sont livrées en magasin. Vous "
-     "recevez un SMS dès qu'elles sont prêtes, avec votre numéro de retrait."),
+     "Les commandes passées avant la compétition sont livrées en magasin. Vous recevez un SMS dès qu'elles "
+     "sont prêtes, avec votre numéro de retrait."),
+    ("retrait", "Comment fonctionne le retrait en magasin ?",
+     "Réservez l'article en magasin ou par téléphone, il est mis de côté à l'accueil pendant 48 h. Le retrait "
+     "est gratuit dans nos trois magasins."),
     ("retours", "Comment retourner un article ?",
-     "Rapportez-le dans n'importe quel magasin sous 30 jours avec votre ticket. "
-     "Les articles portés pendant une course ne sont pas repris."),
+     "Rapportez-le dans n'importe quel magasin sous 30 jours avec votre ticket. Les articles portés pendant une "
+     "course ne sont pas repris."),
     ("garantie", "Que couvre la garantie ?",
-     "Deux ans sur tout le matériel, cinq ans sur les cadres de vélo. L'usure "
-     "normale (pneus, plaquettes, lacets) n'est pas couverte."),
+     "Deux ans sur tout le matériel et cinq ans sur les cadres de vélo. L'usure normale des pneus, plaquettes "
+     "et lacets n'est pas couverte."),
     ("location", "Puis-je louer un vélo pour la course ?",
-     "Oui, au magasin Stade, sur présentation d'une pièce d'identité. Le vélo est "
-     "réglé à votre taille et le casque est inclus."),
+     "Oui, au magasin Stade, sur présentation d'une pièce d'identité. Le vélo est réglé à votre taille et le "
+     "casque est inclus."),
 ]
+SIZE_WETSUIT = [("XS", "160 à 168 cm", "55 à 62 kg"), ("S", "166 à 174 cm", "60 à 68 kg"),
+                ("M", "172 à 180 cm", "67 à 76 kg"), ("L", "178 à 186 cm", "75 à 85 kg"),
+                ("XL", "184 à 192 cm", "84 à 95 kg"), ("XXL", "190 à 198 cm", "94 à 105 kg")]
+SIZE_SHOES = [("39", "24,6 cm"), ("40", "25,2 cm"), ("41", "25,9 cm"), ("42", "26,5 cm"), ("43", "27,2 cm"),
+              ("44", "27,8 cm"), ("45", "28,5 cm"), ("46", "29,1 cm")]
+
 
 @shop.get("/aide")
 def help_page():
-    items = "".join(f"""<details class="faq" id="{k}"><summary>{q}</summary><p>{a}</p></details>"""
-                    for k, q, a in FAQ)
-    body = f"""<section class="cathead"><div class="in">
- {crumbs(("/", "Accueil"), (None, "Aide"))}
- <h1 class="h">Aide et contact</h1>
- <p>Les réponses aux questions les plus fréquentes.</p>
+    items = "".join(f'<details class="faq" id="{k}"><summary>{q}</summary><p>{a}</p></details>' for k, q, a in FAQ)
+    wet = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>" for a, b, c in SIZE_WETSUIT)
+    shoes = "".join(f"<tr><td>{a}</td><td>{b}</td></tr>" for a, b in SIZE_SHOES)
+    body = f"""{page_head("Aide et contact", "Les réponses aux questions les plus fréquentes, le guide des tailles et nos contacts.")}
+<section class="sec"><div class="in cols2"><div>{items}</div>
+ <div class="panel" id="contact"><h2>Nous contacter</h2><p class="tel-dark">0 800 FLOP FLOP</p>
+  <p>Du lundi au vendredi, de 9 h à 18 h. Service et appel gratuits.</p>
+  <a class="btn" href="/magasins">Trouver un magasin</a></div>
 </div></section>
-<section class="sec"><div class="in two">
- <div>{items}</div>
- <div class="tile"><h3 class="h">Nous contacter</h3>
-  <p><b>0 800 FLOP FLOP</b><br>Du lundi au vendredi, 9 h – 18 h. Appel gratuit.</p>
-  <a class="btn blue" href="/magasins">Trouver un magasin</a></div>
+<section class="sec grey" id="tailles"><div class="in"><div class="sec-hd"><h2>Guide des tailles</h2></div><div class="cols2">
+ <div class="panel"><h2>Combinaisons néoprène</h2><table class="std"><thead><tr><th>Taille</th><th>Hauteur</th><th>Poids</th></tr></thead>
+  <tbody>{wet}</tbody></table></div>
+ <div class="panel"><h2>Chaussures de running</h2><table class="std"><thead><tr><th>Pointure</th><th>Longueur du pied</th></tr></thead>
+  <tbody>{shoes}</tbody></table><p class="small mute" style="margin-top:10px">Mesurez votre pied le soir, en appui, talon contre un mur.</p></div>
+</div></div></section>"""
+    return html(layout("Aide - DécaFlop", fr(body)))
+
+
+@shop.get("/location")
+def rental():
+    rows = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>" for a, b, c in [
+        ("Vélo de chrono Race 900", "35 €", "60 €"), ("Vélo de route aluminium", "25 €", "40 €"),
+        ("Paire de roues aéro", "20 €", "35 €"), ("Combinaison néoprène", "15 €", "25 €")])
+    body = f"""{page_head("Location de vélos", "Louez votre vélo de chrono ou votre combinaison pour la finale. Le matériel est révisé, réglé à votre taille et prêt à rouler.")}
+<section class="sec"><div class="in cols2">
+ <div class="panel"><h2>Tarifs</h2><table class="std"><thead><tr><th>Matériel</th><th>1 jour</th><th>Week-end</th></tr></thead>
+  <tbody>{rows}</tbody></table><p class="small mute" style="margin-top:10px">Casque inclus avec chaque vélo. Caution par empreinte bancaire.</p></div>
+ <div class="panel"><h2>Comment ça marche</h2><ul class="ticks">
+  <li>Réservation au magasin DécaFlop Stade ou par téléphone.</li>
+  <li>Retrait la veille de la course à partir de 14 h, avec une pièce d'identité.</li>
+  <li>Réglage de la selle et des prolongateurs sur place par l'atelier.</li>
+  <li>Retour le dimanche avant 18 h au stand DécaFlop du parc à vélos.</li></ul>
+  <p style="margin-top:14px"><a class="btn" href="/magasins#stade">Voir le magasin Stade</a></p></div>
 </div></section>"""
-    return html(layout("Aide · DécaFlop", body))
+    return html(layout("Location de vélos - DécaFlop", fr(body), current="/location"))
+
+
+@shop.get("/atelier")
+def workshop():
+    rows = "".join(f"<tr><td>{a}</td><td>{b}</td></tr>" for a, b in [
+        ("Révision express avant course", "19 €"), ("Réglage des dérailleurs", "12 €"),
+        ("Réglage des freins", "10 €"), ("Remplacement d'un pneu, hors pièce", "8 €"),
+        ("Montage de prolongateurs", "15 €"), ("Étude de position simplifiée", "39 €")])
+    body = f"""{page_head("Atelier vélo", "Nos mécaniciens préparent votre vélo pour la course, sans rendez-vous, au magasin Stade et au stand du parc à vélos.")}
+<section class="sec"><div class="in cols2">
+ <div class="panel"><h2>Prestations</h2><table class="std"><thead><tr><th>Prestation</th><th>Prix</th></tr></thead>
+  <tbody>{rows}</tbody></table></div>
+ <div class="panel"><h2>Le week-end de la finale</h2><p>L'atelier du magasin Stade est ouvert samedi de 9 h à 20 h.
+  Dimanche, un stand de réparation est installé à côté du parc à vélos de 6 h 30 à 15 h.</p>
+  <p>Les réparations de moins de 15 minutes sont faites pendant que vous attendez.</p>
+  <a class="btn" href="/magasins#stade">Voir le magasin Stade</a></div>
+</div></section>"""
+    return html(layout("Atelier vélo - DécaFlop", fr(body), current="/atelier"))
+
 
 @shop.get("/recrutement")
 def careers():
-    values = "".join(f"""<div class="tile"><h3 class="h">{t}</h3><p>{d}</p></div>""" for t, d in [
-        ("Sport", "Une heure de sport offerte par semaine sur votre temps de travail."),
+    values = "".join(f'<div class="panel"><h2>{t}</h2><p>{d}</p></div>' for t, d in [
+        ("Sport", "Une heure de sport par semaine sur votre temps de travail, et du matériel prêté pour essayer."),
         ("Proximité", "Des conseils de pratiquant à pratiquant, en magasin comme au bord de la course."),
-        ("Bonne humeur", "Une équipe qui préfère les solutions aux excuses."),
+        ("Responsabilité", "Chaque vendeur gère son rayon, de la commande à la mise en avant."),
     ])
-    body = f"""<section class="banner slim"><div class="in">
- <div>{crumbs(("/", "Accueil"), (None, "Recrutement"))}
-  <h1 class="h">Rejoignez<br><em>l'équipe</em></h1>
-  <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé
-     au personnel sur ce site. Merci de ne pas le chercher.</p></div>
-</div></section>
-<section class="sec"><div class="in">
- <h2 class="h">Nos valeurs</h2>
- <div class="three">{values}</div>
-</div></section>
-<section class="sec grey"><div class="in">
- <div class="row"><h2 class="h">Offres d'emploi (0)</h2></div>
- <div class="panel"><p style="margin:0">Aucune offre ouverte pour le moment.
-  Déposez une candidature spontanée à l'accueil de votre magasin.</p></div>
-</div></section>"""
-    return html(layout("Recrutement · DécaFlop", body, current="/recrutement"))
+    jobs = "".join(f'<tr><td><b>{a}</b></td><td>{b}</td><td>{c}</td></tr>' for a, b, c in [
+        ("Vendeur sports nautiques", "DécaFlop Centre-ville", "CDI, temps plein"),
+        ("Technicien atelier cycle", "DécaFlop Stade", "CDI, temps plein"),
+        ("Préparateur de commandes", "DécaFlop Déstockage", "CDD de 6 mois")])
+    body = f"""{page_head("Rejoignez nos équipes", "Vendeurs, mécaniciens, préparateurs. Nous recrutons des sportifs qui aiment conseiller.")}
+<section class="sec"><div class="in"><div class="sec-hd"><h2>Nos valeurs</h2></div><div class="cols3">{values}</div></div></section>
+<section class="sec grey"><div class="in"><div class="sec-hd"><h2>Offres d'emploi</h2></div>
+ <div class="panel"><table class="std"><thead><tr><th>Poste</th><th>Magasin</th><th>Contrat</th></tr></thead><tbody>{jobs}</tbody></table>
+ <p class="small mute" style="margin-top:12px">Déposez votre CV à l'accueil du magasin concerné.</p></div></div></section>"""
+    return html(layout("Recrutement - DécaFlop", fr(body)))
 
+
+@shop.get("/compte")
+def account():
+    body = f"""{page_head("Mon compte")}
+<section class="sec"><div class="in"><div class="panel narrow"><h2>Espace client indisponible</h2>
+ <p>L'espace client est fermé pendant la compétition. Vos commandes et vos factures restent consultables en
+  magasin, sur présentation d'une pièce d'identité.</p>
+ <div class="btns"><a class="btn" href="/magasins">Trouver un magasin</a><a class="btn line" href="/aide#commande">Suivi de commande</a></div>
+</div></div></section>"""
+    return html(layout("Mon compte - DécaFlop", fr(body)))
+
+
+@shop.get("/panier")
+def cart():
+    body = f"""{page_head("Mon panier")}
+<section class="sec"><div class="in"><div class="panel narrow"><h2>Votre panier est vide</h2>
+ <p>La vente en ligne est suspendue pendant la compétition. Réservez vos articles en magasin, ils vous attendent
+  à l'accueil.</p>
+ <div class="btns"><a class="btn" href="/">Continuer mes achats</a><a class="btn line" href="/magasins">Nos magasins</a></div>
+</div></div></section>
+{grid_section("Nos meilleures ventes", BEST_SELLERS)}"""
+    return html(layout("Mon panier - DécaFlop", fr(body)))
+
+
+@shop.get("/informations-legales")
+def legal():
+    body = f"""{page_head("Informations légales")}
+<section class="sec"><div class="in legal-text">
+ <h2 id="mentions">Mentions légales</h2>
+ <p>Le site est édité par DécaFlop SAS, société par actions simplifiée dont le siège est situé 2 allée du Stade.
+  Directeur de la publication, le président de DécaFlop SAS. Contact par le service client au 0 800 FLOP FLOP.</p>
+ <h2 id="cgv">Conditions générales de vente</h2>
+ <p>Pendant la compétition, la vente en ligne est suspendue. Les articles réservés sont payés et retirés en
+  magasin. Les prix affichés sont en euros, toutes taxes comprises. Les retours sont acceptés sous 30 jours avec
+  le ticket de caisse, dans n'importe lequel de nos magasins.</p>
+ <h2 id="cookies">Cookies</h2>
+ <p>Ce site n'utilise que des cookies techniques nécessaires à son fonctionnement. Aucun cookie publicitaire ni de
+  mesure d'audience n'est déposé.</p>
+ <h2 id="accessibilite">Accessibilité</h2>
+ <p>Le site est partiellement conforme au référentiel général d'amélioration de l'accessibilité. Un audit
+  complet est prévu en 2027. Pour signaler un problème, contactez le service client.</p>
+</div></section>"""
+    return html(layout("Informations légales - DécaFlop", fr(body)))
+
+
+# --------------------------------------------------------------------------
+# Press and news
+# --------------------------------------------------------------------------
 @shop.get("/medias/<name>")
 def media(name):
     # Serve ONLY the two press/news files, exactly as built (no re-encoding, so
@@ -492,56 +1023,45 @@ def media(name):
         abort(404)
     return send_from_directory(HANDOUT_DIR, name)
 
+
 @shop.get("/presse")
 def press():
     if media_available("decaflop_poster.png"):
         art = ('<img class="poster" src="/medias/decaflop_poster.png" '
                'alt="Affiche officielle du Championnat régional de triathlon 2026">')
-        dl = ('<a class="btn blue" href="/medias/decaflop_poster.png" download>'
+        dl = ('<a class="btn" href="/medias/decaflop_poster.png" download>'
               "Télécharger l'affiche (PNG)</a>")
     else:
         art = ('<div class="poster missing" role="img" '
                'aria-label="Affiche officielle (bientôt disponible)">'
                "<span>Affiche officielle<br>bientôt disponible</span></div>")
-        dl = ('<span class="btn blue off" aria-disabled="true">'
+        dl = ('<span class="btn off" aria-disabled="true">'
               "Affiche bientôt disponible</span>")
-    body = f"""<section class="cathead"><div class="in">
- {crumbs(("/", "Accueil"), (None, "Espace presse"))}
- <h1 class="h">Espace presse</h1>
- <p>L'affiche officielle du Championnat régional de triathlon 2026, à partager
-    sans modération.</p>
-</div></section>
-<section class="sec"><div class="in two press">
+    body = f"""{page_head("Espace presse", "L'affiche officielle du Championnat régional de triathlon 2026, à partager sans modération.")}
+<section class="sec"><div class="in press">
  <div class="press-art">{art}</div>
  <div class="press-txt">
-  <h2 class="h">Affiche officielle</h2>
-  <p>Notre affiche de la finale est libre de partage : imprimez-la, affichez-la,
+  <h2>Affiche officielle</h2>
+  <p>Notre affiche de la finale est libre de partage. Imprimez-la, affichez-la,
      postez-la. Partagez-la partout !</p>
   {dl}
   <p class="small mute" style="margin:14px 0 0">Format PNG, prête à imprimer.</p>
-  <div class="tile" style="margin-top:22px">
-   <h3 class="h">Contact presse</h3>
-   <p style="margin:0">Service Marketing — Communication DécaFlop<br>
-    Poste 120 · <a href="/aide">nous contacter</a></p>
+  <div class="panel" style="margin-top:22px">
+   <h2>Contact presse</h2>
+   <p style="margin:0">Service marketing et communication DécaFlop<br>
+    Poste 120, ou <a href="/aide#contact">nous contacter</a></p>
   </div>
  </div>
 </div></section>"""
-    return html(layout("Espace presse · DécaFlop", fr(body)))
+    return html(layout("Espace presse - DécaFlop", fr(body)))
+
 
 @shop.get("/actualites")
 def news_list():
-    items = "".join(
-        f"""<a class="news" href="/actualites/{p['slug']}">
-<span class="date">{p['date']}</span><b class="h">{p['title']}</b>
-<p>{p['lede']}</p><span class="more">Lire l'article →</span></a>"""
-        for p in NEWS)
-    body = f"""<section class="cathead"><div class="in">
- {crumbs(("/", "Accueil"), (None, "Actualités"))}
- <h1 class="h">Actualités</h1>
- <p>Les nouvelles de DécaFlop et du Championnat régional de triathlon.</p>
-</div></section>
-<section class="sec"><div class="in"><div class="news-list">{items}</div></div></section>"""
-    return html(layout("Actualités · DécaFlop", fr(body)))
+    body = f"""{page_head("Actualités", "Les nouvelles de DécaFlop et du Championnat régional de triathlon.")}
+<section class="sec"><div class="in"><div class="news-list">{"".join(news_card(p) for p in NEWS)}</div></div></section>"""
+    return html(layout("Actualités - DécaFlop", fr(body)))
+
 
 @shop.get("/actualites/<slug>")
 def news_post(slug):
@@ -551,21 +1071,24 @@ def news_post(slug):
     if p["photo"] and media_available("transition_shot.jpg"):
         figure = """<figure class="news-photo">
  <img src="/medias/transition_shot.jpg" alt="La zone de transition de la finale, en soirée">
- <figcaption>Photo : équipe DécaFlop · <a href="/medias/transition_shot.jpg">voir l'original</a></figcaption>
+ <figcaption>Photo : équipe DécaFlop. <a href="/medias/transition_shot.jpg">Voir l'original</a></figcaption>
 </figure>"""
     elif p["photo"]:
         figure = ('<div class="news-photo missing" role="img" aria-label="Photo '
                   '(bientôt disponible)"><span>Photo bientôt disponible</span></div>')
+    elif p.get("image"):
+        figure = (f'<figure class="news-photo"><img src="{p["image"]}" alt="{p["alt"]}">'
+                  '<figcaption>Photo : DécaFlop</figcaption></figure>')
     else:
         figure = ""
     paras = "".join(f"<p>{t}</p>" for t in p["body"])
     body = f"""<article class="in post">
  {crumbs(("/", "Accueil"), ("/actualites", "Actualités"), (None, p['title']))}
  <span class="date">{p['date']}</span>
- <h1 class="h">{p['title']}</h1>
+ <h1>{p['title']}</h1>
  <p class="lede">{p['lede']}</p>
  {figure}
  {paras}
- <p class="back"><a href="/actualites">← Toutes les actualités</a></p>
+ <p class="back"><a href="/actualites">Toutes les actualités</a></p>
 </article>"""
-    return html(layout(f"{p['title']} · DécaFlop", fr(body)))
+    return html(layout(f"{p['title']} - DécaFlop", fr(body)))

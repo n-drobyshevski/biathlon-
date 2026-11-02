@@ -18,12 +18,15 @@ the shared intranet chrome (intranet.py + static/intranet.css).
   html-escaped, inside the search field. Sort and filter parameters are
   whitelisted and never echoed.
 """
+import csv
 import hmac
+import io
 import os
 import sys
 import time
 import unicodedata
 import uuid
+import zipfile
 from html import escape as esc
 from urllib.parse import quote, urlencode
 
@@ -298,6 +301,14 @@ def download_href(f):
     return "/telecharger/" + "/".join(quote(s) for s in f["path"])
 
 
+def preview_href(f):
+    return "/apercu/" + "/".join(quote(s) for s in f["path"])
+
+
+def details_href(f):
+    return folder_href(f["path"][:-1]) + "?f=" + quote(f["name"])
+
+
 def is_available(f):
     if f["decoy"]:
         return True
@@ -363,7 +374,7 @@ def page(title, section, body, current_path=(), q=""):
         tabs=("Parcourir", "Page"), tabs_right=("Partager", "Suivre"),
         search=intranet.search_box("/recherche", "Rechercher sur ce site", q),
         user=display_user(), logout="/logout", suite_on=suite_on, product=PRODUCT,
-        foot_extra="Dernière connexion : " + LAST_LOGIN)
+        foot_extra="Dernière connexion le " + LAST_LOGIN)
 
 
 # --------------------------------------------------------------------------
@@ -408,7 +419,7 @@ def login_page(error="", status=200, user=""):
     err = f'<p class="status err" role="alert">{esc(error)}</p>' if error else ""
     body = (intranet.head("Connexion - Intranet DécaFlop") +
             '<div class="signin"><div class="art" aria-hidden="true"><b>DÉCA<i>FLOP</i></b>'
-            '<span>Intranet · Réseau staff</span></div>'
+            '<span>Intranet du réseau staff</span></div>'
             '<div class="pane"><div class="wordmark">DÉCA<i>FLOP</i></div>'
             '<h1>Connexion</h1><p>Connectez-vous avec votre compte DécaFlop.</p>'
             '<form method="post" action="/login">' + err +
@@ -420,8 +431,8 @@ def login_page(error="", status=200, user=""):
             '<button class="btn" type="submit">Connexion</button></form>'
             '<small>Accès réservé au personnel DécaFlop et aux prestataires autorisés. Les connexions '
             'sont journalisées conformément à la charte informatique.</small>'
-            '<small>Mot de passe oublié ? Assistance : poste 300</small>'
-            '<div class="ft">© 2026 DécaFlop · Direction des Systèmes d\'Information</div>'
+            '<small>Mot de passe oublié ? Appelez l\'assistance au poste 300.</small>'
+            '<div class="ft">© 2026 DécaFlop, Direction des Systèmes d\'Information</div>'
             '</div></div></body></html>')
     return html(body, status)
 
@@ -458,19 +469,19 @@ def logout():
 # Home, activity, help
 # --------------------------------------------------------------------------
 NEWS = [
-    ("Incident sur la liste de départ : cellule de crise activée", "Direction de course",
+    ("Cellule de crise activée après un incident sur la liste de départ", "Direction de course",
      "2026-11-02 07:40",
      "Une anomalie a été détectée sur la liste de départ de la finale. L'équipe IT d'urgence a accès "
      "au partage pour l'enquête. Merci de ne rien supprimer ni déplacer dans "
      "<a href=\"/d/Direction%20de%20course/Dossier%20incident\">Direction de course / Dossier incident</a>."),
-    ("Maintenance SAP DFL : samedi 7 novembre, 22 h – 2 h", "Basis SAP", "2026-10-29 15:30",
+    ("Maintenance du système SAP DFL samedi 7 novembre de 22 h à 2 h", "Basis SAP", "2026-10-29 15:30",
      "Le système DFL (mandant 001) sera indisponible pendant l'application du support package de "
      "novembre. Les saisies de résultats doivent être terminées avant 21 h 30."),
-    ("Finale régionale : plan de circulation et navettes", "Logistique", "2026-10-28 12:10",
+    ("Plan de circulation et navettes pour la finale", "Logistique", "2026-10-28 12:10",
      "Navettes depuis le centre-ville toutes les 15 minutes à partir de 6 h. Parking staff P3, badge "
      "obligatoire. Le planning des bénévoles est dans "
      "<a href=\"/d/Logistique/B%C3%A9n%C3%A9voles\">Logistique / Bénévoles</a>."),
-    ("Rappel : politique de mots de passe", "Direction des Systèmes d'Information", "2026-10-20 10:05",
+    ("Rappel sur la politique de mots de passe", "Direction des Systèmes d'Information", "2026-10-20 10:05",
      "Les comptes d'équipe créés pour l'événement seront désactivés le lundi suivant la finale. "
      "Le rappel complet est dans <a href=\"/d/IT/Proc%C3%A9dures\">IT / Procédures</a>."),
 ]
@@ -484,16 +495,16 @@ def activity_items(limit=None):
     for f in fs:
         verb = "a ajouté" if f["ver"] in ("1.0", "0.1") else "a modifié"
         folder = f["path"][:-1]
-        out.append(f'<li>{icon(f["kind"])}<div><a href="{folder_href(folder)}?f={quote(f["name"])}">'
-                   f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} · {fr_dt(f["when"])} · '
-                   f'{esc(" / ".join(folder))}</small></div></li>')
+        out.append(f'<li>{icon(f["kind"])}<div><a href="{preview_href(f)}">'
+                   f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} ce fichier le {fr_dt(f["when"], " à ")}, '
+                   f'dans {esc(" / ".join(folder))}</small></div></li>')
     return '<ul class="feed">' + "".join(out) + '</ul>'
 
 
 @app.get("/")
 def root():
     news = "".join(
-        f'<li><h3>{esc(t)}</h3><p class="by">{esc(who)} · {fr_dt(when, " à ")}</p><p>{text}</p></li>'
+        f'<li><h3>{esc(t)}</h3><p class="by">{esc(who)}, le {fr_dt(when, " à ")}</p><p>{text}</p></li>'
         for t, who, when, text in NEWS)
     apps = "".join(
         f'<li><a href="{esc(intranet.app_url(k))}">{esc(intranet.APPS[k][1])}</a></li>'
@@ -534,8 +545,8 @@ def help_page():
             '<li>Les accès sont journalisés et peuvent être contrôlés par la DSI.</li>'
             '<li>Signalez toute anomalie à l\'astreinte IT.</li></ul></section>'
             '<section class="wp"><h2>Navigateurs pris en charge</h2>'
-            '<p>Microsoft Edge, Firefox ESR et Chrome (versions maintenues). Résolution conseillée : 1280 × 1024 '
-            'ou plus.</p></section>'
+            '<p>Microsoft Edge, Firefox ESR et Chrome (versions maintenues). Une résolution de 1280 x 1024 '
+            'ou plus est conseillée.</p></section>'
             '</div><div>'
             '<section class="wp"><h2>Contacts</h2><dl class="kv">'
             '<dt>Astreinte IT</dt><dd>Poste 300 (24 h/24 pendant l\'événement)</dd>'
@@ -582,7 +593,7 @@ def directory():
         f'<option{" selected" if s == svc else ""}>{esc(s)}</option>' for s in SERVICES)
     trs = "".join(
         f'<tr><td class="ty">{icon("user")}</td><td><b style="font-weight:600">{esc(n)}</b>'
-        f'<span class="meta">{esc(fn)} · {esc(s)} · poste {esc(ph)}</span></td>'
+        f'<span class="meta">{esc(fn)}, {esc(s)}, poste {esc(ph)}</span></td>'
         f'<td class="hide-sm">{esc(fn)}</td><td class="hide-sm">{esc(s)}</td>'
         f'<td class="num">{esc(ph)}</td><td class="hide-sm">{esc(b)}</td></tr>'
         for n, fn, s, ph, b in rows)
@@ -595,8 +606,8 @@ def directory():
             '<table class="list"><thead><tr><th class="ty"></th><th>Nom</th><th class="hide-sm">Fonction</th>'
             '<th class="hide-sm">Service</th><th style="width:70px">Poste</th><th class="hide-sm">Bureau</th></tr>'
             '</thead><tbody>' + trs + '</tbody></table>'
-            '<p class="mute" style="margin-top:10px;font-size:12px">Postes internes : composez le numéro à '
-            '3 chiffres depuis un téléphone du réseau staff.</p>')
+            '<p class="mute" style="margin-top:10px;font-size:12px">Pour joindre un poste interne, composez le '
+            'numéro à 3 chiffres depuis un téléphone du réseau staff.</p>')
     return html(page("Annuaire", "dir", body))
 
 
@@ -639,7 +650,7 @@ def folder_row(sub):
     who = esc(last["who"]) if last else ""
     return (f'<tr><td class="ck"></td><td class="ty">{icon("folder")}</td>'
             f'<td><a href="{folder_href(sub["path"])}">{esc(sub["name"])}</a>'
-            f'<span class="meta">{elements_label(cnt)}{" · " + when if when else ""}</span></td>'
+            f'<span class="meta">{elements_label(cnt)}{", modifié le " + when if when else ""}</span></td>'
             f'<td class="c-date num">{when}</td><td class="c-who">{who}</td>'
             f'<td class="c-size">{elements_label(cnt)}</td><td class="c-ver"></td></tr>')
 
@@ -652,23 +663,30 @@ def file_row(f, selected, tri, ordre):
     size = file_size(f)
     sizecell = (f'<td class="c-size num">{size}</td>' if size is not None
                 else '<td class="c-size na">pas encore disponible</td>')
-    meta = (f'{size} · {esc(f["who"])} · {fr_dt(f["when"])}' if size is not None
-            else f'pas encore disponible · {esc(f["who"])}')
+    meta = (f'{size}, {esc(f["who"])}, le {fr_dt(f["when"], " à ")}' if size is not None
+            else f'pas encore disponible, {esc(f["who"])}')
     href = qs(f=f["name"], tri=tri if tri != "nom" else None, ordre=ordre if ordre != "asc" else None)
-    return (f'<tr{SEL if sel else ""}><td class="ck">{"✓" if sel else "○"}</td>'
+    return (f'<tr{SEL if sel else ""}><td class="ck"><a href="{href}" title="Sélectionner">'
+            f'{"✓" if sel else "○"}</a></td>'
             f'<td class="ty">{icon(f["kind"], f["type"])}</td>'
-            f'<td><a href="{href}">{esc(f["name"])}</a><span class="dots" aria-hidden="true">···</span>'
-            f'<span class="meta">{meta}</span></td>'
+            f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
+            f'<a class="dots" href="{href}" title="Afficher les détails" aria-label="Détails de {esc(f["name"])}">'
+            f'...</a><span class="meta">{meta}</span></td>'
             f'<td class="c-date num">{fr_dt(f["when"])}</td><td class="c-who">{esc(f["who"])}</td>'
             f'{sizecell}<td class="c-ver num">{esc(f["ver"])}</td></tr>')
 
 
 def callout(f, row):
     avail = is_available(f)
-    size = file_size(f) or "—"
+    size = file_size(f) or "Non disponible"
     link = request.host_url.rstrip("/") + download_href(f)
-    acts = (f'<a href="{download_href(f)}">Télécharger</a>' if avail
+    acts = (f'<a href="{preview_href(f)}">Ouvrir</a><a href="{download_href(f)}">Télécharger</a>' if avail
             else '<span class="off">Pas encore disponible</span>')
+    peek = ""
+    if avail and f["kind"] in TEXT_KINDS | {"csv"}:
+        lines = as_text(read_bytes(f, 4096)).splitlines()[:PEEK_LINES]
+        peek = (f'<a class="peek" href="{preview_href(f)}" title="Ouvrir l\'aperçu">'
+                f'<pre>{esc(chr(10).join(lines))}</pre></a>')
     meta = [("Type", esc(f["type"])), ("Taille", size), ("Version", esc(f["ver"]))]
     if f["desc"]:
         meta.append(("Description", esc(f["desc"])))
@@ -677,7 +695,7 @@ def callout(f, row):
     return (f'<aside class="callout" id="details" style="--row:{row}" aria-label="Détails du fichier">'
             f'<h2>{esc(f["name"])}</h2>'
             f'<p>Modifié le {fr_dt(f["when"], " à ")} par {esc(f["who"])}</p>'
-            f'<dl>{dl}</dl><div class="link" title="{esc(link)}">{esc(link)}</div>'
+            f'{peek}<dl>{dl}</dl><div class="link" title="{esc(link)}">{esc(link)}</div>'
             f'<div class="acts">{acts}</div></aside>')
 
 
@@ -695,7 +713,7 @@ def documents():
             '<table class="list"><thead><tr><th class="ty"></th><th>Nom</th><th class="hide-sm">Description</th>'
             '<th class="c-date">Modifié</th><th class="c-items">Contenu</th></tr></thead>'
             f'<tbody>{rows}</tbody></table>'
-            f'<div class="pager">1 – {len(child_folders(TREE))}</div>')
+            f'<div class="pager">Éléments 1 à {len(child_folders(TREE))}</div>')
     return html(page("Documents", "docs", body))
 
 
@@ -727,7 +745,7 @@ def folder(subpath):
     if not rows:
         table = '<p class="empty">Ce dossier est vide.</p>'
     else:
-        table += f'<div class="pager">1 – {len(rows)}</div>'
+        table += f'<div class="pager">Éléments 1 à {len(rows)}</div>'
     sel = next((f for f in files if f["name"] == selected), None)
     if sel is not None:
         work = ('<div class="work"><div style="min-width:0">' + table + '</div>' +
@@ -759,12 +777,12 @@ def search():
     else:
         trs = "".join(
             f'<tr><td class="ty">{icon(f["kind"], f["type"])}</td>'
-            f'<td><a href="{folder_href(f["path"][:-1])}?f={quote(f["name"])}">{esc(f["name"])}</a>'
-            f'<span class="meta">{esc(" / ".join(f["path"][:-1]))} · {fr_dt(f["when"])}</span></td>'
+            f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
+            f'<span class="meta">{esc(" / ".join(f["path"][:-1]))}, le {fr_dt(f["when"], " à ")}</span></td>'
             f'<td class="hide-sm"><a href="{folder_href(f["path"][:-1])}">'
             f'{esc(" / ".join(f["path"][:-1]))}</a></td>'
             f'<td class="c-date num">{fr_dt(f["when"])}</td>'
-            f'<td class="c-size num">{file_size(f) or "—"}</td></tr>'
+            f'<td class="c-size num">{file_size(f) or ""}</td></tr>'
             for f in hits)
         result = ('<table class="list"><thead><tr><th class="ty"></th><th>Nom</th>'
                   '<th class="hide-sm">Emplacement</th><th class="c-date">Modifié</th>'
@@ -778,6 +796,147 @@ def search():
             '<button class="btn" type="submit" style="min-width:0;padding:3px 14px">Rechercher</button>'
             f'<span class="mute" style="margin-left:auto">{count}</span></form>' + result)
     return html(page("Recherche", "docs", body))
+
+
+# --------------------------------------------------------------------------
+# File viewer (read-only preview, like the Office Web Apps viewer)
+# --------------------------------------------------------------------------
+TEXT_KINDS = {"txt", "abap", "sap"}
+PREVIEW_BYTES = 1_000_000
+PREVIEW_LINES = 2000
+PREVIEW_ROWS = 500
+GRID_SPARE_COLS = 10
+GRID_MIN_ROWS = 30
+PEEK_LINES = 7
+
+
+def read_bytes(f, limit=PREVIEW_BYTES):
+    """The file's first `limit` bytes (None if the handout is missing)."""
+    if f["decoy"]:
+        return f["text"].encode("utf-8")[:limit]
+    p = os.path.join(HANDOUT_DIR, f["source"])
+    if not os.path.isfile(p):
+        return None
+    with open(p, "rb") as fh:
+        return fh.read(limit)
+
+
+def as_text(data):
+    if data is None:
+        return ""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", errors="replace")
+
+
+def cut_note(shown, total, unit):
+    if shown >= total:
+        return ""
+    return (f'<p class="vcut">Aperçu limité aux {shown} premières {unit}. '
+            'Téléchargez le fichier pour le consulter en entier.</p>')
+
+
+def text_view(f, data):
+    lines = as_text(data).splitlines() or [""]
+    rows = "".join(f'<span class="l">{esc(line)}</span>' for line in lines[:PREVIEW_LINES])
+    return (cut_note(min(len(lines), PREVIEW_LINES), len(lines), "lignes") +
+            f'<div class="sheet"><pre class="code">{rows}</pre></div>')
+
+
+def col_name(i):
+    out = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        out = chr(65 + r) + out
+    return out
+
+
+def csv_view(f, data):
+    text = as_text(data)
+    first = text.split("\n", 1)[0]
+    delim = ";" if first.count(";") > first.count(",") else ","
+    rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    shown = rows[:PREVIEW_ROWS]
+    # like a spreadsheet, the grid carries on past the data with empty cells
+    ncol = max((len(r) for r in shown), default=1) + GRID_SPARE_COLS
+    shown = shown + [[]] * max(GRID_MIN_ROWS - len(shown), 0)
+    head = '<tr><th class="corner"></th>' + "".join(f"<th>{col_name(i)}</th>" for i in range(ncol)) + "</tr>"
+    body = "".join(f"<tr><th>{n}</th>" + "".join(f"<td>{esc(c)}</td>" for c in r + [""] * (ncol - len(r)))
+                   + "</tr>" for n, r in enumerate(shown, 1))
+    return (cut_note(min(len(rows), PREVIEW_ROWS), len(rows), "lignes") +
+            f'<div class="sheet wide"><div class="gridwrap"><table class="grid"><thead>{head}</thead>'
+            f'<tbody>{body}</tbody></table></div></div>')
+
+
+def zip_view(f, data):
+    try:
+        entries = zipfile.ZipFile(io.BytesIO(data)).infolist()
+    except zipfile.BadZipFile:
+        return no_preview(f)
+    locked = any(e.flag_bits & 1 for e in entries)
+    trs = "".join(
+        f'<tr><td class="ty">{icon("folder" if e.is_dir() else "txt")}</td><td>{esc(e.filename)}</td>'
+        f'<td class="c-size num">{"" if e.is_dir() else fr_size(e.file_size)}</td>'
+        f'<td class="c-ver">{"Oui" if e.flag_bits & 1 else "Non"}</td></tr>' for e in entries)
+    note = ('<p class="status">Archive protégée par un mot de passe. Téléchargez-la pour l\'extraire.</p>'
+            if locked else "")
+    return (f'<div class="sheet pad">{note}<table class="list"><thead><tr><th class="ty"></th><th>Nom</th>'
+            '<th class="c-size">Taille</th><th class="c-ver">Chiffré</th></tr></thead>'
+            f'<tbody>{trs}</tbody></table>'
+            f'<div class="pager">{elements_label(len(entries))} dans l\'archive</div></div>')
+
+
+def no_preview(f, missing=False):
+    if missing:
+        title, text, act = ("Fichier pas encore disponible",
+                            "Ce fichier est en cours de dépôt sur le partage. Réessayez dans quelques minutes.",
+                            "")
+    else:
+        title = "Aperçu non disponible"
+        text = (f"Les fichiers de type {esc(f['type'])} ne peuvent pas être affichés dans le navigateur. "
+                "Téléchargez le fichier pour l'ouvrir avec l'application adaptée.")
+        act = f'<a class="btn" href="{download_href(f)}">Télécharger</a>'
+    return (f'<div class="sheet nopv">{icon(f["kind"])}<h2>{title}</h2><p>{text}</p>{act}</div>')
+
+
+def viewer_page(f, content, wide=False):
+    folder = f["path"][:-1]
+    crumbs = ['<a href="/documents">Documents</a>'] + [
+        f'<a href="{folder_href(folder[:i + 1])}">{esc(s)}</a>' for i, s in enumerate(folder)]
+    size = file_size(f)
+    meta = (f'Version {esc(f["ver"])}, modifié le {fr_dt(f["when"], " à ")} par {esc(f["who"])}'
+            + (f", {size}" if size else ""))
+    dl = (f'<a href="{download_href(f)}">Télécharger</a>' if is_available(f)
+          else '<span class="off">Télécharger</span>')
+    bar = (f'<div class="vbar"><div class="vname">{icon(f["kind"], f["type"])}<div>'
+           f'<h1>{esc(f["name"])}</h1><small>{" / ".join(crumbs)}</small></div></div>'
+           f'<nav class="vacts" aria-label="Fichier">{dl}<a href="{details_href(f)}">Détails</a>'
+           f'<a class="x" href="{folder_href(folder)}" title="Fermer l\'aperçu">Fermer</a></nav></div>')
+    return (intranet.head(f'{f["name"]} - {SITE}') + intranet.SPRITE +
+            intranet.suite("intranet", "docs", display_user(), "/logout") + bar +
+            f'<main class="viewer{" wide" if wide else ""}" id="main"><p class="vmeta">{meta}</p>{content}</main>'
+            '</body></html>')
+
+
+@app.get("/apercu/<path:filepath>")
+def preview(filepath):
+    f = FILES_BY_PATH.get(tuple(s for s in filepath.split("/") if s))
+    if f is None:
+        abort(404)
+    data = read_bytes(f)
+    if data is None:
+        content = no_preview(f, missing=True)
+    elif f["kind"] in TEXT_KINDS:
+        content = text_view(f, data)
+    elif f["kind"] == "csv":
+        content = csv_view(f, data)
+    elif f["kind"] == "zip":
+        content = zip_view(f, read_bytes(f, 50_000_000))
+    else:
+        content = no_preview(f)
+    return html(viewer_page(f, content, wide=f["kind"] == "csv" and data is not None))
 
 
 @app.get("/telecharger/<path:filepath>")

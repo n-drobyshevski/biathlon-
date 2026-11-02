@@ -206,3 +206,37 @@ def test_14_register_escapes_and_gives_flag(monkeypatch):
     assert "<img src=x>" not in page and "&lt;img src=x&gt;" in page
     assert "cela vous donne" not in page
     assert c.get("/sap/gw/reginfo").mimetype == "text/plain"
+
+
+# ------------------------------------------------- flag pages, copy rules
+def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
+    from html import unescape
+
+    def text(s):
+        return unescape(re.sub(r"<[^>]+>", " ", s))
+
+    c04 = _client("04", monkeypatch, FLAG="TRIATHLON{a}")
+    c04.get("/login")
+    c10 = _client("10", monkeypatch, FLAG="TRIATHLON{b}")
+    c14 = _client("14", monkeypatch, FLAG="TRIATHLON{c}")
+    pages = {
+        "01 portal": shop.get("/staff-portal-7f3a9").data.decode(),
+        "01 robots": shop.get("/robots.txt").data.decode(),
+        "04 admin": c04.get("/profile/1000").data.decode(),
+        "06 dashboard": _client("06", monkeypatch, FLAG="TRIATHLON{d}").post(
+            "/login", data={"username": "' OR 1=1 -- ", "password": "x"}).data.decode(),
+        "10 docs": c10.get("/").data.decode(),
+        "12 cert": _client("12", monkeypatch, FLAG="TRIATHLON{e}").post(
+            "/generate", data={"name": "Astrid Bjornsen"}).data.decode(),
+        "14 register": c14.post("/sap/gw/register", data={"tp": "Z_X"}).data.decode(),
+        "14 reginfo": c14.get("/sap/gw/reginfo").data.decode(),
+    }
+    for name, body in pages.items():
+        for ch in ("—", "–", "·", "→", "…"):
+            assert ch not in text(body), (name, repr(ch))
+        for phrase in ("trop faible", "Pour savoir QUI", "récupérez"):
+            assert phrase not in body, (name, phrase)
+    # 04's audit trail is a dated table and still names the saboteur's accounts
+    assert "<th style=\"width:160px\">Date</th>" in pages["04 admin"]
+    assert "v.lindqvist" in pages["04 admin"] and "VLINDQVIST" in pages["04 admin"]
+    assert "USR02" in pages["06 dashboard"]          # still points at challenge 09

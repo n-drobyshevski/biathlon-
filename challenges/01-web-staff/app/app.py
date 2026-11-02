@@ -14,7 +14,7 @@ from flask import Flask, Response
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling shop.py / intranet.py
 import intranet  # noqa: E402
-from shop import shop, layout, html  # noqa: E402
+from shop import shop, layout, html, not_found_body  # noqa: E402
 
 app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
@@ -30,7 +30,7 @@ SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 
 # The portal page, in the shared intranet look. {share_url}, {share_user},
 # {share_pass} and {flag} are filled in by staff() below (all escaped).
-STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
+STAFF_BODY = """<h1 class="h1">Équipe événement de la finale 2026</h1>
 <p class="status">Espace réservé au réseau staff. Ne transférez pas l'adresse de cette page en dehors de l'équipe.</p>
 <div class="cols"><div>
  <section class="wp"><h2>Jeton d'accès de l'équipe événement</h2>
@@ -38,7 +38,7 @@ STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
   {codebox}
  </section>
  <section class="wp"><h2>Partage DFlop</h2>
-  <p>Les pièces de l'enquête sont déposées sur le partage documentaire interne Partage DFlop. Compte de l'équipe&#160;:</p>
+  <p>Les pièces de l'enquête sont déposées sur le partage documentaire interne Partage DFlop, avec le compte de l'équipe ci-dessous.</p>
   <dl class="kv">
    <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
    <dt>Identifiant</dt><dd><code>{share_user}</code></dd>
@@ -47,7 +47,7 @@ STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
  </section>
  <section class="wp"><h2>Comptes et identifiants</h2>
   <p>Tous les comptes staff suivent la convention <code>initiale du prénom + nom</code> et sont répliqués
-   dans notre système <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant (exemple&#160;: Marie Durand,
+   dans notre système <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant (par exemple Marie Durand,
    compte <code>m.durand</code>, utilisateur SAP <code>MDURAND</code>). Le système de résultats utilise le même identifiant.</p>
  </section>
 </div><div>
@@ -63,17 +63,13 @@ STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
-# interne uniquement — ne pas indexer les outils de résultats
+# interne uniquement, ne pas indexer les outils de résultats
 Disallow: /sap/
 """
 
 @app.errorhandler(404)
 def not_found(_e):
-    body = """<div class="page"><div class="panel">
- <h1 class="h">Page introuvable</h1>
- <p class="mute">Cette page n'existe pas ou a été déplacée.</p>
- <a class="btn blue" href="/">Retour à l'accueil</a></div></div>"""
-    return html(layout("Page introuvable · DécaFlop", body), 404)
+    return html(layout("Page introuvable - DécaFlop", not_found_body()), 404)
 
 @app.get("/robots.txt")
 def robots():
@@ -90,7 +86,7 @@ def staff():
     page = intranet.page("Portail staff - DécaFlop", body, app="staff",
                          site_title="Portail staff", site_href="/staff-portal-7f3a9", logo="PS",
                          topnav=[("/staff-portal-7f3a9", "Accueil", True)],
-                         product="Portail staff 3.2", foot_extra="Équipe événement · Finale 2026",
+                         product="Portail staff 3.2", foot_extra="Équipe événement de la finale 2026",
                          scripts=intranet.COPY_JS)
     return Response(page, mimetype="text/html")
 
