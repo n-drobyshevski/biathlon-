@@ -14,7 +14,7 @@ Challenges produced:
                (crack the operator's legacy hash -> password opens the zip)
 """
 import io, os, sys, zipfile, struct, socket, hashlib, base64, subprocess, tempfile
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 import piexif
 
 OUT = "/out" if os.path.isdir("/out") else os.path.join(os.path.dirname(__file__), "dist")
@@ -156,15 +156,107 @@ def gen_stego():
 # ---------------------------------------------------------------------------
 # 03 · EXIF (easy) — flag + GPS + timestamp in metadata
 # ---------------------------------------------------------------------------
+def transition_scene(W=1280, H=853):
+    """Evening photo of the floodlit transition zone: racked bikes, branded barriers."""
+    import random
+    rnd = random.Random(20261101)                      # deterministic picture
+    img = Image.new("RGB", (W, H))
+    d = ImageDraw.Draw(img)
+    hz = int(H * 0.40)                                 # horizon
+    vp = (W // 2, hz)                                  # vanishing point
+    for y in range(hz):                                # night sky
+        t = y / hz
+        d.line([(0, y), (W, y)], fill=(int(8 + 18 * t), int(11 + 22 * t), int(30 + 40 * t)))
+    ridge, x = [(0, hz)], 0                            # treeline silhouette
+    while x < W:
+        x += rnd.randint(14, 40)
+        ridge.append((x, hz - rnd.randint(16, 64)))
+    d.polygon(ridge + [(W, hz)], fill=(6, 8, 16))
+    for y in range(hz, H):                             # asphalt, lighter towards the camera
+        t = (y - hz) / (H - hz)
+        g = int(26 + 30 * t)
+        d.line([(0, y), (W, y)], fill=(g, g + 1, g + 6))
+    for k in range(-6, 7):                             # faint lane markings to the vanishing point
+        bx = W // 2 + k * 260
+        for i in range(4, 20, 2):                      # skip the far end (no fan at the horizon)
+            t0, t1 = i / 20, (i + 1) / 20
+            p0 = (vp[0] + (bx - vp[0]) * t0, hz + (H - hz) * t0)
+            p1 = (vp[0] + (bx - vp[0]) * t1, hz + (H - hz) * t1)
+            d.line([p0, p1], fill=(70, 72, 80), width=max(1, int(4 * t1)))
+
+    # floodlights: small halos at the lamps + soft pools of light on the ground
+    halo, pool = Image.new("L", (W, H), 0), Image.new("L", (W, H), 0)
+    lamps = [(190, hz - 175), (640, hz - 200), (1090, hz - 175)]
+    for fx, fy in lamps:
+        ImageDraw.Draw(halo).ellipse([fx - 70, fy - 50, fx + 70, fy + 60], fill=210)
+        ImageDraw.Draw(pool).ellipse([fx - 320, H - 330, fx + 320, H + 80], fill=46)
+    halo = halo.filter(ImageFilter.GaussianBlur(38))
+    pool = pool.filter(ImageFilter.GaussianBlur(90))
+    glow = ImageChops.add(halo, pool)
+    light = Image.merge("RGB", [glow, glow.point(lambda v: int(v * 0.88)), glow.point(lambda v: int(v * 0.66))])
+    img = ImageChops.add(img, light)
+    d = ImageDraw.Draw(img)
+    for fx, fy in lamps:
+        d.line([(fx, fy), (fx, hz + 24)], fill=(14, 16, 24), width=7)
+        d.rectangle([fx - 30, fy - 12, fx + 30, fy + 4], fill=(255, 250, 232))
+
+    def bike(cx, bar_y, s, facing, frame, wheel, shadow):
+        r = 30 * s
+        hub_y = bar_y + 58 * s
+        X = lambda dx: cx + facing * dx * s
+        d.ellipse([cx - 80 * s, hub_y + r - 6 * s, cx + 80 * s, hub_y + r + 8 * s], fill=shadow)
+        rear, front = (X(-46), hub_y), (X(46), hub_y)
+        for hx, hy in (rear, front):
+            d.ellipse([hx - r, hy - r, hx + r, hy + r], outline=wheel, width=max(2, int(4 * s)))
+        bb, seat, head = (X(-6), hub_y), (X(-16), bar_y + 6 * s), (X(34), bar_y + 10 * s)
+        w = max(2, int(5 * s))
+        for p1, p2 in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
+            d.line([p1, p2], fill=frame, width=w)
+        d.line([(X(-28), bar_y + 2 * s), (X(-4), bar_y + 2 * s)], fill=(16, 16, 20), width=w + 1)
+        d.line([head, (X(38), head[1] - 8 * s), (X(56), head[1] - 8 * s)], fill=frame, width=w)
+
+    # mostly dark and grey frames, a few coloured ones
+    frames = ([(24, 24, 28)] * 8 + [(70, 74, 84)] * 4 + [(205, 205, 212)] * 3 +
+              [(54, 67, 186)] * 2 + [(122, 255, 166)] + [(176, 38, 48)] * 2)
+
+    def rack_row(base_y, s, shade):
+        bar_y = base_y - 92 * s
+        lum = max(0, min(255, int(26 + 30 * (base_y - hz) / (H - hz))))
+        shadow = (int(lum * 0.55),) * 2 + (int(lum * 0.6),)
+        for lx in range(int(30 * s), W, int(300 * s)):
+            d.line([(lx, bar_y), (lx, base_y)], fill=tuple(int(c * shade) for c in (130, 132, 140)), width=max(2, int(5 * s)))
+        x, facing = 70 * s, 1
+        while x < W + 80 * s:
+            if rnd.random() > 0.15:                      # some empty slots
+                f = tuple(int(c * shade) for c in rnd.choice(frames))
+                bike(x, bar_y, s, facing, f, tuple(int(c * shade) for c in (12, 12, 16)), shadow)
+            facing = -facing                             # racked nose / tail alternately
+            x += (172 + rnd.randint(-14, 14)) * s
+        d.line([(0, bar_y), (W, bar_y)], fill=tuple(int(c * shade) for c in (165, 168, 176)), width=max(2, int(5 * s)))
+
+    def barrier(y, h):                                 # DécaFlop-coloured fencing, no text
+        d.rectangle([0, y, W, y + h], fill=(44, 54, 150))
+        d.rectangle([0, y + h - max(3, int(h * 0.22)), W, y + h], fill=(98, 205, 133))
+        for px in range(0, W, 200):
+            d.line([(px, y), (px, y + h)], fill=(30, 38, 110), width=3)
+
+    rack_row(hz + 66, 0.42, 0.5)
+    barrier(hz + 72, 18)
+    rack_row(hz + 196, 0.68, 0.72)
+    barrier(hz + 204, 26)
+    rack_row(H - 52, 1.12, 0.95)
+
+    img = img.filter(ImageFilter.GaussianBlur(0.8))
+    grain = Image.effect_noise((W, H), 26).convert("RGB")
+    img = Image.blend(img, grain, 0.06)
+    vig = Image.new("L", (W, H), 0)                    # vignette
+    ImageDraw.Draw(vig).ellipse([-W * 0.12, -H * 0.18, W * 1.12, H * 1.18], fill=255)
+    vig = vig.filter(ImageFilter.GaussianBlur(130))
+    return Image.composite(img, Image.new("RGB", (W, H), (0, 0, 0)), vig)
+
 def gen_exif():
     f = flag("FLAG_03_EXIF", "TRIATHLON{exif_placeholder}")
-    img = Image.new("RGB", (640, 426), (120, 140, 160))
-    d = ImageDraw.Draw(img)
-    for x in range(40, 600, 70):                       # bike racks
-        d.line([(x, 260), (x + 50, 260)], fill=(60, 60, 60), width=4)
-        d.ellipse([x, 262, x + 22, 284], outline=(30, 30, 30), width=3)
-        d.ellipse([x + 30, 262, x + 52, 284], outline=(30, 30, 30), width=3)
-    d.text((20, 200), "transition zone - bikes on the racks", fill=(20,20,20), font=FONT)
+    img = transition_scene()          # no text in the picture: the clues are in the metadata
 
     # Kalmar triathlon transition area, Sweden: 56.6634 N, 16.3568 E
     def deg(dd):
@@ -182,10 +274,17 @@ def gen_exif():
         piexif.ImageIFD.Model: b"DFL-T2Cam 200",
         piexif.ImageIFD.ImageDescription: f.encode(),       # <-- the flag
         piexif.ImageIFD.Artist: b"crew:v.lindqvist",        # story clue
+        piexif.ImageIFD.Software: b"DFL-T2Cam firmware 1.4",
+        piexif.ImageIFD.DateTime: b"2026:11:01 18:42:11",
     }
     exif_ifd = {
         piexif.ExifIFD.DateTimeOriginal: b"2026:11:01 18:42:11",  # sabotage window
         piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00transition zone photo, final-race eve",
+        piexif.ExifIFD.ExposureTime: (1, 60),
+        piexif.ExifIFD.FNumber: (28, 10),
+        piexif.ExifIFD.ISOSpeedRatings: 3200,
+        piexif.ExifIFD.FocalLength: (35, 1),
+        piexif.ExifIFD.Flash: 16,                                 # flash did not fire
     }
     exif_bytes = piexif.dump({"0th": zeroth, "Exif": exif_ifd, "GPS": gps})
     img.save(os.path.join(OUT, "transition_shot.jpg"), exif=exif_bytes, quality=85)
