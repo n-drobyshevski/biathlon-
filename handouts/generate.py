@@ -85,6 +85,23 @@ def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
 # ---------------------------------------------------------------------------
 def gen_stego():
     f = flag("FLAG_02_STEGO", "TRIATHLON{stego_placeholder}")
+    # The poster artwork is supplied in assets/poster.png (see assets/README.md).
+    # Without it, a simple poster is drawn instead. Either way the PNG is
+    # re-encoded here (no metadata) and the ZIP is appended after IEND.
+    art = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "poster.png")
+    img = Image.open(art).convert("RGB") if os.path.isfile(art) else draw_poster()
+    png = io.BytesIO(); img.save(png, "PNG", optimize=True); png = png.getvalue()
+
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("flag.txt", f + "\n\nNice. The poster was hiding a zip at the end.\n")
+    with open(os.path.join(OUT, "decaflop_poster.png"), "wb") as fh:
+        fh.write(png + zbuf.getvalue())          # PNG renders; unzip finds the trailer
+    print("[02] decaflop_poster.png")
+
+
+def draw_poster():
+    """Fallback poster, drawn with Pillow, used when assets/poster.png is missing."""
     W, H = 800, 1000
     BLUE, DARK, MINT, INK, WHITE = (54, 67, 186), (38, 47, 138), (122, 255, 166), (16, 16, 16), (255, 255, 255)
     img = Image.new("RGB", (W, H), BLUE)
@@ -98,7 +115,7 @@ def gen_stego():
     text(d, (W - 48, 66), "DE TRIATHLON 2026", font=font(18, bold=True), fill=MINT, anchor="ra")
 
     # headline
-    tag, tf = plain("2 NOVEMBRE · LA PLAGE"), font(20, bold=True)
+    tag, tf = plain("2 NOVEMBRE, LA PLAGE"), font(20, bold=True)
     d.rectangle([48, 168, 48 + int(tf.getlength(tag)) + 24, 206], fill=MINT)
     text(d, (60, 175), tag, font=tf, fill=INK)
     size = 118                                   # largest size where the widest line fits
@@ -144,16 +161,9 @@ def gen_stego():
 
     # footer band
     d.rectangle([0, 884, W, H], fill=MINT)
-    text(d, (48, 908), "Affiche officielle — partagez-la partout !", font=font(26, bold=True), fill=INK)
-    text(d, (48, 950), "#DecaFlopTri  ·  sport pour (presque) tous", font=font(20), fill=INK)
-    png = io.BytesIO(); img.save(png, "PNG"); png = png.getvalue()
-
-    zbuf = io.BytesIO()
-    with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("flag.txt", f + "\n\nNice. The poster was hiding a zip at the end.\n")
-    with open(os.path.join(OUT, "decaflop_poster.png"), "wb") as fh:
-        fh.write(png + zbuf.getvalue())          # PNG renders; unzip finds the trailer
-    print("[02] decaflop_poster.png")
+    text(d, (48, 908), "Affiche officielle. Partagez-la partout !", font=font(26, bold=True), fill=INK)
+    text(d, (48, 950), "#DecaFlopTri", font=font(20), fill=INK)
+    return img
 
 # ---------------------------------------------------------------------------
 # 03 · EXIF (easy) — flag + GPS + timestamp in metadata

@@ -50,18 +50,18 @@ TU = ["TU"]   # taille unique
 PRODUCTS = {
     # ------------------------------------------------------------ natation
     "lunettes-natation": P(
-        "natation", "Nageflop", "Lunettes de natation anti-buée verres clairs", "14,99", "", 3.9, 1048, "low",
-        "8 553 902", [("Blanc et bleu", "#2f63c8")], TU, [],
-        "Des verres clairs à large champ de vision et un joint souple qui tient sans serrer. "
+        "natation", "Nageflop", "Lunettes de natation anti-buée verres teintés", "14,99", "", 3.9, 1048, "low",
+        "8 553 902", [("Bleu", "#2f63c8")], TU, [],
+        "Des verres teintés pour nager face au soleil levant et un joint souple qui tient sans serrer. "
         "La sangle double se règle en quelques secondes, même avec un bonnet.",
-        [("Vision", "Verres clairs anti-UV, champ de vision large en piscine comme en eau libre."),
+        [("Vision", "Verres teintés anti-UV, adaptés à l'eau libre par temps clair."),
          ("Étanchéité", "Joints en silicone souple sur tout le contour de l'œil."),
          ("Réglage", "Sangle double et pont de nez interchangeable, trois tailles fournies.")],
-        [("Verres", "Polycarbonate clair, traitement anti-buée"), ("Joints", "Silicone"),
+        [("Verres", "Polycarbonate teinté, traitement anti-buée"), ("Joints", "Silicone"),
          ("Sangle", "Double, en silicone, réglage par boucle"), ("Pont de nez", "3 tailles fournies"),
          ("Étui", "Inclus"), ("Garantie", "2 ans")],
-        [(4, "Bonne vision en extérieur", "Je les utilise au lac le matin, on voit bien même par temps gris. "
-          "L'anti-buée tient une petite heure, ensuite il faut rincer.", "Camille", "19/09/2026",
+        [(4, "Bonne vision en extérieur", "Je les utilise au lac le matin, les verres teintés font vraiment la "
+          "différence. L'anti-buée tient une petite heure, ensuite il faut rincer.", "Camille", "19/09/2026",
           "Nage en eau libre"),
          (3, "Correctes pour le prix", "Elles prennent un peu l'eau si la sangle n'est pas assez serrée. Une fois "
           "bien réglées, rien à redire pour l'entraînement.", "Thomas", "03/08/2026", "Piscine")],
@@ -108,7 +108,7 @@ PRODUCTS = {
          "et la taille conseillés.")),
     "pull-buoy": P(
         "natation", "Nageflop", "Pull-buoy en mousse pour l'entraînement des bras", "9,99", "", 4.6, 157, "new",
-        "8 612 045", [("Bleu et blanc", "#3b8de0")], TU, [],
+        "8 612 045", [("Bleu marine et blanc", "#1b2a5e")], TU, [],
         "Calé entre les cuisses, il maintient les jambes à la surface pour travailler uniquement les bras. "
         "La mousse EVA reste ferme et ne se gorge pas d'eau.",
         [("Travail des bras", "Isole le haut du corps pour progresser sur la traction."),
@@ -315,11 +315,11 @@ KIND = {"lunettes-natation": "Lunettes", "bonnet-silicone": "Bonnets", "combinai
 # Product photos live in static/img/p/<name>.jpg (square studio shots on light
 # grey). The first one is the main photo; extra names are more views.
 PHOTO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "img", "p")
-EXTRA_VIEWS = {"velo-chrono-race-900": ["velo-chrono-race-900-2"]}
 
 
 def photos(slug):
-    return [slug] + EXTRA_VIEWS.get(slug, [])
+    """Main photo first, then the extra views <slug>-2.jpg, <slug>-3.jpg if present."""
+    return [slug] + [f"{slug}-{i}" for i in (2, 3) if os.path.isfile(os.path.join(PHOTO_DIR, f"{slug}-{i}.jpg"))]
 
 
 def photo(name, alt="", lazy=True):
@@ -554,6 +554,7 @@ NEWS = [
      ]},
     {"slug": "navettes-spectateurs", "date": "30 octobre 2026",
      "title": "Des navettes gratuites pour les spectateurs", "photo": False,
+     "image": "/static/img/actu/navettes-spectateurs.jpg", "alt": "Une navette gratuite devant le stade",
      "lede": "Pour venir encourager les finalistes sans galérer à se garer, des navettes "
              "relient le centre-ville au stade tout le week-end.",
      "body": [
@@ -566,6 +567,7 @@ NEWS = [
      ]},
     {"slug": "magasins-ouverts-week-end", "date": "27 octobre 2026",
      "title": "Nos trois magasins ouverts tout le week-end", "photo": False,
+     "image": "/static/img/actu/magasins-ouverts-week-end.jpg", "alt": "Le rayon natation et triathlon du magasin Stade",
      "lede": "Combinaison qui fuit, lacet cassé, bidon oublié. Nos magasins restent "
              "ouverts pour parer aux imprévus d'avant-course.",
      "body": [
@@ -591,8 +593,18 @@ SCHEDULE = [("7 h 00", "Ouverture du parc à vélos", "Transition"), ("8 h 30", 
             ("10 h 30", "Départ finale hommes", "Plage"), ("15 h 00", "Podium", "Grand chapiteau")]
 
 
+def news_thumb(p):
+    if p.get("image"):
+        return f'<img src="{p["image"]}" alt="" loading="lazy">'
+    if p["photo"] and media_available("transition_shot.jpg"):
+        return '<img src="/medias/transition_shot.jpg" alt="" loading="lazy">'
+    return ""
+
+
 def news_card(p):
-    return (f'<a class="news" href="/actualites/{p["slug"]}"><span class="date">{p["date"]}</span>'
+    thumb = news_thumb(p)
+    thumb = f'<span class="news-ph">{thumb}</span>' if thumb else ""
+    return (f'<a class="news" href="/actualites/{p["slug"]}">{thumb}<span class="date">{p["date"]}</span>'
             f'<b>{p["title"]}</b><p>{p["lede"]}</p><span class="more">Lire l\'article</span></a>')
 
 
@@ -611,8 +623,7 @@ def home():
   <p>Combinaisons, vélos de chrono et tout le petit matériel de transition. Retrait gratuit en magasin, prêt en 1 h.</p>
   <div class="ctas"><a class="btn light" href="/triathlon#equipement">L'équipement triathlon</a>
    <a class="btn ghost" href="/triathlon">Programme de la course</a></div></div>
- <a class="hero-shot" href="/produit/velo-chrono-race-900">{photo("velo-chrono-race-900-2", "Vélo de chrono Race 900", lazy=False)}
-  <span class="hero-tag"><b>Vélo de chrono Race 900</b><span>1 299,00{NB}€ au lieu de 1 499,00{NB}€</span></span></a>
+ <div class="hero-art" aria-hidden="true"><img src="/static/img/hero-finale.jpg" alt="" width="900" height="849"></div>
 </div></section>
 <section class="sec"><div class="in"><div class="sec-hd"><h2>Nos sports</h2></div><ul class="sports">{sp}</ul></div></section>
 <section class="sec grey"><div class="in"><div class="sec-hd"><h2>Prix bas sur l'équipement de course</h2>
@@ -897,7 +908,8 @@ def championship():
 @shop.get("/magasins")
 def stores():
     cards = "".join(
-        f'<div class="store-card" id="{key}"><h2>{name}</h2><span class="open">Ouvert tout le week-end de la finale</span>'
+        f'<div class="store-card" id="{key}"><img class="store-ph" src="/static/img/magasins/{key}.jpg" alt="Magasin {name}" '
+        f'loading="lazy"><h2>{name}</h2><span class="open">Ouvert tout le week-end de la finale</span>'
         f'<p class="li">{ui("pin", 20)}<span>{addr}</span></p>'
         f'<table class="hours"><tbody>{"".join(f"<tr><th>{d}</th><td>{h}</td></tr>" for d, h in hours)}</tbody></table>'
         f'<ul class="tags">{"".join(f"<li>{s}</li>" for s in services)}</ul></div>'
@@ -1116,6 +1128,9 @@ def news_post(slug):
     elif p["photo"]:
         figure = ('<div class="news-photo missing" role="img" aria-label="Photo '
                   '(bientôt disponible)"><span>Photo bientôt disponible</span></div>')
+    elif p.get("image"):
+        figure = (f'<figure class="news-photo"><img src="{p["image"]}" alt="{p["alt"]}">'
+                  '<figcaption>Photo : DécaFlop</figcaption></figure>')
     else:
         figure = ""
     paras = "".join(f"<p>{t}</p>" for t in p["body"])
