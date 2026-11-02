@@ -14,42 +14,62 @@ Teaches: why gateway reginfo/secinfo ACLs matter, reading an exposed gateway
 monitor, recognising a permissive ACL.
 """
 import os
+import sys
+import time
+import zlib
+from html import escape
 
 from flask import Flask, Response, request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import intranet  # noqa: E402
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-CSS = """body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1d2d3e;margin:0;line-height:1.55}
-.bar{background:#0a6ed1;color:#fff;padding:14px 26px;font-weight:600;font-size:17px}
-.wrap{max-width:760px;margin:28px auto;padding:0 18px}
-.card{background:#fff;border:1px solid #d9dfe6;border-radius:8px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-pre{background:#0b1b2b;color:#9fe0b0;padding:14px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
-table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:#556;border-bottom:1px solid #d9dfe6;padding:6px 8px}
-td{border-bottom:1px solid #eef;padding:7px 8px}
-.warn{color:#b00020;font-weight:600}.ok{color:#256f3a;font-weight:600}
-input{padding:8px;border:1px solid #c3ccd6;border-radius:4px;font:inherit}
-button{background:#0a6ed1;color:#fff;border:0;padding:9px 16px;border-radius:4px;font-weight:600;cursor:pointer}
-a{color:#0a6ed1}code{font-family:ui-monospace,Menlo,Consolas,monospace}h1,h2{margin:.2em 0}"""
+PRODUCT = "SAP DFlop ERP · DFL · noyau 753"
 
-MONITOR = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SAP DFlop · Gateway Monitor</title><style>{CSS}</style></head><body>
-<div class="bar">SAP&nbsp;DFlop&nbsp;ERP&nbsp;&middot;&nbsp;Gateway&nbsp;Monitor&nbsp;(SMGW)</div>
-<div class="wrap">
-<div class="card"><h2>État du gateway</h2>
-<table><tr><th>SID</th><td>DFL</td></tr><tr><th>Gateway</th><td>sapgw00 (port 3300)</td></tr>
-<tr><th>Version</th><td>753</td></tr><tr><th>Programmes externes enregistrés</th><td>0</td></tr></table></div>
-<div class="card"><h2>Sécurité</h2>
-<p><code>reg_info</code> / <code>sec_info</code> : <span class="warn">valeurs par défaut — aucune ACL.</span>
-Les programmes externes peuvent s'enregistrer sans restriction.</p>
-<p>Voir la configuration : <a href="/sap/gw/reginfo">/sap/gw/reginfo</a></p></div>
-<div class="card"><h2>Enregistrer un programme (TP)</h2>
-<form method="post" action="/sap/gw/register">
-<input name="tp" placeholder="nom du programme (TP_NAME)" value="" aria-label="TP name" autofocus>
-<button>Enregistrer</button></form>
-<p style="font-size:12px;color:#889">Production DFL. Accès non autorisé interdit.</p></div>
-</div></body></html>"""
+
+def shell(title, body):
+    return intranet.page(f"{title} - Gateway SAP DFL", body, app="sapgw",
+                         site_title="Gateway SAP · DFL", site_href="/", logo="GW",
+                         topnav=[("/", "Moniteur (SMGW)", True), ("/sap/gw/reginfo", "reginfo", False)],
+                         product=PRODUCT, foot_extra="Production DFL. Accès non autorisé interdit.",
+                         scripts=intranet.COPY_JS)
+
+
+STATUS = """<section class="wp"><h2>État du gateway</h2>
+<table class="list data"><tbody>
+<tr><td style="width:240px" class="mute">SID</td><td>DFL</td></tr>
+<tr><td class="mute">Gateway</td><td>sapgw00 (port 3300)</td></tr>
+<tr><td class="mute">Version du noyau</td><td>753</td></tr>
+<tr><td class="mute">Démarré le</td><td class="num">12/10/2026 06:02:41</td></tr>
+<tr><td class="mute">Programmes externes enregistrés</td><td class="num">{count}</td></tr>
+</tbody></table></section>"""
+
+MONITOR_BODY = """<h1 class="h1">Moniteur du gateway (SMGW)</h1>
+<div class="cols"><div>
+""" + STATUS.replace("{count}", "0") + """
+<section class="wp"><h2>Sécurité</h2>
+<table class="list data"><tbody>
+<tr><td style="width:240px"><code>reg_info</code> / <code>sec_info</code></td>
+ <td><span class="pill warn">valeurs par défaut — aucune ACL</span></td></tr>
+<tr><td><code>gw/acl_mode</code></td><td>0</td></tr>
+</tbody></table>
+<p style="margin-top:8px">Les programmes externes peuvent s'enregistrer sans restriction.
+ Configuration&#160;: <a href="/sap/gw/reginfo">/sap/gw/reginfo</a></p></section>
+</div><div>
+<section class="wp"><h2>Enregistrer un programme (TP)</h2>
+<form class="form" method="post" action="/sap/gw/register">
+ <div class="field"><label for="tp">Nom du programme (TP_NAME)</label>
+  <input class="in" id="tp" name="tp" placeholder="ex. Z_RFC_EXPORT" value="" autofocus></div>
+ <div class="btns"><button class="btn" type="submit">Enregistrer</button></div>
+</form></section>
+</div></div>"""
+
+
+def monitor_page():
+    return shell("Moniteur", MONITOR_BODY)
 
 REGINFO = """# reginfo — Gateway registration ACL (DFL / sapgw00)
 #
@@ -65,7 +85,7 @@ REGINFO = """# reginfo — Gateway registration ACL (DFL / sapgw00)
 
 @app.get("/")
 def monitor():
-    return Response(MONITOR, mimetype="text/html")
+    return Response(monitor_page(), mimetype="text/html")
 
 
 @app.get("/sap/gw/reginfo")
@@ -77,23 +97,31 @@ def reginfo():
 def register():
     tp = request.form.get("tp", "").strip()
     if not tp:
-        return Response(MONITOR, mimetype="text/html")
+        return Response(monitor_page(), mimetype="text/html")
     # VULN (simulated): reginfo/secinfo are permissive, so any registration is
     # accepted. A real missing ACL would let an attacker register a malicious
     # RFC server; here it simply grants the flag.
-    page = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Enregistrement accepté</title><style>{CSS}</style></head><body>
-<div class="bar">SAP DFlop ERP &middot; Gateway Monitor (SMGW)</div>
-<div class="wrap"><div class="card"><h2 class="ok">✓ Programme « {tp} » enregistré</h2>
-<p>Le gateway a accepté l'enregistrement car <code>reginfo</code>/<code>sec_info</code>
-sont permissifs (aucune ACL). Un attaquant pourrait enregistrer un serveur RFC
-malveillant. Ici, cela vous donne le drapeau.</p>
-<pre>FLAG: {FLAG}
-
-CORRECTIF: définir reginfo et secinfo, puis gw/acl_mode=1.
-Sans ACL, le gateway fait confiance à tout programme qui s'enregistre.</pre>
-</div></div></body></html>"""
+    host = request.remote_addr or "0.0.0.0"
+    conv = zlib.crc32((tp + host).encode()) % 90000000 + 10000000
+    stamp = time.strftime("%d/%m/%Y %H:%M:%S")
+    log = (f"{stamp}  GW REGISTER  TP={tp}  HOST={host}  CONV_ID={conv}\n"
+           f"{stamp}  reg_info: aucune règle (gw/acl_mode=0) -> accepté\n"
+           f"{stamp}  TP={tp}  STATE=REGISTERED  SNC=off")
+    page = shell("Programme enregistré", f"""<h1 class="h1">Moniteur du gateway (SMGW)</h1>
+<p class="status ok">Programme enregistré&#160;: <b>{escape(tp)}</b></p>
+<div class="cols"><div>
+<section class="wp"><h2>Programmes externes enregistrés</h2>
+<table class="list data"><thead><tr><th>TP_NAME</th><th style="width:130px">Hôte</th>
+ <th style="width:110px">CONV_ID</th><th style="width:110px">État</th></tr></thead>
+<tbody><tr><td>{escape(tp)}</td><td>{escape(host)}</td><td class="num">{conv}</td>
+ <td><span class="pill ok">REGISTERED</span></td></tr></tbody></table></section>
+<section class="wp"><h2>Trace du gateway (dev_rd)</h2><div class="log"><pre>{escape(log)}</pre></div></section>
+</div><div>
+<section class="wp"><h2>Clé d'enregistrement</h2>
+<p class="mute" style="font-size:12px">Clé de session remise au programme enregistré.</p>
+{intranet.codebox(FLAG)}</section>
+<p><a href="/">Retour au moniteur</a></p>
+</div></div>""")
     return Response(page, mimetype="text/html")
 
 
