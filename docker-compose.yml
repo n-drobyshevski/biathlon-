@@ -50,15 +50,6 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
-  # ---- 08 · SAP · hard (default SAP* backdoor + unauth ICF path) ---------
-  sap:
-    build: ./challenges/08-sap-icf
-    environment:
-      FLAG: "${FLAG_08_SAP_ICF}"
-    ports: ["8008:5000"]
-    mem_limit: 160m
-    restart: unless-stopped
-
   # ---- 10 · Web · hard (JWT weak secret) --------------------------------
   jwt:
     build: ./challenges/10-web-jwt

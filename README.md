@@ -42,7 +42,6 @@ enough for 6 people to split up and work in parallel.
 | 05 | The Timing Booth | Forensics (pcap) | Medium | 100 | handout |
 | 06 | Results Admin | Web (SQLi) | Medium | 125 | live (`:8006`) |
 | 07 | The Referee's USB | Forensics (carving) | Medium | 125 | handout |
-| 08 | SAP DFlop ERP | **SAP** | **Hard** | 200 | live (`:8008`) |
 | 09 | Who Rigged the Race? 🏁 | **SAP** | **Hard** | 250 | handout (finale) |
 
 The finale (09) closes the sabotage story. Missions **10–15** are an optional
@@ -58,7 +57,7 @@ are independent of the main trail.
 | 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
 | 15 | Hardcoded | **SAP** | Medium | 150 | handout |
 
-**15 challenges** · 4 easy · 4 medium · 7 hard. Total **1950 pts**.
+**14 challenges** · 4 easy · 6 medium · 4 hard. Total **1750 pts**.
 Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
@@ -101,7 +100,6 @@ Live services after step 2:
 | 8001 | 01 DécaFlop site + staff portal |
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
-| 8008 | 08 SAP DFlop ERP |
 | 8010 | 10 Results API (JWT) |
 | 8011 | 11 Timing site (exposed .git) |
 | 8012 | 12 Certificate generator (SSTI) |

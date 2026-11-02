@@ -75,7 +75,6 @@ extra RAM.
 | 05 | The Timing Booth | 100 |
 | 06 | Results Admin | 125 |
 | 07 | The Referee's USB | 125 |
-| 08 | SAP DFlop ERP | 200 |
 | 09 | Who Rigged the Race? | 250 |
 | 10 | Forged Credentials | 175 |
 | 11 | Deleted, Not Gone | 150 |

@@ -6,7 +6,7 @@ live challenge and downloads for every handout.
 - Handouts are read from HANDOUT_DIR (docker-compose mounts handouts/dist
   there, read-only). Only the whitelisted file names below can be downloaded.
 - Links to the other live challenges reuse the host the player typed, with the
-  default ports; override with IDOR_URL / SQLI_URL / SAP_URL if needed.
+  default ports; override with <KEY>_URL (e.g. IDOR_URL, SAPGW_URL) if needed.
 - Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
   overrides the address. Teams submit flags there.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
@@ -139,10 +139,6 @@ MISSIONS = [
      "Un arbitre a oublié sa clé USB dans la cabine et jure avoir « tout supprimé ». "
      "Supprimer un fichier n'efface pas ses octets. Nous avons fait une image de "
      "la clé : récupérez ce qui a été effacé.", None, ["referee_usb.img"]),
-    ("08", "SAP DFlop ERP", "SAP", "Difficile", 200,
-     "DécaFlop gère tout dans SAP DFlop ERP — stocks, paie et, visiblement, les "
-     "résultats officiels. L'écran de connexion est exposé sur le réseau de "
-     "l'événement. Entrez.", "sap", []),
     ("09", "Qui a truqué la course ?", "SAP", "Difficile", 250,
      "La table des résultats ZRACE_RESULT a été modifiée la veille de la finale. "
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
@@ -176,7 +172,7 @@ MISSIONS = [
      None, ["ZDFLOP_RESULT_EXPORT.abap"]),
 ]
 
-PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006), "sap": ("SAP_URL", 8008),
+PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
          "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
 
 
@@ -209,7 +205,7 @@ def download(name):
 
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "idor": ("Espace athlètes", ":8004"),
-              "sqli": ("Admin résultats", ":8006"), "sap": ("SAP DFlop ERP", ":8008"),
+              "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
               "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
 COLS = "ABCDEFGH"

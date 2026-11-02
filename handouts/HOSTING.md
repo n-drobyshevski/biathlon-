@@ -44,7 +44,7 @@ docker compose up -d --build
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 8 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.5–0.8 GB actual |
+| 7 challenge containers + the hub (`mem_limit` 96–128 MB each) | ~0.4–0.7 GB actual |
 | CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
@@ -70,7 +70,6 @@ Run through this once, ideally the day before:
 - [ ] `docker compose up -d --build` → all containers `Up` (8 live challenges
       + hub + CTFd)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
-- [ ] `curl -s localhost:8008/sap/public/info` returns the SAP note
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
       `:8012` and `:8014` load
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`

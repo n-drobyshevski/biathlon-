@@ -45,7 +45,6 @@ FLAG_05_PCAP=TRIATHLON{missed_the_mount_line_$(tok 10)}
 FLAG_06_SQLI=TRIATHLON{drafting_penalty_$(tok 10)}
 FLAG_07_USB=TRIATHLON{spare_tube_$(tok 10)}
 
-FLAG_08_SAP_ICF=TRIATHLON{anchor_leg_$(tok 10)}
 FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
 # --- Audit complémentaire (missions 10-15) ---
