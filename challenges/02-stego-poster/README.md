@@ -1,12 +1,14 @@
 # 02 · Share Everywhere — `Forensics / Stego` · Easy · 50 pts
 
-> DécaFlop's marketing team pushed out a promo poster for the final race and
-> asked everyone to "share it everywhere!" The poster looks normal. It is a
-> little heavier than a poster should be, though.
+> DécaFlop's marketing team published the official race poster on the sponsor's
+> website and asked everyone to "share it everywhere!" The poster looks normal.
+> It is a little heavier than a poster should be, though.
 
-**Handout:** `decaflop_poster.png`
+**Connect:** `http://<CTF-HOST>:8001`
 
-Something is tacked onto the end of this image. Pull it out.
+The poster is published in DécaFlop's press area ("Espace presse"). Download
+it — then notice that something is tacked onto the end of the image. Pull it
+out.
 
 **Flag format:** `TRIATHLON{...}`
 

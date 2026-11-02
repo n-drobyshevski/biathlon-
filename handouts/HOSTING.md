@@ -44,42 +44,63 @@ docker compose up -d --build
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 7 challenge containers + the hub (`mem_limit` 96–128 MB each) | ~0.4–0.7 GB actual |
+| 7 challenge containers + the hub + the file share (`mem_limit` 96–128 MB each) | ~0.5–0.8 GB actual |
 | CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
-Each container is capped in `docker-compose.yml`. One shared instance per
-challenge is fine for 6 players — these apps are stateless, so there's nothing
-for players to corrupt for each other. With CTFd, the full stack is ~1.5–2 GB
-in practice: comfortable on 4 GB, but test it before the event.
+Each container is capped in `docker-compose.yml` (the `share` service at 96 MB).
+One shared instance per challenge is fine for 6 players — these apps are
+stateless, so there's nothing for players to corrupt for each other. With CTFd,
+the full stack is ~1.5–2 GB in practice: comfortable on 4 GB, but test it
+before the event.
 
-## Serving the handout files
+## Serving the files
 
-Nothing to do: `docker-compose.yml` mounts `handouts/dist/` (read-only) into
-the hub container, and the cellule de crise offers each file as a download.
-Missions whose files aren't built yet show "pas encore disponible" until you
-run `./scripts/build-handouts.sh`, with no restart needed.
+The hub serves **no files**. Everything is built into `handouts/dist/` by
+`./scripts/build-handouts.sh` and mounted read-only into the two services that
+publish it, so players *find* each file in context:
 
-You can still attach them as files in CTFd, or drop them on a USB stick.
+- **Partage DFlop** — the internal file share (`share/`, `:8020`). The crew logs
+  in (`equipe-it` / `transition2026`, overridable with `SHARE_PASSWORD`) and
+  browses department folders for the evidence: the pcap (05), the USB image
+  (07), the SAP export + note + wordlist + encrypted zip (09), the `.sap`
+  shortcut (13) and the ABAP source (15). Files are served byte-for-byte through
+  an explicit path→name map; nothing else is downloadable and there is no path
+  traversal. A file that isn't built yet shows "pas encore disponible" in the
+  listing and 404s on download.
+- **DécaFlop site** (`:8001`): the poster (02) in `/presse` and the race photo
+  (03) in `/actualites`, served byte-for-byte at `:8001/medias/...` (only those
+  two names; placeholders before they're built).
+
+No restart is needed after `./scripts/build-handouts.sh` — both services read
+`handouts/dist/` live. The share's crew login is also printed on the hub's
+Contexte sheet. You can still attach the files in CTFd, or drop them on a USB
+stick.
 
 ## Pre-event test checklist
 
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] `docker compose up -d --build` → all containers `Up` (8 live challenges
-      + hub + CTFd)
+- [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
+      + hub + share + CTFd)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
+- [ ] `curl -s localhost:8001/presse` and `:8001/actualites` load; the poster
+      downloads at `:8001/medias/decaflop_poster.png` and the race photo at
+      `:8001/medias/transition_shot.jpg` (both byte-identical to `handouts/dist/`)
+- [ ] `Partage DFlop` at `:8020`: logged out redirects to the login; `equipe-it`
+      / `transition2026` logs in; folders browse; a listed file downloads
+      byte-identical to `handouts/dist/`; a bad login is rejected
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
       `:8012` and `:8014` load
-- [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`
+- [ ] `./scripts/build-handouts.sh` → 10 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
 - [ ] From a second device on the travel router, open
-      `http://<PiIP>:8080`: 9 missions, every download works,
-      every "Ouvrir…" button reaches its challenge
+      `http://<PiIP>:8080`: 14 missions, every "Accès" link reaches its live
+      service (site, share or challenge)
 - [ ] CTFd at `:8000`: setup wizard done (Teams mode), `ctfd-setup.py` loaded
-      9 challenges; a test team can register, submit a flag and unlock a hint
+      the 14 challenges; a test team can register, submit a flag and unlock a hint
 - [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
       open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)

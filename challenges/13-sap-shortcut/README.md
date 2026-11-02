@@ -4,9 +4,9 @@
 > ERP. Someone ticked "save password" so they wouldn't have to type it. Handy —
 > and readable.
 
-**Handout:** `dflop_erp.sap`
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `IT / Sauvegardes postes / portable-equipe-03` (`dflop_erp.sap`). Log in with `equipe-it` / `transition2026` (handed out by the cellule de crise).
 
-The shortcut has a saved password. Recover it.
+Download the shortcut: it has a saved password. Recover it.
 
 **Flag format:** `TRIATHLON{...}`
 

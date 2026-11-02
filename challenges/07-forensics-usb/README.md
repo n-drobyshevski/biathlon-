@@ -4,9 +4,9 @@
 > everything sensitive." Deleting a file doesn't erase its bytes, though — it
 > just forgets where they are. We imaged the stick. Recover what was removed.
 
-**Handout:** `referee_usb.img`
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `Arbitrage / Pièces` (`referee_usb.img`). Log in with `equipe-it` / `transition2026` (handed out by the cellule de crise).
 
-A file was deleted from this image. Carve it back out and read the flag.
+Download the disk image. A file was deleted from it. Carve it back out and read the flag.
 (Grepping for the flag won't work — the bytes you need aren't text.)
 
 **Flag format:** `TRIATHLON{...}`

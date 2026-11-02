@@ -27,11 +27,15 @@ echo
 echo "[+] Done. Files for players:"
 ls -la handouts/dist/
 echo
-echo "Hand these out (per challenge):"
-echo "  02 stego    -> decaflop_poster.png"
-echo "  03 exif     -> transition_shot.jpg"
-echo "  05 pcap     -> timing_booth.pcap"
-echo "  07 usb      -> referee_usb.img"
-echo "  09 sap      -> SAP_USR02_export.csv  + sap_hint.txt"
-echo "  13 sap      -> dflop_erp.sap"
-echo "  15 sap      -> ZDFLOP_RESULT_EXPORT.abap"
+echo "Published on the DécaFlop site ('staff' container, :8001):"
+echo "  02 stego    -> decaflop_poster.png   (espace presse: /presse)"
+echo "  03 exif     -> transition_shot.jpg   (actualités:    /actualites)"
+echo
+echo "On the internal share 'Partage DFlop' ('share' container, :8020):"
+echo "  05 pcap     -> Chronométrage / Captures / timing_booth.pcap"
+echo "  07 usb      -> Arbitrage / Pièces / referee_usb.img"
+echo "  09 sap      -> Basis SAP / Exports / SAP_USR02_export.csv + sap_hint.txt"
+echo "              -> IT / Outils / wordlist.txt"
+echo "              -> Direction de course / Dossier incident / case_file.zip"
+echo "  13 sap      -> IT / Sauvegardes postes / portable-equipe-03 / dflop_erp.sap"
+echo "  15 sap      -> Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap"

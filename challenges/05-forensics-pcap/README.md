@@ -4,9 +4,9 @@
 > still runs over plain HTTP. We grabbed a capture off the air. See what the
 > booth was sending.
 
-**Handout:** `timing_booth.pcap`
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `Chronométrage / Captures` (`timing_booth.pcap`). Log in with `equipe-it` / `transition2026` (handed out by the cellule de crise).
 
-Recover the credentials the booth used. The password is the flag.
+Download the capture and recover the credentials the booth used. The password is the flag.
 
 **Flag format:** `TRIATHLON{...}`
 

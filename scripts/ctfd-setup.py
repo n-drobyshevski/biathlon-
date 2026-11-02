@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-ctfd-setup.py — load the 9 challenges into CTFd from the challenge READMEs.
+ctfd-setup.py — load the challenges into CTFd from the challenge READMEs.
 
 Creates (or updates, if a challenge with the same name exists) every challenge
-with its category, points, description, connection info, flag (from .env) and
+with its category, points, description, connection info (the **Connect:** line —
+every challenge is reached through a live service), flag (from .env) and
 point-costed hints. Safe to re-run, e.g. after ./scripts/gen-flags.sh: flags are
-replaced, hints and texts are updated in place.
+replaced, hints and texts are updated in place. The hub serves no files any
+more, so descriptions carry no download links.
 
 Cross links with the cellule de crise (hub, port 8080):
 - each challenge description links to its row in the hub (/#mission-NN);
@@ -37,7 +39,6 @@ HUB_PORT = 8080
 
 TITLE_RE = re.compile(r"^# (\d\d) · (.+?) — `([^`]+)` · \w+ · (\d+) pts", re.M)
 HINT_RE = re.compile(r"<details><summary>Hint (\d+) \(−(\d+)\)</summary>(.*?)</details>", re.S)
-FILES_RE = re.compile(r"^\*\*Handouts?:\*\* (.+)$", re.M)
 CONNECT_RE = re.compile(r"^\*\*Connect:\*\* `([^`]+)`", re.M)
 
 
@@ -61,20 +62,17 @@ def parse_readme(path, host):
     if category.startswith("Forensics"):
         category = "Forensics"                     # "Forensics / Stego" -> one board column
 
-    # description: everything after the title, up to the hints
+    # description: everything after the title, up to the hints.
+    # Evidence files are no longer handed out by the hub: each challenge is
+    # reached through a live service (its **Connect:** line — the DécaFlop site
+    # for 02/03, the internal share "Partage DFlop" :8020 for 05/07/09/13/15),
+    # so there are no hub /fichiers download links to generate here.
     body = text[m.end():].split("<details>", 1)[0].strip()
     host_s = host or "<CTF-HOST>"
     body = body.replace("<CTF-HOST>", host_s)
 
-    files = []
-    fm = FILES_RE.search(body)
-    if fm:
-        files = re.findall(r"`([^`]+)`", fm.group(1))
-    if files and host:
-        links = "\n".join(f"- [{f}](http://{host}:{HUB_PORT}/fichiers/{f})" for f in files)
-        body += f"\n\n**Download:**\n{links}"
     body += (f"\n\n**Cellule de crise :** [fiche de la mission {num}](http://{host_s}:{HUB_PORT}/#mission-{num})"
-             f" · toutes les missions, liens et fichiers : http://{host_s}:{HUB_PORT}")
+             f" · toutes les missions et liens : http://{host_s}:{HUB_PORT}")
 
     cm = CONNECT_RE.search(body)
     connection = cm.group(1) if cm else ""
