@@ -161,3 +161,7 @@ def test_terminal_banner_gives_no_mission_technique():
     banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text().split("BANNER", 2)[1]
     for bad in (".git", ":8011", "git-dumper http", " dump"):
         assert bad not in banner, bad
+    # ttyd shows about 48 columns on a 390 px phone: keep every line within 46
+    for line in banner.strip("'\n").splitlines():
+        assert len(line) <= 46, line
+    assert len(" Espace de travail : /work/session-XXXXXX") <= 46
