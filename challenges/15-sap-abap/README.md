@@ -4,9 +4,9 @@
 > pushes the results over RFC. Its export token is "not committed" — except it's
 > right there in the source, just not spelled out in one place.
 
-**Handout:** `ZDFLOP_RESULT_EXPORT.abap`
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `Basis SAP / Développements` (`ZDFLOP_RESULT_EXPORT.abap`). Log in with `equipe-it` / `transition2026` (handed out by the cellule de crise).
 
-Read the report and recover the export token.
+Download the report, read it, and recover the export token.
 
 **Flag format:** `TRIATHLON{...}`
 

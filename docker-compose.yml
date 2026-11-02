@@ -38,6 +38,22 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
+  # ---- Internal file share (Partage DFlop) ------------------------------
+  # http://<PiIP>:8020 — DécaFlop's internal document share. Not a challenge:
+  # the crew logs in and browses folders to find the evidence files, served
+  # byte-for-byte from the same handouts/dist. The cellule de crise hands out
+  # the login (see the Contexte sheet).
+  share:
+    build: ./share
+    environment:
+      SHARE_USER: "equipe-it"
+      SHARE_PASSWORD: "${SHARE_PASSWORD:-transition2026}"
+    volumes:
+      - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
+    ports: ["8020:5000"]
+    mem_limit: 96m
+    restart: unless-stopped
+
   # ---- 04 · Web · medium (IDOR) -----------------------------------------
   idor:
     build: ./challenges/04-web-idor

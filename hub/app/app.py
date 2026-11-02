@@ -1,14 +1,18 @@
 """
 "Cellule de crise": the players' entry point (its own container, not a
-challenge). One page that briefs the emergency IT crew and lists every mission, with a link to each
-live challenge and downloads for every handout.
+challenge). One page that briefs the emergency IT crew and lists every mission,
+with a link to each live service.
 
-- Handouts are read from HANDOUT_DIR (docker-compose mounts handouts/dist
-  there, read-only). Only the whitelisted file names below can be downloaded.
-- Links to the other live challenges reuse the host the player typed, with the
-  default ports; override with <KEY>_URL (e.g. IDOR_URL, SAPGW_URL) if needed.
+- The hub itself serves NO handout files. The evidence files live on the
+  internal share "Partage DFlop" (:8020); the poster and race photo live on the
+  DécaFlop site (:8001). Every mission is reached through a live service.
+- Links to the live services reuse the host the player typed, with the default
+  ports; override with <KEY>_URL (e.g. IDOR_URL, SHARE_URL) if needed.
+- The crew login for the share is given in the Contexte sheet.
 - Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
   overrides the address. Teams submit flags there.
+- ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
+  the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
 """
 import json
@@ -16,7 +20,7 @@ import os
 from html import escape
 from urllib.parse import quote
 
-from flask import Flask, Response, abort, redirect, request, send_from_directory
+from flask import Flask, Response, redirect, request
 
 app = Flask(__name__)
 
@@ -93,21 +97,13 @@ def scoreboard_url():
         return f"http://{host}:{CTFD_PORT}/"
     return ""
 
-# mission files: name -> short label shown on the button.
-# The poster (02) and the race photo (03) are NOT served here: players find
-# them published on the sponsor's own site (challenge 01, :8001).
-FILES = {
-    "timing_booth.pcap": "Capture réseau (PCAP)",
-    "referee_usb.img": "Image de la clé (IMG)",
-    "SAP_USR02_export.csv": "Export USR02 (CSV)",
-    "sap_hint.txt": "Note SAP (TXT)",
-    "wordlist.txt": "Liste de mots (TXT)",
-    "case_file.zip": "Dossier chiffré (ZIP)",
-    "dflop_erp.sap": "Raccourci SAP GUI (.sap)",
-    "ZDFLOP_RESULT_EXPORT.abap": "Source ABAP (.abap)",
-}
+# The hub no longer serves any files: the poster/photo are on the DécaFlop site
+# (:8001) and every evidence file is on the internal share "Partage DFlop"
+# (:8020). Each mission below is reached through a live service.
 
-# (number, title, category, level, points, brief, live service key or None, files)
+# (number, title, category, level, points, brief, live service key, files)
+# 'files' is kept empty for every mission (no hub downloads); it stays in the
+# tuple only so the row layout is unchanged.
 MISSIONS = [
     ("01", "Le secret du sponsor", "Web", "Facile", 50,
      "DécaFlop jure que son site n'a rien à cacher. L'équipe parle pourtant d'un "
@@ -129,21 +125,25 @@ MISSIONS = [
      "de départ.", "idor", []),
     ("05", "La cabine de chronométrage", "Forensics", "Moyen", 100,
      "La cabine envoie les temps intermédiaires sur le Wi-Fi staff, et sa "
-     "connexion passe encore en HTTP en clair. Nous avons capturé le trafic. "
-     "Retrouvez ce que la cabine envoyait.", None, ["timing_booth.pcap"]),
+     "connexion passe encore en HTTP en clair. Nous avons capturé le trafic : "
+     "la capture est dans le partage interne (Chronométrage / Captures). "
+     "Retrouvez ce que la cabine envoyait.", "share", []),
     ("06", "Admin résultats", "Web", "Moyen", 125,
      "Les résultats officiels passent par l'admin résultats. « Réservé au staff "
      "autorisé », dit la page. Le formulaire de connexion a visiblement été écrit "
      "à la hâte la veille de la course.", "sqli", []),
     ("07", "La clé USB de l'arbitre", "Forensics", "Moyen", 125,
      "Un arbitre a oublié sa clé USB dans la cabine et jure avoir « tout supprimé ». "
-     "Supprimer un fichier n'efface pas ses octets. Nous avons fait une image de "
-     "la clé : récupérez ce qui a été effacé.", None, ["referee_usb.img"]),
+     "Supprimer un fichier n'efface pas ses octets. Notre image de la clé est dans "
+     "le partage interne (Arbitrage / Pièces) : récupérez ce qui a été effacé.",
+     "share", []),
     ("09", "Qui a truqué la course ?", "SAP", "Difficile", 250,
      "La table des résultats ZRACE_RESULT a été modifiée la veille de la finale. "
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
-     "connexions et anciens hachages de mots de passe. Prouvez qui a fait le coup.",
-     None, ["SAP_USR02_export.csv", "sap_hint.txt", "wordlist.txt", "case_file.zip"]),
+     "connexions et anciens hachages de mots de passe. Tout est dans le partage "
+     "interne : l'export et la note dans Basis SAP / Exports, la liste de mots dans "
+     "IT / Outils, le dossier chiffré dans Direction de course / Dossier incident. "
+     "Prouvez qui a fait le coup.", "share", []),
     # --- Audit complémentaire : failles trouvées après l'enquête ---
     ("10", "Identifiants forgés", "Web", "Difficile", 175,
      "L'API des résultats délivre un jeton de session (JWT) et réserve les "
@@ -159,8 +159,8 @@ MISSIONS = [
      "pas (injection de gabarit).", "ssti", []),
     ("13", "Enregistré par confort", "SAP", "Facile", 75,
      "Un raccourci SAP GUI (.sap) trouvé sur un portable de l'équipe a "
-     "« enregistré le mot de passe » du DFlop ERP. Récupérez-le.",
-     None, ["dflop_erp.sap"]),
+     "« enregistré le mot de passe » du DFlop ERP. Il est dans le partage interne "
+     "(IT / Sauvegardes postes / portable-equipe-03). Récupérez-le.", "share", []),
     ("14", "Le gateway ouvert", "SAP", "Moyen", 150,
      "Le moniteur du gateway SAP DFlop est exposé et ses ACL reginfo/secinfo "
      "sont par défaut. Lisez l'état de sécurité, puis faites ce qu'une ACL "
@@ -168,11 +168,12 @@ MISSIONS = [
     ("15", "En dur", "SAP", "Moyen", 150,
      "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
      "Son jeton d'export « non committé » est pourtant dans le code, assemblé "
-     "morceau par morceau. Relisez la source.",
-     None, ["ZDFLOP_RESULT_EXPORT.abap"]),
+     "morceau par morceau. La source est dans le partage interne "
+     "(Basis SAP / Développements). Relisez la source.", "share", []),
 ]
 
-PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
+PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
+         "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
          "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
 
 
@@ -185,27 +186,9 @@ def service_url(key):
     return f"http://{host}:{port}/"
 
 
-def file_info(name):
-    path = os.path.join(HANDOUT_DIR, name)
-    if not os.path.isfile(path):
-        return None
-    size = os.path.getsize(path)
-    for unit in ("o", "Ko", "Mo"):
-        if size < 1024 or unit == "Mo":
-            return f"{size:.0f} {unit}" if unit == "o" else f"{size:.1f} {unit}".replace(".", ",")
-        size /= 1024
-
-
-@app.get("/fichiers/<name>")
-def download(name):
-    if name not in FILES or not file_info(name):
-        abort(404)
-    return send_from_directory(HANDOUT_DIR, name, as_attachment=True)
-
-
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
-LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "idor": ("Espace athlètes", ":8004"),
-              "sqli": ("Admin résultats", ":8006"),
+LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Partage DFlop", ":8020"),
+              "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
               "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
 COLS = "ABCDEFGH"
@@ -231,18 +214,12 @@ def grid(header, rows, extra="", cls=""):
             f'<tbody>{"".join(body)}{extra}</tbody></table>')
 
 
-def access(live, files):
-    out = []
-    if live:
-        name, port = LIVE_LABEL[live]
-        out.append(f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>')
-    for name in files:
-        info = file_info(name)
-        if info:
-            out.append(f'<a class="file" href="/fichiers/{name}" download>{name}</a> <span class="mute">· {info}</span>')
-        else:
-            out.append(f'<span class="file mute">{name}</span> <span class="mute">· pas encore disponible</span>')
-    return "<br>".join(out)
+def access(live):
+    """Every mission is reached through a live service; the hub serves no files."""
+    if not live:
+        return ""
+    name, port = LIVE_LABEL[live]
+    return f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>'
 
 
 @app.get("/")
@@ -251,7 +228,7 @@ def crisis_cell():
     board = scoreboard_url()
     ids = ctfd_ids()
     rows = []
-    for num, title, cat, level, pts, brief, live, files in MISSIONS:
+    for num, title, cat, level, pts, brief, live, _files in MISSIONS:
         submit = ""
         if board:
             target = f"{board}challenges"
@@ -264,13 +241,13 @@ def crisis_cell():
         rows.append((f' class="mission" id="mission-{num}"', [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
-            (access(live, files), ' class="acc"'), (status, "")]))
+            (access(live), ' class="acc"'), (status, "")]))
     n = len(rows) + 2
     total_row = (f'<tr class="tot"><th class="r">{n}</th><td data-ref="A{n}"></td><td data-ref="B{n}">Total</td>'
                  f'<td data-ref="C{n}"></td><td data-ref="D{n}"></td><td data-ref="E{n}"></td>'
                  f'<td data-ref="F{n}" class="num sel" data-f="=SOMME(F2:F{n-1})">{total}</td>'
                  f'<td data-ref="G{n}"></td><td data-ref="H{n}"></td></tr>')
-    body = grid(["N°", "Mission", "Description", "Catégorie", "Niveau", "Points", "Accès / pièces jointes", "Statut"],
+    body = grid(["N°", "Mission", "Description", "Catégorie", "Niveau", "Points", "Accès", "Statut"],
                 rows, total_row, "frozen")
     note = (f'<p class="note"><b>Contexte :</b> la veille de la finale, la liste de départ a été truquée '
             f'en échangeant les puces de chronométrage. Suivez la piste jusqu\'au coupable. '
@@ -297,7 +274,10 @@ def context():
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
-        ("Périmètre", "Uniquement les services et fichiers listés dans l'onglet Missions. Pas besoin d'internet."),
+        ("Partage interne", "Les fichiers de preuve sont sur « Partage DFlop », l'espace documentaire "
+                            "interne (:8020). Connexion de l'équipe IT : "
+                            "<code>equipe-it</code> / <code>transition2026</code>."),
+        ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Tableau des scores", score),
     ]]
     return html(layout("Contexte · suivi_incident_finale_2026", fr(grid(["Élément", "Valeur"], rows)),
