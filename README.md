@@ -114,6 +114,7 @@ Update the flags in your scoreboard to match the new `.env` after rotating.
 challenges/            one folder per challenge (player README + web app code)
 handouts/              generator for all downloadable forensics/SAP files
   generate.py          builds every handout from .env flags
+  assets/              base photo for 03 (AI-generated, metadata stripped)
   HOSTING.md           Pi 5 + travel-router hosting guide
 scoreboard/            how to run a scoreboard on the Pi (CTFd-lite / static)
 scripts/

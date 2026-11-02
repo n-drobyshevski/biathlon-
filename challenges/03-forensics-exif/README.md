@@ -1,8 +1,8 @@
 # 03 · In Transition — `Forensics` · Easy · 75 pts
 
-> A photo turned up from the transition zone the evening before the final race.
-> No text, nothing obvious in the picture — but cameras remember more than
-> what they show. When and *where* was this taken, and who shot it?
+> A photo from a crew camera turned up on the timing-booth PC. It looks like
+> any other race photo — but cameras remember more than what they show. When
+> and *where* was this taken, and who shot it?
 
 **Handout:** `transition_shot.jpg`
 

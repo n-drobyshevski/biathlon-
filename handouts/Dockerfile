@@ -7,5 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends zip fonts-dejav
 RUN pip install --no-cache-dir pillow==10.4.0 piexif==1.1.3
 WORKDIR /work
 COPY handouts/generate.py /work/generate.py
+COPY handouts/assets /work/assets
 # .env is passed via --env-file at run time; output is mounted at /out
 CMD ["python", "/work/generate.py"]

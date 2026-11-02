@@ -256,7 +256,10 @@ def transition_scene(W=1280, H=853):
 
 def gen_exif():
     f = flag("FLAG_03_EXIF", "TRIATHLON{exif_placeholder}")
-    img = transition_scene()          # no text in the picture: the clues are in the metadata
+    # The organizer-supplied photo (metadata already stripped); the drawn scene
+    # is only a fallback if the asset is missing.
+    photo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "transition_photo.jpg")
+    img = Image.open(photo).convert("RGB") if os.path.exists(photo) else transition_scene()
 
     # Kalmar triathlon transition area, Sweden: 56.6634 N, 16.3568 E
     def deg(dd):
@@ -279,11 +282,11 @@ def gen_exif():
     }
     exif_ifd = {
         piexif.ExifIFD.DateTimeOriginal: b"2026:11:01 18:42:11",  # sabotage window
-        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00transition zone photo, final-race eve",
-        piexif.ExifIFD.ExposureTime: (1, 60),
-        piexif.ExifIFD.FNumber: (28, 10),
-        piexif.ExifIFD.ISOSpeedRatings: 3200,
-        piexif.ExifIFD.FocalLength: (35, 1),
+        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00crew camera upload, transition area",
+        piexif.ExifIFD.ExposureTime: (1, 800),                    # daylight, telephoto
+        piexif.ExifIFD.FNumber: (56, 10),
+        piexif.ExifIFD.ISOSpeedRatings: 200,
+        piexif.ExifIFD.FocalLength: (70, 1),
         piexif.ExifIFD.Flash: 16,                                 # flash did not fire
     }
     exif_bytes = piexif.dump({"0th": zeroth, "Exif": exif_ifd, "GPS": gps})
