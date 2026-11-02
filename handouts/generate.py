@@ -25,6 +25,50 @@ def flag(name, default):
 
 FONT = ImageFont.load_default()
 
+# Poster fonts: DejaVu from the toolbox image (fonts-dejavu-core); falls back
+# to Pillow's built-in scalable font, then to the tiny bitmap one.
+_DEJAVU = "/usr/share/fonts/truetype/dejavu/DejaVuSans{}.ttf"
+
+def _has_dejavu():
+    try:
+        ImageFont.truetype(_DEJAVU.format("-Bold"), 10)
+        return True
+    except OSError:
+        return False
+
+HAS_DEJAVU = _has_dejavu()
+
+def plain(text):
+    """Pillow's fallback font has no accents, × or em dash: fold them to ASCII."""
+    if HAS_DEJAVU:
+        return text
+    import unicodedata
+    text = text.replace("×", "x").replace("—", "-").replace("·", "-")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+def text(d, xy, s, **kw):
+    d.text(xy, plain(s), **kw)
+
+def font(size, bold=False):
+    try:
+        return ImageFont.truetype(_DEJAVU.format("-Bold" if bold else ""), size)
+    except OSError:
+        try:
+            return ImageFont.load_default(size=size)
+        except TypeError:
+            return FONT
+
+def slanted(img, xy, text, fnt, fill, shear=0.2):
+    """Draw text with a forward slant (the site's heavy-italic look); return the x after it."""
+    text = plain(text)
+    l, t, r, b = fnt.getbbox(text)
+    w, h = r + int(shear * b) + 4, b + 4
+    layer = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(layer).text((int(shear * b), 0), text, font=fnt, fill=255)
+    layer = layer.transform((w, h), Image.AFFINE, (1, shear, 0, 0, 1, 0), resample=Image.BICUBIC)
+    img.paste(Image.new("RGB", (w, h), fill), (xy[0], xy[1]), layer)
+    return xy[0] + int(fnt.getlength(text))
+
 def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
     img = Image.new("RGB", (w, h), bg)
     d = ImageDraw.Draw(img)
@@ -39,34 +83,67 @@ def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
 # ---------------------------------------------------------------------------
 def gen_stego():
     f = flag("FLAG_02_STEGO", "TRIATHLON{stego_placeholder}")
-    BLUE, MINT, INK, WHITE = (54, 67, 186), (122, 255, 166), (16, 16, 16), (255, 255, 255)
-    img = Image.new("RGB", (800, 1000), BLUE)
+    W, H = 800, 1000
+    BLUE, DARK, MINT, INK, WHITE = (54, 67, 186), (38, 47, 138), (122, 255, 166), (16, 16, 16), (255, 255, 255)
+    img = Image.new("RGB", (W, H), BLUE)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, 800, 120], fill=INK)
-    d.text((40, 48), "DECAFLOP  x  REGIONAL TRIATHLON CHAMPIONSHIP", fill=WHITE, font=FONT)
-    d.text((40, 300), "THE FINAL RACE", fill=MINT, font=FONT)
-    d.text((40, 340), "Swim. Bike. Run. Sport pour (presque) tous.", fill=WHITE, font=FONT)
-    # swim: three waves
+
+    # top band: wordmark + event
+    d.rectangle([0, 0, W, 112], fill=INK)
+    x = slanted(img, (48, 30), "DÉCA", font(56, bold=True), (124, 134, 255))
+    slanted(img, (x, 30), "FLOP", font(56, bold=True), WHITE)
+    text(d, (W - 48, 42), "×  CHAMPIONNAT RÉGIONAL", font=font(18, bold=True), fill=WHITE, anchor="ra")
+    text(d, (W - 48, 66), "DE TRIATHLON 2026", font=font(18, bold=True), fill=MINT, anchor="ra")
+
+    # headline
+    tag, tf = plain("2 NOVEMBRE · LA PLAGE"), font(20, bold=True)
+    d.rectangle([48, 168, 48 + int(tf.getlength(tag)) + 24, 206], fill=MINT)
+    text(d, (60, 175), tag, font=tf, fill=INK)
+    size = 118                                   # largest size where the widest line fits
+    while font(size, bold=True).getlength("C'EST DEMAIN") * 1.04 > W - 96 and size > 40:
+        size -= 2
+    hf, lead = font(size, bold=True), int(size * 1.12)
+    block = 2 * lead + 26 + 30                   # two headline lines + gap + subtitle
+    top = 206 + (586 - 206 - block) // 2         # centred between the date tag and the cards
+    slanted(img, (44, top), "LA FINALE,", hf, WHITE)
+    x = slanted(img, (44, top + lead), "C'EST ", hf, WHITE)
+    slanted(img, (x, top + lead), "DEMAIN", hf, MINT)
+    text(d, (50, top + 2 * lead + 26), "Nage. Vélo. Course. Venez encourager les finalistes !",
+           font=font(25), fill=WHITE)
+
+    # three legs: swim / bike / run, each in a card
+    cards = [(48, "1,5 km", "NAGE"), (290, "40 km", "VÉLO"), (532, "10 km", "COURSE")]
+    for cx, dist, label in cards:
+        d.rectangle([cx, 586, cx + 220, 836], fill=DARK)
+        d.rectangle([cx, 586, cx + 220, 594], fill=MINT)
+        text(d, (cx + 110, 768), dist, font=font(34, bold=True), fill=MINT, anchor="ma")
+        text(d, (cx + 110, 806), label, font=font(20, bold=True), fill=WHITE, anchor="ma")
+    import math                                              # swim: three smooth waves
     for i in range(3):
-        y = 520 + i * 22
-        for x in range(60, 220, 40):
-            d.arc([x, y, x + 40, y + 24], 200, 340, fill=MINT, width=5)
-    # bike: two wheels + frame
-    rear, front, bb, seat, head = (330, 570), (490, 570), (400, 570), (385, 515), (465, 518)
-    for cx, cy in (rear, front):
-        d.ellipse([cx - 40, cy - 40, cx + 40, cy + 40], outline=MINT, width=5)
-    for a, b in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
-        d.line([a, b], fill=MINT, width=5)
-    d.line([(370, 508), (398, 508)], fill=MINT, width=6)             # saddle
-    d.line([(465, 518), (470, 500), (488, 500)], fill=MINT, width=5)  # aero bars
-    # run: stick figure mid-stride
-    d.ellipse([640, 492, 668, 520], outline=MINT, width=5)
-    d.line([(652, 522), (640, 568)], fill=MINT, width=5)
-    d.line([(640, 568), (614, 604)], fill=MINT, width=5)
-    d.line([(640, 568), (672, 598)], fill=MINT, width=5)
-    d.line([(648, 535), (620, 552)], fill=MINT, width=5)
-    d.line([(648, 535), (680, 548)], fill=MINT, width=5)
-    d.text((40, 900), "Official promo poster - share everywhere!", fill=MINT, font=FONT)
+        y0 = 654 + i * 28
+        pts = [(x, y0 + 8 * math.sin((x - 78) / 72 * 2 * math.pi)) for x in range(78, 239, 4)]
+        d.line(pts, fill=MINT, width=6, joint="curve")
+    bx = 290 + 110                                           # bike
+    rear, front, bb, seat, head = (bx - 58, 712), (bx + 58, 712), (bx - 6, 712), (bx - 18, 664), (bx + 38, 666)
+    for wx, wy in (rear, front):
+        d.ellipse([wx - 32, wy - 32, wx + 32, wy + 32], outline=MINT, width=6)
+    for p1, p2 in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
+        d.line([p1, p2], fill=MINT, width=6)
+    d.line([(bx - 30, 657), (bx - 6, 657)], fill=MINT, width=7)
+    d.line([(head[0], head[1]), (head[0] + 4, 648), (head[0] + 20, 648)], fill=MINT, width=6)
+    rx = 532 + 110                                           # run: runner mid-stride
+    d.ellipse([rx - 6, 630, rx + 20, 656], outline=MINT, width=6)
+    d.line([(rx + 4, 660), (rx - 8, 704)], fill=MINT, width=7)
+    d.line([(rx - 8, 704), (rx - 34, 740)], fill=MINT, width=7)
+    d.line([(rx - 8, 704), (rx + 22, 734)], fill=MINT, width=7)
+    d.line([(rx + 22, 734), (rx + 36, 728)], fill=MINT, width=7)
+    d.line([(rx + 1, 674), (rx - 26, 690)], fill=MINT, width=7)
+    d.line([(rx + 1, 674), (rx + 30, 686)], fill=MINT, width=7)
+
+    # footer band
+    d.rectangle([0, 884, W, H], fill=MINT)
+    text(d, (48, 908), "Affiche officielle — partagez-la partout !", font=font(26, bold=True), fill=INK)
+    text(d, (48, 950), "#DecaFlopTri  ·  sport pour (presque) tous", font=font(20), fill=INK)
     png = io.BytesIO(); img.save(png, "PNG"); png = png.getvalue()
 
     zbuf = io.BytesIO()

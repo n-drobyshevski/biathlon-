@@ -1,7 +1,8 @@
 # Toolbox image that generates all forensics / stego / SAP handout files.
-# Kept tiny and arm64-native. Installs 'zip' for password-protected archives.
+# Kept tiny and arm64-native. Installs 'zip' for password-protected archives
+# and DejaVu fonts for the poster text.
 FROM python:3.12-slim
-RUN apt-get update && apt-get install -y --no-install-recommends zip \
+RUN apt-get update && apt-get install -y --no-install-recommends zip fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir pillow==10.4.0 piexif==1.1.3
 WORKDIR /work
