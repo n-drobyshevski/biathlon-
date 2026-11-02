@@ -162,7 +162,69 @@ table.std th{text-align:left;font-size:12px;text-transform:uppercase;letter-spac
   color:var(--mute);border-bottom:2px solid var(--ink);padding:8px 8px 6px 0}
 table.std td{border-bottom:1px solid var(--line);padding:9px 8px 9px 0;font-variant-numeric:tabular-nums}
 
+/* storefront pages (01) */
+body:has(> #main){min-height:100vh;display:flex;flex-direction:column}
+body:has(> #main)>#main{flex:1}
+.skip{position:absolute;left:-999px;top:0;background:var(--ink);color:#fff;padding:8px 12px;z-index:20}
+.skip:focus{left:8px;top:8px}
+.banner.slim .in{grid-template-columns:1fr;padding-top:28px;padding-bottom:40px}
+.banner .crumb,.banner .crumb a{color:#c9cbf0}
+.banner .crumb{margin-bottom:16px}
+.cathead{background:var(--grey);border-bottom:1px solid var(--line)}
+.cathead .in{padding-top:22px;padding-bottom:26px}
+.cathead h1{font-size:clamp(30px,5vw,44px);margin:4px 0 8px}
+.cathead p{margin:0;color:#333;max-width:620px}
+.sports{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.sport{display:flex;align-items:center;gap:16px;padding:18px;border:1px solid var(--line);
+  border-radius:2px;text-decoration:none;color:var(--ink)}
+.sport:hover{border-color:var(--blue);box-shadow:inset 0 -4px 0 var(--blue);color:var(--ink)}
+.sport .ic{flex:none;width:72px;height:72px;background:var(--grey);display:grid;place-items:center;color:var(--blue)}
+.sport b{display:block;font-size:20px}
+.sport small{color:var(--mute);font-size:13px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.legs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.leg{border-top:6px solid var(--blue);background:var(--grey);padding:20px}
+.leg .ic{color:var(--blue);display:block;margin-bottom:8px}
+.leg b{font-size:22px}
+.leg .dist{display:inline-block;margin-left:8px;background:var(--mint);font-weight:800;
+  font-style:italic;padding:0 6px}
+.leg p{margin:10px 0 0;color:#333}
+.feats{margin:0;padding:0;list-style:none}
+.feats li{padding:7px 0 7px 22px;position:relative;border-bottom:1px solid var(--line)}
+.feats li::before{content:"";position:absolute;left:2px;top:15px;width:10px;height:5px;
+  border-left:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:rotate(-45deg)}
+.pdp-wrap{padding-top:20px;padding-bottom:40px}
+.pdp{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.pdp-img{background:var(--grey);aspect-ratio:1/1;display:grid;place-items:center;color:var(--blue)}
+.pdp-img svg{width:55%;height:auto}
+.pdp-info .brand{font-size:13px;font-weight:800;text-transform:uppercase;color:var(--mute)}
+.pdp-info h1{font-size:clamp(24px,3.4vw,32px);line-height:1.15;margin:4px 0 8px}
+.pdp-info .rate{font-size:13px;color:var(--mute)}
+.pdp-price{margin:16px 0}
+.pdp-price .price{font-size:30px;padding:2px 10px}
+.instore{margin-top:22px;border:2px solid var(--ink);padding:16px}
+.instore .small{margin:6px 0 10px;color:var(--mute)}
+.stock{list-style:none;margin:0;padding:0;font-size:14px}
+.stock li{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)}
+.st{font-weight:700}.st.ok{color:#0a7a3a}.st.low{color:var(--amber)}.st.out{color:var(--red)}
+.stores{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.store{border:1px solid var(--line);border-top:6px solid var(--blue);padding:20px}
+.store h2{font-size:20px;margin:0 0 12px}
+.store .li{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14.5px}
+.store .li svg{flex:none;color:var(--blue);margin-top:2px}
+.chips{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.chips li{background:var(--grey);font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:2px}
+.faq{border-bottom:1px solid var(--line)}
+.faq summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;
+  justify-content:space-between;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-size:22px;line-height:1;color:var(--blue)}
+.faq[open] summary::after{content:"\2212"}
+.faq p{margin:0 0 16px;color:#333}
+
 @media (max-width:860px){
+  .sports,.three,.legs,.stores{grid-template-columns:1fr}
+  .pdp{grid-template-columns:1fr;gap:20px}
   .grid{grid-template-columns:repeat(2,1fr)}
   .banner .in,.two{grid-template-columns:1fr}
   .foot .in{grid-template-columns:1fr 1fr}
