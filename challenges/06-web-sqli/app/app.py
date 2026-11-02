@@ -12,7 +12,7 @@ from html import escape
 from flask import Flask, Response, request, redirect
 
 app = Flask(__name__)
-FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
+FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 def db():
     con = sqlite3.connect(":memory:")
@@ -20,7 +20,7 @@ def db():
     con.executemany(
         "INSERT INTO users VALUES(?,?,?)",
         [("results_admin", "s3cr3t-do-not-share-9912", "admin"),
-         ("v.lindqvist",   "Lane7Lane7!",             "results_operator")],
+         ("v.lindqvist",   "Chip7Chip7!",             "results_operator")],
     )
     con.commit()
     return con
@@ -70,8 +70,8 @@ def FORM(msg="", username=""):
 <p class="small mute">Ne partagez jamais un compte staff.</p>
 </main>""")
 
-STANDINGS = [("1", "Astrid Bjornsen", "0", "38:12,4"),
-             ("2", "Mikkel Haugen", "2", "38:40,9"),
+STANDINGS = [("1", "Astrid Bjornsen", "0", "1:02:14"),
+             ("2", "Mikkel Haugen", "1", "1:02:51"),
              ("3", "—", "—", "en attente")]
 
 def ok_page():
@@ -93,7 +93,7 @@ final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.</pr
 <div class="panel">
  <h2 class="h">Finale · classement provisoire</h2>
  <p class="small mute" style="margin:0 0 10px">Copie en lecture seule de la table SAP ZRACE_RESULT.</p>
- <table class="std"><thead><tr><th>Rang</th><th>Athlète</th><th>Fautes</th><th>Temps</th></tr></thead>
+ <table class="std"><thead><tr><th>Rang</th><th>Athlète</th><th>Pénalités</th><th>Temps</th></tr></thead>
  <tbody>{rows}</tbody></table>
 </div>
 </main>{COPY_JS}""", right='<a href="/">Se déconnecter</a>')

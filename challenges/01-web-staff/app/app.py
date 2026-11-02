@@ -10,7 +10,7 @@ import os
 from flask import Flask, Response, request
 
 app = Flask(__name__)
-FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
+FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -19,17 +19,17 @@ HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 # Simple line pictograms for the product grid (no external assets: the Pi
 # has no internet).
 ICON = {
-    "ski": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="M18 80 74 14M30 84 84 22M70 12c6-4 10 0 8 4M80 20c6-4 10 0 8 4"/></svg>',
-    "goggle": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><path d="M14 38h68v18c0 8-6 12-14 12-6 0-10-6-20-6s-14 6-20 6c-8 0-14-4-14-12z"/><path d="M8 46h6M82 46h6"/></svg>',
-    "flask": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><rect x="34" y="12" width="28" height="10" rx="2"/><path d="M36 22h24v62H36z"/><path d="M36 44h24"/></svg>',
-    "bib": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><path d="M26 16h44l6 66H20z"/><circle cx="36" cy="26" r="2"/><circle cx="60" cy="26" r="2"/><path d="M38 52h20M38 62h12"/></svg>',
+    "bike": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="62" r="15"/><circle cx="74" cy="62" r="15"/><path d="M22 62 40 36 48 62Z"/><path d="M40 36h24L48 62"/><path d="M64 36l10 26"/><path d="M64 36l3-9h9"/><path d="M33 31h13"/></svg>',
+    "goggle": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="38" width="30" height="20" rx="10"/><rect x="54" y="38" width="30" height="20" rx="10"/><path d="M42 46q6-5 12 0"/><path d="M12 48H5M84 48h7"/></svg>',
+    "bottle": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M44 9h8v9h-8z"/><path d="M38 18h20l4 9v53a5 5 0 0 1-5 5H39a5 5 0 0 1-5-5V27z"/><path d="M34 42h28M34 56h28"/></svg>',
+    "shoe": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 64c0-9 5-15 9-19l5-13 13 4c3 8 10 12 21 14l20 4c8 2 11 6 11 10v4H9z"/><path d="M9 72h79"/><path d="M29 40l7 4M34 33l7 4"/></svg>',
 }
 
 PRODUCTS = [
-    ("ski", "Skiflop", "Skis skating Race 900, presque carbone", "349", "399", "4,1 · 212 avis"),
-    ("goggle", "Nordik'O", "Masque anti-buée (buée vendue séparément)", "24", "", "3,2 · 1 048 avis"),
-    ("flask", "Bofbof", "Gourde isotherme 0,5 L, garde le thé à peu près chaud", "9", "12", "3,9 · 87 avis"),
-    ("bib", "DécaFlop", "Dossard officiel 2026, réplique", "15", "", "4,6 · 33 avis"),
+    ("bike", "Pédalo", "Vélo de chrono Race 900, presque carbone", "1\u00a0299", "1\u00a0499", "4,1 · 212 avis"),
+    ("goggle", "Nageflop", "Lunettes de natation anti-buée (buée vendue séparément)", "14", "", "3,2 · 1 048 avis"),
+    ("bottle", "Bofbof", "Bidon 750 mL, garde l'eau à peu près fraîche", "5", "7", "3,9 · 87 avis"),
+    ("shoe", "Runflop", "Chaussures de course à laçage rapide (lacets lents)", "59", "", "4,6 · 33 avis"),
 ]
 
 def product(icon, brand, title, price, was, rate):
@@ -38,7 +38,7 @@ def product(icon, brand, title, price, was, rate):
 <div class="b"><div class="brand">{brand}</div><div class="t">{title}</div>
 <span class="price">{price} €{old}</span><div class="rate">★ {rate}</div></div></a>"""
 
-PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat régional de biathlon") + """
+PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat régional de triathlon") + """
 <div class="strip"><div class="in"><span>Retrait gratuit dans nos 3 magasins</span>
 <span>Retours sous 30 jours*  ·  *voir conditions, en gros</span></div></div>
 <header class="top"><div class="in">
@@ -48,25 +48,25 @@ PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat ré
  <nav class="acct"><a class="opt" href="#help">Aide</a><a href="#help">Magasins</a></nav>
 </div></header>
 <nav class="cats" aria-label="Rayons"><ul>
- <li><a href="#race" aria-current="page">Biathlon</a></li>
- <li><a href="#shop">Ski de fond</a></li><li><a href="#shop">Tir</a></li>
- <li><a href="#shop">Vêtements</a></li><li><a href="#shop">Déstockage</a></li>
+ <li><a href="#race" aria-current="page">Triathlon</a></li>
+ <li><a href="#shop">Natation</a></li><li><a href="#shop">Vélo</a></li>
+ <li><a href="#shop">Course à pied</a></li><li><a href="#shop">Déstockage</a></li>
  <li><a href="#careers">Recrutement</a></li></ul></nav>
 <!--notice-->
 
 <section class="banner" id="race"><div class="in">
  <div>
-  <span class="tagline">Sponsor titre · Championnat régional de biathlon</span>
+  <span class="tagline">Sponsor titre · Championnat régional de triathlon</span>
   <h1 class="h">La finale,<br>c'est <em>demain</em></h1>
   <p>Bienvenue sur le site officiel de <b>DécaFlop</b>, fier sponsor titre du
-     Championnat régional de biathlon. Skis, carabines, politique de retour discutable.</p>
+     Championnat régional de triathlon. Vélos, combinaisons, politique de retour discutable.</p>
   <a class="btn" href="#shop">L'équipement course</a><a class="btn line" href="#race">Infos course</a>
  </div>
  <div class="sched">
   <h2 class="h">Programme du jour J</h2>
-  <table><tr><td>8 h 30</td><td>Réglage des carabines</td><td>Pas de tir</td></tr>
-   <tr><td>10 h 00</td><td>Finale femmes</td><td>Stade</td></tr>
-   <tr><td>12 h 30</td><td>Finale hommes</td><td>Stade</td></tr>
+  <table><tr><td>7 h 00</td><td>Ouverture du parc à vélos</td><td>Transition</td></tr>
+   <tr><td>8 h 30</td><td>Départ finale femmes</td><td>Plage</td></tr>
+   <tr><td>10 h 30</td><td>Départ finale hommes</td><td>Plage</td></tr>
    <tr><td>15 h 00</td><td>Podium</td><td>Grand chapiteau</td></tr></table>
   <p class="small mute" style="margin:10px 0 0">Listes de départ, chronométrage et résultats
    sont gérés par notre équipe événement. Le programme public arrive bientôt.</p>
@@ -79,8 +79,8 @@ PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat ré
 </div></section>
 
 <section class="sec grey"><div class="in two">
- <div class="tile"><h3 class="h">Location de skis</h3>
-  <p>Skis skating préparés course pour le week-end. Fart inclus, dignité non.</p>
+ <div class="tile"><h3 class="h">Location de vélos</h3>
+  <p>Vélos de chrono réglés course pour le week-end. Casque inclus, dignité non.</p>
   <a class="btn blue" href="#help">Trouver un magasin</a></div>
  <div class="tile dark" id="careers"><h3 class="h">Recrutement</h3>
   <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé

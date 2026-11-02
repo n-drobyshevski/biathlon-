@@ -7,7 +7,7 @@ Nothing here is committed with real flags; files are built on the Pi.
 
 Challenges produced:
   02 stego   -> decaflop_poster.png     (PNG with an appended ZIP)
-  03 exif    -> range_shot.jpg          (flag + GPS + timestamp in EXIF)
+  03 exif    -> transition_shot.jpg     (flag + GPS + timestamp in EXIF)
   05 pcap    -> timing_booth.pcap       (HTTP Basic-Auth creds = flag)
   07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
@@ -38,14 +38,35 @@ def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
 # 02 · STEGO (easy) — PNG poster with an appended ZIP (polyglot)
 # ---------------------------------------------------------------------------
 def gen_stego():
-    f = flag("FLAG_02_STEGO", "BIATHLON{stego_placeholder}")
-    img = Image.new("RGB", (800, 1000), (11, 61, 46))
+    f = flag("FLAG_02_STEGO", "TRIATHLON{stego_placeholder}")
+    BLUE, MINT, INK, WHITE = (54, 67, 186), (122, 255, 166), (16, 16, 16), (255, 255, 255)
+    img = Image.new("RGB", (800, 1000), BLUE)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, 800, 120], fill=(7, 41, 31))
-    d.text((40, 48), "DECAFLOP  x  REGIONAL BIATHLON CHAMPIONSHIP", fill=(234,255,245), font=FONT)
-    d.text((40, 300), "THE FINAL RACE", fill=(25,195,125), font=FONT)
-    d.text((40, 340), "Sport pour (presque) tous.", fill=(143,233,196), font=FONT)
-    d.text((40, 900), "Official promo poster — share everywhere!", fill=(95,174,143), font=FONT)
+    d.rectangle([0, 0, 800, 120], fill=INK)
+    d.text((40, 48), "DECAFLOP  x  REGIONAL TRIATHLON CHAMPIONSHIP", fill=WHITE, font=FONT)
+    d.text((40, 300), "THE FINAL RACE", fill=MINT, font=FONT)
+    d.text((40, 340), "Swim. Bike. Run. Sport pour (presque) tous.", fill=WHITE, font=FONT)
+    # swim: three waves
+    for i in range(3):
+        y = 520 + i * 22
+        for x in range(60, 220, 40):
+            d.arc([x, y, x + 40, y + 24], 200, 340, fill=MINT, width=5)
+    # bike: two wheels + frame
+    rear, front, bb, seat, head = (330, 570), (490, 570), (400, 570), (385, 515), (465, 518)
+    for cx, cy in (rear, front):
+        d.ellipse([cx - 40, cy - 40, cx + 40, cy + 40], outline=MINT, width=5)
+    for a, b in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
+        d.line([a, b], fill=MINT, width=5)
+    d.line([(370, 508), (398, 508)], fill=MINT, width=6)             # saddle
+    d.line([(465, 518), (470, 500), (488, 500)], fill=MINT, width=5)  # aero bars
+    # run: stick figure mid-stride
+    d.ellipse([640, 492, 668, 520], outline=MINT, width=5)
+    d.line([(652, 522), (640, 568)], fill=MINT, width=5)
+    d.line([(640, 568), (614, 604)], fill=MINT, width=5)
+    d.line([(640, 568), (672, 598)], fill=MINT, width=5)
+    d.line([(648, 535), (620, 552)], fill=MINT, width=5)
+    d.line([(648, 535), (680, 548)], fill=MINT, width=5)
+    d.text((40, 900), "Official promo poster - share everywhere!", fill=MINT, font=FONT)
     png = io.BytesIO(); img.save(png, "PNG"); png = png.getvalue()
 
     zbuf = io.BytesIO()
@@ -59,35 +80,39 @@ def gen_stego():
 # 03 · EXIF (easy) — flag + GPS + timestamp in metadata
 # ---------------------------------------------------------------------------
 def gen_exif():
-    f = flag("FLAG_03_EXIF", "BIATHLON{exif_placeholder}")
+    f = flag("FLAG_03_EXIF", "TRIATHLON{exif_placeholder}")
     img = Image.new("RGB", (640, 426), (120, 140, 160))
     d = ImageDraw.Draw(img)
-    d.text((20, 200), "shooting range — athletes on the mat", fill=(20,20,20), font=FONT)
+    for x in range(40, 600, 70):                       # bike racks
+        d.line([(x, 260), (x + 50, 260)], fill=(60, 60, 60), width=4)
+        d.ellipse([x, 262, x + 22, 284], outline=(30, 30, 30), width=3)
+        d.ellipse([x + 30, 262, x + 52, 284], outline=(30, 30, 30), width=3)
+    d.text((20, 200), "transition zone - bikes on the racks", fill=(20,20,20), font=FONT)
 
-    # Ostersund biathlon arena, Sweden: 63.1792 N, 14.6357 E
+    # Kalmar triathlon transition area, Sweden: 56.6634 N, 16.3568 E
     def deg(dd):
         dd = abs(dd); dmin, sec = int(dd), (dd-int(dd))*60
         mm, ss = int(sec), (sec-int(sec))*60
         return ((dmin,1),(mm,1),(int(ss*100),100))
     gps = {
         piexif.GPSIFD.GPSLatitudeRef: b"N",
-        piexif.GPSIFD.GPSLatitude: deg(63.1792),
+        piexif.GPSIFD.GPSLatitude: deg(56.6634),
         piexif.GPSIFD.GPSLongitudeRef: b"E",
-        piexif.GPSIFD.GPSLongitude: deg(14.6357),
+        piexif.GPSIFD.GPSLongitude: deg(16.3568),
     }
     zeroth = {
         piexif.ImageIFD.Make: b"DecaFlopCam",
-        piexif.ImageIFD.Model: b"DFL-RangeCam 200",
+        piexif.ImageIFD.Model: b"DFL-T2Cam 200",
         piexif.ImageIFD.ImageDescription: f.encode(),       # <-- the flag
         piexif.ImageIFD.Artist: b"crew:v.lindqvist",        # story clue
     }
     exif_ifd = {
         piexif.ExifIFD.DateTimeOriginal: b"2026:11:01 18:42:11",  # sabotage window
-        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00range photo, final-race eve",
+        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00transition zone photo, final-race eve",
     }
     exif_bytes = piexif.dump({"0th": zeroth, "Exif": exif_ifd, "GPS": gps})
-    img.save(os.path.join(OUT, "range_shot.jpg"), exif=exif_bytes, quality=85)
-    print("[03] range_shot.jpg")
+    img.save(os.path.join(OUT, "transition_shot.jpg"), exif=exif_bytes, quality=85)
+    print("[03] transition_shot.jpg")
 
 # ---------------------------------------------------------------------------
 # 05 · PCAP (medium) — HTTP Basic-Auth over plain HTTP; creds hold the flag
@@ -122,7 +147,7 @@ def _frame(src, dst, sport, dport, seq, ack, flags, http):
     return _eth(_ipv4(src, dst, 6, _tcp(sport, dport, seq, ack, flags, src, dst, http)))
 
 def gen_pcap():
-    f = flag("FLAG_05_PCAP", "BIATHLON{pcap_placeholder}")
+    f = flag("FLAG_05_PCAP", "TRIATHLON{pcap_placeholder}")
     creds = base64.b64encode(("timingop:" + f).encode()).decode()
     req = ("GET /timing/submit?bib=1042 HTTP/1.1\r\n"
            "Host: timing.decaflop.local\r\n"
@@ -144,10 +169,10 @@ def gen_pcap():
 # 07 · USB carving (medium) — a 'deleted' PNG (holding the flag) inside a raw image
 # ---------------------------------------------------------------------------
 def gen_usb():
-    f = flag("FLAG_07_USB", "BIATHLON{usb_placeholder}")
+    f = flag("FLAG_07_USB", "TRIATHLON{usb_placeholder}")
     hidden_png = text_png_bytes(
         ["RECOVERED FILE  (was deleted from the referee USB)", "", f,
-         "", "note: carved from unallocated space — nice work."],
+         "", "note: carved from unallocated space - nice work."],
         w=940, h=150, bg=(245,245,245))
     blob = bytearray()
     blob += b"DECAFLOP-REMOVABLE-MEDIA\x00FAT16\x00" + b"\x00" * 480
@@ -165,7 +190,7 @@ def gen_usb():
 # 09 · SAP USR02 (HARD, finale) — identify + crack the saboteur's legacy hash
 # ---------------------------------------------------------------------------
 def gen_sap():
-    f = flag("FLAG_09_SAP_USR02", "BIATHLON{sap_placeholder}")
+    f = flag("FLAG_09_SAP_USR02", "TRIATHLON{sap_placeholder}")
     saboteur = flag("SABOTEUR_NAME", "viktor_lindqvist").replace("_", " ").title()
     # NOTE: real SAP CODVN B (BCODE, hashcat -m 7700) is fiddly to reproduce
     # reliably offline, so for a self-hosted event we model the *legacy
@@ -174,13 +199,13 @@ def gen_sap():
     def codvn_b(pw):   # simplified legacy hash
         return hashlib.md5(pw.upper().encode()).hexdigest().upper()
 
-    operator_pw = "LANE7"            # the crackable password (also the zip password)
+    operator_pw = "CHIP7"            # the crackable password (also the zip password)
     rows = [
         # MANDT,BNAME,BCODE,CODVN,UFLAG,TRDAT,LTIME
         ("001", "RESULTS_ADMIN", codvn_b("ADMIN2019"), "B", "64", "20260715", "091500"),
         ("001", "VLINDQVIST",    codvn_b(operator_pw), "B", "00", "20261101", "184230"),
-        ("001", "MSORENSEN",     codvn_b("WINTER"),    "B", "00", "20261028", "133010"),
-        ("001", "JKOWALSKI",     codvn_b("SKI2020"),   "B", "00", "20261030", "171240"),
+        ("001", "MSORENSEN",     codvn_b("SUMMER"),    "B", "00", "20261028", "133010"),
+        ("001", "JKOWALSKI",     codvn_b("SWIM2020"),   "B", "00", "20261030", "171240"),
         ("000", "SAP*",          "",                    "A", "00", "20260101", "000000"),
     ]
     with open(os.path.join(OUT, "SAP_USR02_export.csv"), "w") as fh:
@@ -211,9 +236,9 @@ the saboteur.
 
     with open(os.path.join(OUT, "wordlist.txt"), "w") as fh:
         fh.write("\n".join([
-            "winter","summer","ski2020","admin2019","biathlon","results",
-            "lane7","rifle","target","sweden","ostersund","password",
-            "decaflop","timing","snow"]) + "\n")
+            "spring","summer","swim2020","admin2019","triathlon","results",
+            "chip7","wetsuit","transition","sweden","kalmar","password",
+            "decaflop","timing","aero"]) + "\n")
 
     # password-protected zip with the finale flag + story
     with tempfile.TemporaryDirectory() as td:
@@ -225,11 +250,11 @@ f"""CASE CLOSED.
 {f}
 
 The last logon on table ZRACE_RESULT before the sabotage was user VLINDQVIST
-(client 001), 2026-11-01 18:42 — the same timestamp as the range photo, the
+(client 001), 2026-11-01 18:42 — the same timestamp as the transition photo, the
 same operator seen in the IDOR audit log and the results-admin accounts.
 
 The saboteur is: {saboteur} (SAP user VLINDQVIST).
-He swapped the shooting-lane assignments to rig the final race.
+He swapped the timing-chip assignments to rig the final race.
 """)
         out_zip = os.path.join(OUT, "case_file.zip")
         if os.path.exists(out_zip): os.remove(out_zip)

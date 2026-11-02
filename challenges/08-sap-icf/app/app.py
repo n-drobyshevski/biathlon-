@@ -22,7 +22,7 @@ from html import escape
 from flask import Flask, Response, request, redirect
 
 app = Flask(__name__)
-FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
+FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 CSS = """
 *{box-sizing:border-box}

@@ -12,7 +12,7 @@ from html import escape
 from flask import Flask, Response, redirect, make_response, request
 
 app = Flask(__name__)
-FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
+FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 # id -> (name, role, note)
 ATHLETES = {
@@ -20,7 +20,7 @@ ATHLETES = {
            "JOURNAL D'AUDIT — liste de départ officielle 'FINAL_RACE' :\n"
            "  last modified_by = compte staff 'v.lindqvist' "
            "(utilisateur SAP miroir : VLINDQVIST)\n"
-           "  modification : couloirs de tir échangés pour 3 athlètes.\n"
+           "  modification : puces de chronométrage échangées entre 3 athlètes.\n"
            "À remonter à l'équipe résultats SAP — voir le système DFlop ERP."),
     1001: ("Chef chronométreur", "crew",
            "La cabine de chronométrage est sur le Wi-Fi staff 'DECAFLOP-TIMING'. "
@@ -28,7 +28,7 @@ ATHLETES = {
     1042: ("Vous (dossard invité)", "athlete",
            "Bienvenue, concurrent·e. Vous ne pouvez voir que votre propre profil… n'est-ce pas ?"),
     1055: ("Astrid Bjornsen", "athlete", "Favorite pour le sprint."),
-    1071: ("Mikkel Haugen", "athlete", "Excellent tireur, skieur moyen."),
+    1071: ("Mikkel Haugen", "athlete", "Excellent nageur, coureur moyen."),
 }
 
 ROLE_FR = {"admin": "admin", "crew": "staff", "athlete": "athlète"}
@@ -51,7 +51,7 @@ def shell(title, body):
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<div class="strip"><div class="in"><span>Championnat régional de biathlon · Espace athlètes</span>
+<div class="strip"><div class="in"><span>Championnat régional de triathlon · Espace athlètes</span>
 <span>Bureau de course ouvert dès 7 h 30</span></div></div>
 <header class="top"><div class="in">
  <a class="mark" href="/">DÉCA<i>FLOP</i><small>Espace athlètes</small></a>
@@ -61,7 +61,7 @@ def shell(title, body):
 
 LOGIN = """<div class="panel">
  <h1 class="h">Bienvenue</h1>
- <p>Consultez votre heure de départ, votre couloir de tir et vos consignes avant la finale.</p>
+ <p>Consultez votre vague de départ, votre place au parc à vélos et vos consignes avant la finale.</p>
  <p class="note db" style="margin:0 0 18px">Pour la démo, la connexion est désactivée.
   Continuez en tant que concurrent·e invité·e.</p>
  <a class="btn blue" href="/login">Continuer avec le dossard n° 1042</a>

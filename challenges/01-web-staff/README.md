@@ -8,7 +8,7 @@
 
 Find the staff portal and read the flag.
 
-**Flag format:** `BIATHLON{...}`
+**Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−10)</summary>What file do crawlers read before indexing a site?</details>
 <details><summary>Hint 2 (−20)</summary>Visit <code>/robots.txt</code> and go to the path it tries to hide.</details>

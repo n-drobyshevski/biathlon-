@@ -51,7 +51,7 @@ extra RAM.
 |---|-----------|-----|
 | 01 | The Sponsor's Secret | 50 |
 | 02 | Share Everywhere | 50 |
-| 03 | At the Range | 75 |
+| 03 | In Transition | 75 |
 | 04 | Not Your Profile | 100 |
 | 05 | The Timing Booth | 100 |
 | 06 | Results Admin | 125 |

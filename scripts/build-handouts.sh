@@ -29,7 +29,7 @@ ls -la handouts/dist/
 echo
 echo "Hand these out (per challenge):"
 echo "  02 stego    -> decaflop_poster.png"
-echo "  03 exif     -> range_shot.jpg"
+echo "  03 exif     -> transition_shot.jpg"
 echo "  05 pcap     -> timing_booth.pcap"
 echo "  07 usb      -> referee_usb.img"
 echo "  09 sap      -> SAP_USR02_export.csv  + sap_hint.txt"

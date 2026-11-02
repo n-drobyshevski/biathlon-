@@ -9,7 +9,7 @@
 This is a (simulated) SAP NetWeaver / Fiori system. Two real-world SAP
 mistakes will get you administrative access and the flag.
 
-**Flag format:** `BIATHLON{...}`
+**Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−25)</summary>Some SAP ICF services are reachable without logging in. Try <code>/robots.txt</code>, then <code>/sap/public/info</code> and read the Basis note carefully.</details>
 <details><summary>Hint 2 (−40)</summary>When the <b>SAP*</b> emergency user is deleted and not recreated, SAP falls back to a hard-coded default password. Look up "SAP* default password". Log on to client <code>001</code> as user <code>SAP*</code>.</details>
