@@ -25,7 +25,7 @@ from flask import Flask, Response, redirect, request
 app = Flask(__name__)
 
 
-TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/contacts", "Contacts")]
+TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"), ("/contacts", "Contacts")]
 
 # Formula bar follows the clicked cell; "Statut" choices are kept in the
 # player's own browser (localStorage), never sent anywhere.
@@ -75,6 +75,11 @@ def html(page, status=200):
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()
 CTFD_PORT = os.environ.get("CTFD_PORT", "").strip()
+# Browser toolbox on the Pi (for locked-down laptops): CyberChef + a web terminal.
+CYBERCHEF_PORT = os.environ.get("CYBERCHEF_PORT", "").strip()
+TERMINAL_PORT = os.environ.get("TERMINAL_PORT", "").strip()
+CYBERCHEF_URL = os.environ.get("CYBERCHEF_URL", "").strip()
+TERMINAL_URL = os.environ.get("TERMINAL_URL", "").strip()
 
 
 def ctfd_ids():
@@ -185,6 +190,16 @@ def service_url(key):
     return f"http://{host}:{port}/"
 
 
+def tool_url(override, port):
+    """A browser tool hosted on the player's own host (CyberChef :8090, terminal :8091)."""
+    if override:
+        return override.rstrip("/") + "/"
+    if not port:
+        return ""
+    host = request.host.rsplit(":", 1)[0] if not request.host.endswith("]") else request.host
+    return f"http://{host}:{port}/"
+
+
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Partage DFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
@@ -277,10 +292,41 @@ def context():
                             "interne (:8020). L'identifiant de connexion est affiché sur le portail "
                             "staff du site DécaFlop (mission 01)."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
+        ("Outils", "Poste verrouillé ? Tout est accessible au navigateur — voir l'onglet "
+                   "<a href=\"/outils\">Outils</a> (CyberChef et terminal d'équipe, hébergés sur le Pi)."),
         ("Tableau des scores", score),
     ]]
     return html(layout("Contexte · suivi_incident_finale_2026", fr(grid(["Élément", "Valeur"], rows)),
                        "/contexte", "A1", "Élément"))
+
+
+@app.get("/outils")
+def outils():
+    cc = tool_url(CYBERCHEF_URL, CYBERCHEF_PORT)
+    term = tool_url(TERMINAL_URL, TERMINAL_PORT)
+    board = scoreboard_url()
+
+    def addr(u):
+        return ((f'<a href="{escape(u)}">{escape(u)}</a>', ' class="desc"') if u
+                else ('<span class="mute">non configuré</span>', ' class="desc"'))
+
+    rows = [("", [(name, ""), addr(u), (desc, ' class="desc"')]) for name, u, desc in [
+        ("CyberChef", cc,
+         "Base64, EXIF, dézip (même protégé), carving de fichiers, MD5, décodage et "
+         "signature de JWT — tout dans le navigateur, rien à installer."),
+        ("Terminal d'équipe", term,
+         "Un shell Linux dans le navigateur : git-dumper, john, binwalk, foremost, "
+         "exiftool, curl, python3. Chaque connexion a son propre espace de travail."),
+        ("Tableau des scores", board,
+         "CTFd : équipes, soumission des flags, indices et classement."),
+    ]]
+    note = ('<p class="note"><b>Poste verrouillé ?</b> Pas besoin d\'installer quoi que ce '
+            'soit : un simple navigateur suffit. CyberChef couvre la plupart des épreuves ; '
+            'le terminal d\'équipe sert de filet pour le reste (surtout récupérer un dépôt '
+            '<code>.git</code>). Tout tourne sur le Pi, hors ligne.</p>')
+    return html(layout("Outils · suivi_incident_finale_2026",
+                       fr(grid(["Outil", "Adresse", "À quoi ça sert"], rows)),
+                       "/outils", "A1", "Outil", fr(note)))
 
 
 @app.get("/contacts")
