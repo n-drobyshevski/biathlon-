@@ -17,6 +17,12 @@ fi
 # random lowercase-hex token
 tok() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | cut -c1-"${1:-12}"; }
 
+# Settings added by hand (CTFd token, host, scoreboard URL) and the CTFd
+# secret survive a flag rotation: read them from the old .env first.
+keep() { [[ -f "$ENV_FILE" ]] && grep -E "^$1=" "$ENV_FILE" | tail -1 || true; }
+KEEP_TOKEN=$(keep CTFD_TOKEN); KEEP_HOST=$(keep CTF_HOST); KEEP_URL=$(keep SCOREBOARD_URL)
+KEEP_SECRET=$(keep CTFD_SECRET_KEY)
+
 # Triathlon-themed flag bodies + a random suffix. The bodies are intentionally
 # NON-spoiling (they don't reveal any challenge's technique), so even though
 # this script is committed, nothing here helps a player solve or submit — the
@@ -39,8 +45,15 @@ FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
 SABOTEUR_NAME=viktor_lindqvist
 
-# Optional: adds a "Soumettre un flag" button to the cellule de crise (hub, :8080).
-# SCOREBOARD_URL=http://192.168.8.2:8000
+# CTFd session key (kept across rotations)
+${KEEP_SECRET:-CTFD_SECRET_KEY=$(tok 32)}
+
+# CTFd admin token for scripts/ctfd-setup.py (CTFd: Settings > Access Tokens)
+${KEEP_TOKEN:-# CTFD_TOKEN=ctfd_...}
+# Address players use to reach the Pi (used in CTFd descriptions)
+${KEEP_HOST:-# CTF_HOST=192.168.8.2}
+# Optional: override the scoreboard link shown in the cellule de crise
+${KEEP_URL:-# SCOREBOARD_URL=http://192.168.8.2:8000}
 EOF
 
 chmod 600 "$ENV_FILE"

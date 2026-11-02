@@ -67,6 +67,10 @@ docker compose up -d --build
 
 # 3) build the forensics / stego / SAP handout files -> handouts/dist/
 ./scripts/build-handouts.sh
+
+# 4) scoreboard: finish CTFd's setup wizard at http://<PiIP>:8000 (mode "Teams"),
+#    put CTFD_TOKEN + CTF_HOST in .env, then load the 9 challenges:
+python3 scripts/ctfd-setup.py
 ```
 
 **Players only need one address: `http://<PiIP>:8080`.**
@@ -85,6 +89,7 @@ Live services after step 2:
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
 | 8008 | 08 SAP DFlop ERP |
+| 8000 | CTFd scoreboard: teams, flags, hints, ranking |
 
 Handout files after step 3 (downloadable from the cellule de crise as soon as they
 are built; you can also attach them in CTFd or pass a USB stick around):
@@ -107,12 +112,14 @@ setup, resource notes, reset, and the pre-event test checklist.
 
 ```bash
 docker compose down            # stop challenges
-./scripts/gen-flags.sh         # rotate flags (overwrite .env)
+./scripts/gen-flags.sh         # rotate flags (keeps CTFD_TOKEN / CTF_HOST)
 docker compose up -d --build   # restart with new flags
 ./scripts/build-handouts.sh    # rebuild handouts with new flags
+python3 scripts/ctfd-setup.py  # push the new flags to CTFd
 ```
 
-Update the flags in your scoreboard to match the new `.env` after rotating.
+The last line pushes the new flags to CTFd; teams and scores are kept. To wipe
+them too, use `docker compose down -v` and redo CTFd's setup wizard.
 
 ---
 
@@ -128,6 +135,7 @@ handouts/              generator for all downloadable forensics/SAP files
 scoreboard/            how to run a scoreboard on the Pi (CTFd-lite / static)
 scripts/
   gen-flags.sh         create .env with fresh random flags
+  ctfd-setup.py        load the 9 challenges (flags, hints) into CTFd
   build-handouts.sh    build the handout files in handouts/dist/
 docker-compose.yml     the live web + SAP challenges
 .env.example           flag template (the real .env is git-ignored)

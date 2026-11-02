@@ -33,6 +33,7 @@ cd biathlon-
 ./scripts/gen-flags.sh
 docker compose up -d --build
 ./scripts/build-handouts.sh
+# then the scoreboard: see scoreboard/README.md (setup wizard + ctfd-setup.py)
 ```
 
 > Build the images **once while you still have internet** (the base
@@ -44,7 +45,7 @@ docker compose up -d --build
 | Component | Approx RAM |
 |-----------|-----------|
 | 4 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.3–0.5 GB actual |
-| CTFd (if used) | ~0.4–0.7 GB |
+| CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
@@ -75,7 +76,10 @@ Run through this once, ideally the day before:
 - [ ] From a second device on the travel router, open
       `http://<PiIP>:8080`: 9 missions, every download works,
       every "Ouvrir…" button reaches its challenge
-- [ ] Scoreboard loads and accepts a test flag
+- [ ] CTFd at `:8000`: setup wizard done (Teams mode), `ctfd-setup.py` loaded
+      9 challenges; a test team can register, submit a flag and unlock a hint
+- [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
+      open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
 
 ## During the event

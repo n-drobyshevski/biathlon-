@@ -7,7 +7,8 @@ live challenge and downloads for every handout.
   there, read-only). Only the whitelisted file names below can be downloaded.
 - Links to the other live challenges reuse the host the player typed, with the
   default ports; override with IDOR_URL / SQLI_URL / SAP_URL if needed.
-- SCOREBOARD_URL (optional) adds a "submit a flag" button.
+- Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
+  overrides the address. Teams submit flags there.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
 """
 import os
@@ -46,8 +47,8 @@ SCRIPT = """<script>
 def layout(title, body, tab="/", cell="", formula="", note=""):
     here = ' aria-current="page"'
     tabs = "".join(f'<a href="{h}"{here if h == tab else ""}>{t}</a>' for h, t in TABS)
-    score = (f'<a class="score" href="{escape(SCOREBOARD_URL)}">Tableau des scores ↗</a>'
-             if SCOREBOARD_URL else "")
+    board = scoreboard_url()
+    score = (f'<a class="score" href="{escape(board)}scoreboard">Tableau des scores ↗</a>' if board else "")
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
@@ -67,6 +68,17 @@ def html(page, status=200):
 
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()
+CTFD_PORT = os.environ.get("CTFD_PORT", "").strip()
+
+
+def scoreboard_url():
+    """CTFd's address: SCOREBOARD_URL if set, else the player's host on CTFD_PORT."""
+    if SCOREBOARD_URL:
+        return SCOREBOARD_URL.rstrip("/") + "/"
+    if CTFD_PORT:
+        host = request.host.rsplit(":", 1)[0] if not request.host.endswith("]") else request.host
+        return f"http://{host}:{CTFD_PORT}/"
+    return ""
 
 # mission files: name -> short label shown on the button
 FILES = {
@@ -196,10 +208,13 @@ def access(live, files):
 @app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
+    board = scoreboard_url()
+    submit = (f'<a class="submit" href="{escape(board)}challenges">Soumettre le flag ↗</a>' if board else "")
     rows = []
     for num, title, cat, level, pts, brief, live, files in MISSIONS:
         status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
-                  '<option>À faire</option><option>En cours</option><option>Résolu</option></select>')
+                  '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
+                  + submit)
         rows.append((f' class="mission" id="mission-{num}"', [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
@@ -213,7 +228,9 @@ def crisis_cell():
                 rows, total_row, "frozen")
     note = (f'<p class="note"><b>Contexte :</b> la veille de la finale, la liste de départ a été truquée '
             f'en échangeant les puces de chronométrage. Suivez la piste jusqu\'au coupable. '
-            f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · 9 missions, {total} points · '
+            f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · 9 missions, {total} points'
+            + (f' · à soumettre sur le <a href="{escape(board)}">tableau des scores</a>' if board else "")
+            + ' · '
             f'détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
     return html(layout("Missions · suivi_incident_finale_2026", fr(body), "/", f"F{n}",
                        f"=SOMME(F2:F{n-1})", fr(note)))
@@ -221,7 +238,8 @@ def crisis_cell():
 
 @app.get("/contexte")
 def context():
-    score = (f'<a href="{escape(SCOREBOARD_URL)}">{escape(SCOREBOARD_URL)}</a>' if SCOREBOARD_URL
+    board = scoreboard_url()
+    score = (f'<a href="{escape(board)}">{escape(board)}</a> (équipes, flags, indices et classement)' if board
              else "fourni par l'organisation")
     rows = [("", [(k, ""), (v, ' class="desc"')]) for k, v in [
         ("Incident", "Liste de départ de la finale falsifiée"),
