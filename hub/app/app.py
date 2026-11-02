@@ -146,30 +146,29 @@ MISSIONS = [
      "Prouvez qui a fait le coup.", "share", []),
     # --- Audit complémentaire : failles trouvées après l'enquête ---
     ("10", "Identifiants forgés", "Web", "Difficile", 175,
-     "L'API des résultats délivre un jeton de session (JWT) et réserve les "
-     "données officielles au rôle admin. Le jeton est signé avec un secret "
-     "devinable : forgez un jeton admin.", "jwt", []),
+     "L'API des résultats délivre un jeton de session et réserve les données "
+     "officielles au rôle admin. À vous d'obtenir cet accès.", "jwt", []),
     ("11", "Supprimé, pas effacé", "Web", "Difficile", 150,
-     "Le site de chronométrage est déployé avec son dossier .git exposé. "
-     "Quelqu'un a retiré le jeton d'export « par sécurité » — mais git garde "
-     "tout. Récupérez le secret dans l'historique.", "git", []),
+     "Le site de chronométrage a été mis en ligne un peu trop vite. Un jeton "
+     "d'export a été retiré de la configuration « par sécurité » juste avant "
+     "le déploiement. Retrouvez-le.", "git", []),
     ("12", "Imprimez le vôtre", "Web", "Difficile", 175,
-     "Le générateur de certificats de finaliste insère votre nom directement "
-     "dans un gabarit côté serveur. Faites-lui afficher ce qu'il ne devrait "
-     "pas (injection de gabarit).", "ssti", []),
+     "Le générateur de certificats de finaliste reprend le nom que vous "
+     "saisissez pour composer le document. Il est un peu trop littéral sur ce "
+     "nom.", "ssti", []),
     ("13", "Enregistré par confort", "SAP", "Facile", 75,
      "Un raccourci SAP GUI (.sap) trouvé sur un portable de l'équipe a "
      "« enregistré le mot de passe » du DFlop ERP. Il est dans le partage interne "
      "(IT / Sauvegardes postes / portable-equipe-03). Récupérez-le.", "share", []),
     ("14", "Le gateway ouvert", "SAP", "Moyen", 150,
-     "Le moniteur du gateway SAP DFlop est exposé et ses ACL reginfo/secinfo "
-     "sont par défaut. Lisez l'état de sécurité, puis faites ce qu'une ACL "
-     "absente permet.", "sapgw", []),
+     "Le moniteur du gateway SAP DFlop est accessible depuis le réseau de "
+     "l'événement, et personne n'a verrouillé qui peut s'y connecter. Voyez "
+     "jusqu'où va cette exposition.", "sapgw", []),
     ("15", "En dur", "SAP", "Moyen", 150,
      "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
-     "Son jeton d'export « non committé » est pourtant dans le code, assemblé "
-     "morceau par morceau. La source est dans le partage interne "
-     "(Basis SAP / Développements). Relisez la source.", "share", []),
+     "Son jeton d'export n'est « pas censé » figurer dans le code. La source "
+     "est dans le partage interne (Basis SAP / Développements) : lisez-la et "
+     "jugez.", "share", []),
 ]
 
 PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
