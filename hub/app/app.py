@@ -11,6 +11,7 @@ live challenge and downloads for every handout.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
 """
 import os
+from html import escape
 
 from flask import Flask, Response, abort, redirect, request, send_from_directory
 
@@ -22,12 +23,12 @@ def layout(title, body):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
 <header class="top"><div class="in">
- <a class="mark" href="/"><span class="dot" aria-hidden="true"></span>CELLULE DE CRISE</a>
- <span class="org">DécaFlop · usage interne · équipe IT d'urgence</span>
+ <a class="mark" href="/">DécaFlop <span>/ Cellule de crise</span></a>
+ <span class="org">Usage interne</span>
 </div></header>
-<main id="main">{body}</main>
-<footer class="foot"><div class="in"><span>DécaFlop · usage interne</span>
-<span>Finale 2026</span></div></footer></body></html>"""
+<main id="main"><div class="in">{body}</div></main>
+<footer class="foot"><div class="in">DécaFlop — usage interne · finale 2026</div></footer>
+</body></html>"""
 
 
 def html(page, status=200):
@@ -126,57 +127,64 @@ LIVE_LABEL = {"site": "Ouvrir le site DécaFlop", "idor": "Ouvrir l'espace athl�
               "sqli": "Ouvrir l'admin résultats", "sap": "Ouvrir SAP DFlop ERP"}
 
 
-def mission_card(num, title, cat, level, pts, brief, live, files):
-    from html import escape
-    actions = []
+def fr(text):
+    """French typography: non-breaking spaces inside guillemets and before : ? !"""
+    nb = "\u00a0"
+    for a, b in (("« ", "«" + nb), (" »", nb + "»"), (" :", nb + ":"), (" ?", nb + "?"), (" !", nb + "!")):
+        text = text.replace(a, b)
+    return text
+
+
+def mission_row(num, title, cat, level, pts, brief, live, files):
+    links = []
     if live:
-        actions.append(f'<a class="btn blue" href="{escape(service_url(live))}">{LIVE_LABEL[live]}</a>')
+        links.append(f'<li><a href="{escape(service_url(live))}">{LIVE_LABEL[live]}</a></li>')
     for name in files:
         size = file_info(name)
         if size:
-            actions.append(f'<a class="dl" href="/fichiers/{name}" download>'
-                           f'<b>{FILES[name]}</b><span>{name} · {size}</span></a>')
+            links.append(f'<li><a class="file" href="/fichiers/{name}" download>{name}</a>'
+                         f' <span class="size">{size}</span></li>')
         else:
-            actions.append(f'<span class="dl off"><b>{FILES[name]}</b>'
-                           f'<span>{name} · pas encore disponible</span></span>')
-    return f"""<article class="mission" id="mission-{num}">
- <div class="mhead"><span class="mnum">{num}</span>
-  <span class="tag cat">{cat}</span><span class="tag {LEVEL_CLASS[level]}">{level}</span>
-  <span class="pts">{pts} pts</span></div>
- <h3 class="h">{title}</h3>
- <p>{brief}</p>
- <div class="mact">{"".join(actions)}</div>
-</article>"""
+            links.append(f'<li><span class="file off">{name}</span>'
+                         f' <span class="size">pas encore disponible</span></li>')
+    return f"""<tr class="mission" id="mission-{num}">
+ <td class="num">{num}</td>
+ <td class="what"><b>{fr(title)}</b><p>{fr(brief)}</p></td>
+ <td class="meta"><span>{cat}</span><span class="{LEVEL_CLASS[level]}">{level}</span></td>
+ <td class="pts">{pts}</td>
+ <td class="access"><ul>{"".join(links)}</ul></td>
+</tr>"""
 
 
 @app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
-    from html import escape
-    score = (f'<a class="btn" href="{escape(SCOREBOARD_URL)}">Soumettre un flag</a>' if SCOREBOARD_URL
-             else '<span class="small">Soumettez vos flags sur le tableau des scores de l\'organisation.</span>')
-    body = f"""<section class="banner slim crisis"><div class="in">
- <div>
-  <span class="tagline">Incident en cours · Finale 2026</span>
-  <h1 class="h">Cellule <em>de crise</em></h1>
-  <p>La veille de la finale, quelqu'un s'est introduit dans les systèmes de
-     l'événement et a <b>truqué la liste de départ</b> en échangeant les puces de
-     chronométrage. Vous êtes l'équipe IT d'urgence : suivez la piste à travers le
-     site DécaFlop, la cabine de chronométrage, la clé USB d'un arbitre et le
-     système <b>SAP DFlop ERP</b>. La dernière mission désigne le coupable.</p>
-  {score}
- </div>
-</div></section>
-<section class="sec"><div class="in">
- <div class="rules">
-  <div><b>Format des flags</b><code>TRIATHLON{{...}}</code></div>
-  <div><b>Missions</b>9 missions · {total} points</div>
-  <div><b>Ordre</b>Conseillé dans l'ordre, mais chaque mission se joue seule</div>
-  <div><b>Périmètre</b>Uniquement les services et fichiers listés ici. Pas besoin d'internet.</div>
- </div>
- <div class="missions">{"".join(mission_card(*m) for m in MISSIONS)}</div>
-</div></section>"""
-    return html(layout("Cellule de crise · DécaFlop", body))
+    score = (f'<a href="{escape(SCOREBOARD_URL)}">Tableau des scores</a>' if SCOREBOARD_URL
+             else "tableau des scores fourni par l'organisation")
+    body = f"""<section class="doc-head">
+ <p class="status">Incident en cours · finale 2026</p>
+ <h1>Cellule de crise</h1>
+ <p class="lede">La veille de la finale, quelqu'un s'est introduit dans les systèmes de
+  l'événement et a truqué la liste de départ en échangeant les puces de chronométrage.
+  Vous êtes l'équipe IT d'urgence : suivez la piste à travers le site DécaFlop, la cabine
+  de chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière
+  mission désigne le coupable.</p>
+ <dl class="facts">
+  <dt>Format des flags</dt><dd><code>TRIATHLON{{...}}</code></dd>
+  <dt>Missions</dt><dd>9 missions, {total} points</dd>
+  <dt>Ordre</dt><dd>Conseillé dans l'ordre, mais chaque mission se joue seule</dd>
+  <dt>Périmètre</dt><dd>Uniquement les services et fichiers listés ici. Pas besoin d'internet.</dd>
+  <dt>Flags</dt><dd>À soumettre sur le {score}</dd>
+ </dl>
+</section>
+<section class="board">
+ <h2>Missions</h2>
+ <table>
+  <thead><tr><th>N°</th><th>Mission</th><th>Catégorie</th><th>Points</th><th>Accès</th></tr></thead>
+  <tbody>{"".join(mission_row(*m) for m in MISSIONS)}</tbody>
+ </table>
+</section>"""
+    return html(layout("Cellule de crise · DécaFlop", fr(body)))
 
 
 @app.get("/cellule-de-crise")
@@ -186,9 +194,9 @@ def old_path():
 
 @app.errorhandler(404)
 def not_found(_e):
-    return html(layout("Introuvable · Cellule de crise", """<div class="page"><div class="panel">
- <h1 class="h">Introuvable</h1><p class="mute">Cette page ou ce fichier n'existe pas.</p>
- <a class="btn blue" href="/">Retour à la cellule de crise</a></div></div>"""), 404)
+    return html(layout("Introuvable · Cellule de crise", """<section class="doc-head">
+ <h1>Introuvable</h1><p class="lede">Cette page ou ce fichier n'existe pas.</p>
+ <p><a href="/">Retour à la cellule de crise</a></p></section>"""), 404)
 
 
 if __name__ == "__main__":
