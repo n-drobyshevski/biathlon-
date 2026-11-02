@@ -157,7 +157,7 @@ them too, use `docker compose down -v` and redo CTFd's setup wizard.
 ```
 challenges/            one folder per challenge (player README + web app code)
 hub/                   "cellule de crise": players' entry point (port 8080)
-share/                 "Partage DFlop": internal file share (port 8020, not a challenge)
+share/                 "Partage DFlop": intranet site + internal file share (port 8020, not a challenge)
 handouts/              generator for all forensics/SAP evidence files
   generate.py          builds every handout from .env flags
   assets/              base photo for 03 (AI-generated, metadata stripped)
@@ -171,3 +171,9 @@ docker-compose.yml     the live web + SAP challenges
 .env.example           flag template (the real .env is git-ignored)
 WRITEUPS/              organizer solutions (git-ignored, shared privately)
 ```
+
+Every internal tool (the share, the staff portal and challenges 04, 06, 10,
+11, 12, 14) shares one intranet look: `intranet.py` (page chrome) and
+`static/intranet.css`. Each Docker build only sees its own folder, so the two
+files are copied into every app; `tests/test_intranet_assets.py` fails if a
+copy drifts. Edit them in `share/app/`, then copy them to the others.

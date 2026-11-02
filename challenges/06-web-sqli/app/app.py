@@ -7,9 +7,15 @@ classic injection logs you in without a password.
 Example:  username =  ' OR '1'='1' --        password = anything
 Teaches: SQL injection, auth bypass, why you parameterize queries.
 """
-import os, sqlite3
+import os
+import sqlite3
+import sys
 from html import escape
+
 from flask import Flask, Response, request, redirect
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import intranet  # noqa: E402
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
@@ -25,81 +31,69 @@ def db():
     con.commit()
     return con
 
-COPY_JS = """<script>
-function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
- function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
-  a.style.opacity='0';document.body.appendChild(a);a.select();
-  try{document.execCommand('copy');ok()}catch(e){}a.remove()}
- if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,legacy)}
- else{legacy()}}
-</script>"""
+PRODUCT = "ChronoRésultats 2.8.1 · module admin"
 
-def shell(title, body, right=""):
-    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<div class="strip"><div class="in"><span>Admin résultats · réservé au staff autorisé</span>
-<span>Finale — résultats figés à 16 h 00</span></div></div>
-<header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Admin résultats</small></a>
- <nav class="acct">{right}</nav>
-</div></header>
-{body}</body></html>"""
+
+def shell(title, body, user=None):
+    return intranet.page(f"{title} - Admin résultats", body, app="resultats",
+                         site_title="Admin résultats", site_href="/", logo="AR",
+                         topnav=[("/", "Tableau de bord", True)], user=user,
+                         logout="/" if user else None, product=PRODUCT,
+                         foot_extra="Finale\u00a0: résultats figés à 16 h 00",
+                         scripts=intranet.COPY_JS)
+
 
 def FORM(msg="", username=""):
     # The typed username is kept (HTML-escaped) so players can tweak a payload
     # instead of retyping it. The SQL itself is still built from raw input.
-    return shell("DécaFlop · Admin résultats", f"""<main class="page" style="max-width:460px">
-<div class="panel">
- <h1 class="h">Connexion</h1>
- <p class="mute small" style="margin:0 0 18px">Gestion officielle des résultats. Réservé au staff autorisé.</p>
- {msg}
- <form method="post" action="/login">
-  <div class="field"><label for="u">Nom d'utilisateur</label>
-   <input id="u" name="username" value="{escape(username)}" autofocus
-    autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
-  <div class="field"><label for="p">Mot de passe</label>
-   <input id="p" name="password" type="password" autocomplete="off"></div>
-  <button class="btn blue wide">Se connecter</button>
- </form>
- <details class="forgot"><summary>Mot de passe oublié ?</summary>
-  <p>Contactez le bureau de course (poste 214). Les mots de passe ne sont
-   jamais envoyés par e-mail.</p></details>
-</div>
-<p class="small mute">Ne partagez jamais un compte staff.</p>
-</main>""")
+    return shell("Connexion", f"""<h1 class="h1">Connexion</h1>
+<p class="lead">Gestion officielle des résultats. Réservé au staff autorisé.</p>
+{msg}
+<form class="form" method="post" action="/login">
+ <div class="field"><label for="u">Nom d'utilisateur</label>
+  <input class="in" id="u" name="username" value="{escape(username)}" autofocus
+   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+ <div class="field"><label for="p">Mot de passe</label>
+  <input class="in" id="p" name="password" type="password" autocomplete="off"></div>
+ <div class="btns"><button class="btn" type="submit">Se connecter</button></div>
+</form>
+<p class="mute" style="margin-top:18px;font-size:12px">Mot de passe oublié&#160;? Contactez le bureau de course
+ (poste 214). Les mots de passe ne sont jamais envoyés par e-mail.<br>Ne partagez jamais un compte staff.</p>""")
 
 STANDINGS = [("1", "Astrid Bjornsen", "0", "1:02:14"),
              ("2", "Mikkel Haugen", "1", "1:02:51"),
              ("3", "—", "—", "en attente")]
 
 def ok_page():
-    rows = "".join(f"<tr><td>{r}</td><td>{n}</td><td>{m}</td><td>{t}</td></tr>"
+    rows = "".join(f'<tr><td class="num">{r}</td><td>{n}</td><td class="num">{m}</td><td class="num">{t}</td></tr>'
                    for r, n, m, t in STANDINGS)
-    return shell("Admin résultats", f"""<main class="page">
-<div class="crumb">résultats / tableau de bord</div>
-<div class="panel">
- <h1 class="h">Connecté·e</h1>
- <p class="mute" style="margin:0">Tableau de bord de l'admin résultats.</p>
- <div class="flag"><span>Flag</span><code id="flag">{FLAG}</code>
-  <button type="button" onclick="copyFlag(this)">Copier</button></div>
- <div class="log"><pre>AVIS — SYSTÈME DE RÉSULTATS
+    return shell("Tableau de bord", f"""<h1 class="h1">Tableau de bord</h1>
+<p class="status">Session administrateur ouverte. Toute modification du classement est journalisée.</p>
+<div class="cols"><div>
+ <section class="wp"><h2>Finale · classement provisoire</h2>
+  <p class="mute" style="font-size:12px">Copie en lecture seule de la table SAP ZRACE_RESULT.</p>
+  <table class="list data"><thead><tr><th style="width:60px">Rang</th><th>Athlète</th>
+   <th style="width:90px">Pénalités</th><th style="width:100px">Temps</th></tr></thead>
+  <tbody>{rows}</tbody></table>
+ </section>
+ <section class="wp"><h2>Avis</h2><div class="log"><pre>AVIS — SYSTÈME DE RÉSULTATS
 ---------------------------
 Les résultats officiels sont stockés dans le SAP DFlop ERP (table ZRACE_RESULT).
 Cette admin web n'est qu'une interface. Pour savoir QUI a modifié le classement
 final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.
 
 Migration en cours : cette admin web est remplacée par une nouvelle API de
-résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div>
-</div>
-<div class="panel">
- <h2 class="h">Finale · classement provisoire</h2>
- <p class="small mute" style="margin:0 0 10px">Copie en lecture seule de la table SAP ZRACE_RESULT.</p>
- <table class="std"><thead><tr><th>Rang</th><th>Athlète</th><th>Pénalités</th><th>Temps</th></tr></thead>
- <tbody>{rows}</tbody></table>
-</div>
-</main>{COPY_JS}""", right='<a href="/">Se déconnecter</a>')
+résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div></section>
+</div><div>
+ <section class="wp"><h2>Code de validation du classement</h2>
+  <p class="mute" style="font-size:12px">À saisir dans SAP lors de la publication des résultats officiels.</p>
+  {intranet.codebox(FLAG)}
+ </section>
+ <section class="wp"><h2>Système</h2><dl class="kv">
+  <dt>Base</dt><dd>resultats_finale (lecture seule)</dd><dt>Source</dt><dd>SAP DFL · mandant 001</dd>
+  <dt>Gel</dt><dd>16 h 00</dd></dl></section>
+</div></div>""", user="Administrateur")
+
 
 @app.get("/")
 def home():
@@ -111,10 +105,8 @@ def login_get():
 
 @app.errorhandler(404)
 def not_found(_e):
-    return Response(shell("Page introuvable", """<main class="page" style="max-width:460px">
-<div class="panel"><h1 class="h">Page introuvable</h1>
- <p class="mute">Cette page n'existe pas.</p>
- <a class="btn blue" href="/">Retour à la connexion</a></div></main>"""),
+    return Response(shell("Page introuvable", """<h1 class="h1">Page introuvable</h1>
+<p class="lead">Cette page n'existe pas.</p><p><a href="/">Retour à la connexion</a></p>"""),
         status=404, mimetype="text/html")
 
 @app.post("/login")
@@ -126,13 +118,13 @@ def login():
     try:
         row = db().execute(q).fetchone()
     except sqlite3.Error as e:
-        return Response(FORM(msg=f'<div class="note db" role="alert"><b>Erreur de base de données</b>'
+        return Response(FORM(msg=f'<div class="status err" role="alert"><b>Erreur de base de données</b>'
                              f'<pre>Erreur SQL : {escape(str(e))}</pre></div>',
                              username=u),
                         mimetype="text/html")
     if row:
         return Response(ok_page(), mimetype="text/html")
-    return Response(FORM(msg='<div class="note err" role="alert">Identifiants incorrects.</div>',
+    return Response(FORM(msg='<div class="status err" role="alert">Identifiants incorrects.</div>',
                          username=u),
                     mimetype="text/html")
 

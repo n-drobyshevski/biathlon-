@@ -14,6 +14,8 @@ at startup by entrypoint.sh; this app just serves the webroot — INCLUDING the
 """
 import html
 import os
+import time
+from urllib.parse import quote
 
 from flask import Flask, Response, abort, send_from_directory
 
@@ -22,13 +24,24 @@ SITE = os.path.realpath(os.environ.get("SITE_DIR", "/srv/site"))
 
 
 def autoindex(urlpath, fsdir):
-    entries = sorted(os.listdir(fsdir))
-    rows = ['<li><a href="../">../</a></li>'] if urlpath.strip("/") else []
-    for name in entries:
-        slash = "/" if os.path.isdir(os.path.join(fsdir, name)) else ""
-        rows.append(f'<li><a href="{html.escape(name)}{slash}">{html.escape(name)}{slash}</a></li>')
-    body = (f"<!doctype html><meta charset='utf-8'><title>Index of /{html.escape(urlpath)}</title>"
-            f"<h2>Index of /{html.escape(urlpath)}</h2><ul>{''.join(rows)}</ul>")
+    """Directory listing in the format of nginx's autoindex (name, date, size)."""
+    title = f"Index of /{html.escape(urlpath)}"
+    lines = ['<a href="../">../</a>'] if urlpath.strip("/") else []
+    names = sorted(os.listdir(fsdir))
+    dirs = [n for n in names if os.path.isdir(os.path.join(fsdir, n))]
+    files = [n for n in names if n not in dirs]
+    for name in dirs + files:
+        full = os.path.join(fsdir, name)
+        is_dir = name in dirs
+        shown = name + ("/" if is_dir else "")
+        label = shown if len(shown) <= 50 else shown[:47] + "..>"
+        pad = " " * (51 - len(label))
+        st = os.stat(full)
+        date = time.strftime("%d-%b-%Y %H:%M", time.gmtime(st.st_mtime))
+        size = "-" if is_dir else str(st.st_size)
+        lines.append(f'<a href="{html.escape(quote(shown))}">{html.escape(label)}</a>{pad}{date} {size:>19}')
+    body = (f"<html>\r\n<head><title>{title}</title></head>\r\n<body>\r\n"
+            f"<h1>{title}</h1><hr><pre>" + "\r\n".join(lines) + "\r\n</pre><hr></body>\r\n</html>\r\n")
     return Response(body, mimetype="text/html")
 
 

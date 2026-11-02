@@ -8,8 +8,13 @@ DécaFlop Athlete Portal. You are logged in as bib #1042. The profile page is
 Teaches: Insecure Direct Object Reference, horizontal privilege escalation.
 """
 import os
+import sys
 from html import escape
+
 from flask import Flask, Response, redirect, make_response, request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import intranet  # noqa: E402
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
@@ -25,72 +30,119 @@ ATHLETES = {
     1001: ("Chef chronométreur", "crew",
            "La cabine de chronométrage est sur le Wi-Fi staff 'DECAFLOP-TIMING'. "
            "Arrêtez d'envoyer l'identifiant de la cabine en HTTP en clair !"),
-    1042: ("Vous (dossard invité)", "athlete",
-           "Bienvenue, concurrent·e. Vous ne pouvez voir que votre propre profil… n'est-ce pas ?"),
+    1042: ("Invité — Équipe IT d'urgence", "athlete", ""),
     1055: ("Astrid Bjornsen", "athlete", "Favorite pour le sprint."),
     1071: ("Mikkel Haugen", "athlete", "Excellent nageur, coureur moyen."),
 }
 
+# Race record shown on athlete profiles: (category, start wave, bike rack, licence)
+RACE = {
+    1042: ("Invité (hors classement)", "Vague 3 · 8 h 40", "Rack C · emplacement 12", "Pass compétition"),
+    1055: ("Senior F", "Vague 1 · 8 h 00", "Rack A · emplacement 03", "Licence FFTRI"),
+    1071: ("Senior H", "Vague 2 · 8 h 20", "Rack B · emplacement 07", "Licence FFTRI"),
+}
+
 ROLE_FR = {"admin": "admin", "crew": "staff", "athlete": "athlète"}
+PRODUCT = "Espace athlètes 5.4.2"
 
-COPY_JS = """<script>
-function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
- function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
-  a.style.opacity='0';document.body.appendChild(a);a.select();
-  try{document.execCommand('copy');ok()}catch(e){}a.remove()}
- if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,legacy)}
- else{legacy()}}
-</script>"""
 
-def shell(title, body):
+def shell(title, body, section="home"):
     signed_in = request.cookies.get("bib")
-    me = (f'<a class="opt" href="/profile/{escape(signed_in)}">Mon profil</a>'
-          f'<span><span class="mute">Connecté·e :</span> <b>dossard {escape(signed_in)}</b></span>'
-          if signed_in else '<span class="mute">Non connecté·e</span>')
-    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<div class="strip"><div class="in"><span>Championnat régional de triathlon · Espace athlètes</span>
-<span>Bureau de course ouvert dès 7 h 30</span></div></div>
-<header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Espace athlètes</small></a>
- <nav class="acct">{me}</nav>
-</div></header>
-<main class="page">{body}</main></body></html>"""
+    topnav = [("/", "Accueil", section == "home")]
+    if signed_in:
+        topnav.append((f"/profile/{signed_in}", "Mon dossier", section == "profile"))   # escaped by intranet
+    topnav.append(("/infos", "Infos pratiques", section == "infos"))
+    user = f"Dossard {signed_in}" if signed_in else None
+    return intranet.page(f"{title} - Espace athlètes", body, app="athletes",
+                         site_title="Espace athlètes", site_href="/", logo="EA", topnav=topnav,
+                         user=user, logout="/logout" if signed_in else None,
+                         product=PRODUCT, foot_extra="Championnat régional de triathlon · Finale 2026",
+                         scripts=intranet.COPY_JS)
 
-LOGIN = """<div class="panel">
- <h1 class="h">Bienvenue</h1>
- <p>Consultez votre vague de départ, votre place au parc à vélos et vos consignes avant la finale.</p>
- <p class="note db" style="margin:0 0 18px">Pour la démo, la connexion est désactivée.
-  Continuez en tant que concurrent·e invité·e.</p>
- <a class="btn blue" href="/login">Continuer avec le dossard n° 1042</a>
-</div>"""
+
+LOGIN = """<h1 class="h1">Connexion à l'espace athlètes</h1>
+<p class="status ok">Lien de connexion valide pour le dossard n°&#160;1042 (finale régionale 2026).</p>
+<div class="cols"><div>
+ <section class="wp"><h2>Continuer</h2>
+  <p>Ce lien vous a été envoyé par SMS au numéro enregistré lors de votre inscription.
+   Il reste valable 24 h après son envoi.</p>
+  <p><a class="btn" href="/login">Continuer avec le dossard n°&#160;1042</a></p>
+  <p class="mute" style="font-size:12px">Ce n'est pas votre dossard&#160;? Présentez-vous au bureau de course.</p>
+ </section>
+</div><div>
+ <section class="wp"><h2>Dans votre dossier</h2><ul class="links">
+  <li>Vague et heure de départ</li><li>Emplacement au parc à vélos</li>
+  <li>Documents (certificat, licence)</li><li>Consignes de course</li></ul></section>
+</div></div>"""
+
+INFOS = """<h1 class="h1">Infos pratiques</h1>
+<table class="list data"><tbody>
+<tr><td style="width:220px">Bureau de course</td><td class="wrap">Ouvert dès 7 h 30, mairie, salle B (poste 214)</td></tr>
+<tr><td>Retrait des dossards</td><td class="wrap">Samedi 14 h – 19 h, dimanche 6 h 30 – 7 h 30</td></tr>
+<tr><td>Parc à vélos</td><td class="wrap">Ouverture 6 h 30, fermeture 7 h 50. Casque attaché pour entrer.</td></tr>
+<tr><td>Briefing</td><td class="wrap">Dimanche 7 h 45, ponton du port</td></tr>
+<tr><td>Résultats</td><td class="wrap">Figés à 16 h 00, publiés sur le site de chronométrage</td></tr>
+</tbody></table>"""
+
 
 def page(aid):
     if aid not in ATHLETES:
-        return shell("Athlète introuvable", f"""<div class="crumb">profils / n° {aid}</div>
-<div class="panel"><h1 class="h">Aucun athlète n° {aid}</h1>
- <p class="mute">Aucun profil ne correspond à ce numéro.</p>
- <a class="btn blue" href="/profile/1042">Retour à mon profil</a></div>"""), 404
+        return shell("Dossier introuvable", f"""<p class="crumbs">Dossiers<span class="sep">›</span>n°&#160;{aid}</p>
+<h1 class="h1">Aucun dossier n°&#160;{aid}</h1>
+<p class="lead">Aucun concurrent ni compte ne correspond à ce numéro.</p>
+<p><a href="/profile/1042">Retour à mon dossier</a></p>""", "profile"), 404
     name, role, note = ATHLETES[aid]
-    flag = (f"""<div class="flag"><span>Flag</span><code id="flag">{FLAG}</code>
- <button type="button" onclick="copyFlag(this)">Copier</button></div>{COPY_JS}"""
-            if aid == 1000 else "")
-    ink = " ink" if role != "athlete" else ""
-    return shell(f"Profil n° {aid}", f"""<div class="crumb">profils / n° {aid}</div>
-<div class="panel">
- <div class="who"><div class="bib{ink}">{aid}</div>
-  <div><h1 class="h">{name}</h1><span class="tag {role}">{ROLE_FR[role]}</span></div></div>
- {flag}
- <div class="log"><pre>{note}</pre></div>
-</div>
-<p class="small mute">Vous consultez <code>/profile/{aid}</code>.
-  Votre dossard est le <b>1042</b>. (Les comptes staff/admin ont des numéros plus bas.)</p>"""), 200
+    crumbs = f'<p class="crumbs">Dossiers<span class="sep">›</span>n°&#160;{aid}</p>'
+    title = f'<h1 class="h1">{escape(name)} <span class="tag {role}">{ROLE_FR[role]}</span></h1>'
+    if role == "athlete":
+        cat, wave, rack, lic = RACE[aid]
+        rows = [("Dossard", f"n°&#160;{aid}"), ("Catégorie", cat), ("Départ", wave),
+                ("Parc à vélos", rack), ("Justificatif", lic), ("Statut", "Inscription validée")]
+        trs = "".join(f'<tr><td style="width:180px" class="mute">{k}</td><td class="wrap">{v}</td></tr>'
+                      for k, v in rows)
+        extra = (f'<section class="wp"><h2>Note de l\'organisation</h2><p>{escape(note)}</p></section>'
+                 if note else "")
+        body = (crumbs + title +
+                '<div class="cols"><div>'
+                f'<section class="wp"><h2>Dossier de course</h2><table class="list data"><tbody>{trs}</tbody></table></section>'
+                + extra +
+                '</div><div><section class="wp"><h2>Documents</h2><ul class="links">'
+                '<li>Certificat médical : reçu</li><li>Autorisation parentale : non requise</li>'
+                '<li>Décharge de responsabilité : signée</li></ul></section></div></div>')
+        return shell(f"Dossier n° {aid}", body, "profile"), 200
+    flag = ""
+    if aid == 1000:
+        flag = ('<section class="wp"><h2>Jeton d\'audit</h2>'
+                '<p class="mute">Empreinte de la dernière exportation du journal.</p>' +
+                intranet.codebox(FLAG) + '</section>')
+    label = "Journal d'audit" if role == "admin" else "Note interne"
+    body = (crumbs + title +
+            f'<table class="list data" style="max-width:620px;margin-bottom:16px"><tbody>'
+            f'<tr><td style="width:180px" class="mute">Compte</td><td>n°&#160;{aid}</td></tr>'
+            f'<tr><td class="mute">Type</td><td>Compte {ROLE_FR[role]} (organisation)</td></tr></tbody></table>'
+            f'<section class="wp"><h2>{label}</h2><div class="log"><pre>{escape(note)}</pre></div></section>' + flag)
+    return shell(f"Compte n° {aid}", body, "profile"), 200
+
+
+@app.errorhandler(404)
+def not_found(_e):
+    return Response(shell("Page introuvable", '<h1 class="h1">Page introuvable</h1>'
+                          '<p class="lead">Cette page n\'existe pas ou a été déplacée.</p>'
+                          '<p><a href="/">Retour à l\'accueil</a></p>'), status=404, mimetype="text/html")
+
 
 @app.get("/")
 def home():
-    return Response(shell("DécaFlop · Espace athlètes", LOGIN), mimetype="text/html")
+    signed_in = request.cookies.get("bib")
+    if signed_in:
+        return redirect(f"/profile/{signed_in}") if signed_in.isdigit() else redirect("/logout")
+    return Response(shell("Connexion", LOGIN), mimetype="text/html")
+
+
+@app.get("/infos")
+def infos():
+    return Response(shell("Infos pratiques", INFOS, "infos"), mimetype="text/html")
+
 
 @app.get("/login")
 def login():
@@ -98,11 +150,20 @@ def login():
     r.set_cookie("bib", "1042")
     return r
 
+
+@app.get("/logout")
+def logout():
+    r = make_response(redirect("/"))
+    r.delete_cookie("bib")
+    return r
+
+
 @app.get("/profile/<int:aid>")
 def profile(aid):
     # VULN: trusts the URL id, never compares to the signed-in bib cookie.
     body, status = page(aid)
     return Response(body, status=status, mimetype="text/html")
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, threaded=True)
