@@ -406,7 +406,7 @@ def gen_sap():
 
     with open(os.path.join(OUT, "sap_hint.txt"), "w") as fh:
         fh.write(
-"""SAP DFlop ERP — export of table USR02 (user master / logon data).
+"""SAP DFlop ERP, export of table USR02 (user master / logon data).
 
 Columns: MANDT=client, BNAME=user, BCODE=legacy password hash,
          CODVN=hash version, UFLAG=lock (64=locked), TRDAT=last logon date,
@@ -441,7 +441,7 @@ f"""CASE CLOSED.
 {f}
 
 The last logon on table ZRACE_RESULT before the sabotage was user VLINDQVIST
-(client 001), 2026-11-01 18:42 — the same timestamp as the transition photo, the
+(client 001), 2026-11-01 18:42, the same timestamp as the transition photo, the
 same operator seen in the IDOR audit log and the results-admin accounts.
 
 The saboteur is: {saboteur} (SAP user VLINDQVIST).

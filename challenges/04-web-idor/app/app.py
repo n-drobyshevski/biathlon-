@@ -34,10 +34,10 @@ ATHLETES = {
 }
 
 # Audit trail shown on the admin account (1000). The last line is the sabotage;
-# its time follows VLINDQVIST's last SAP logon in the USR02 export (01/11 18:42:30).
+# its time matches the case file (18:42) and VLINDQVIST's last SAP logon in USR02 (18:42:30).
 AUDIT = [("31/10/2026 17:02:11", "c.dumont", "Liste de départ FINAL_RACE", "Publication de la version 3"),
          ("01/11/2026 09:14:38", "l.eriksen", "Puces de chronométrage", "Attribution des puces aux finalistes"),
-         ("01/11/2026 18:47:52", "v.lindqvist", "Liste de départ FINAL_RACE",
+         ("01/11/2026 18:42:47", "v.lindqvist", "Liste de départ FINAL_RACE",
           "Puces de chronométrage échangées entre 3 athlètes")]
 
 # Race record shown on athlete profiles: (category, start wave, bike rack, licence)

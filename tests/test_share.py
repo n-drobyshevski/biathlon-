@@ -1,5 +1,6 @@
 """Partage DFlop — auth, browsing, byte-for-byte downloads, 404/traversal."""
 import sys
+from html import escape as esc
 from urllib.parse import quote
 
 import pytest
@@ -119,3 +120,55 @@ def test_filenames_are_html_escaped(share):
     html = share.get("/d/Basis%20SAP/Exports?f=SAP_USR02_export.csv").data.decode()
     assert "SAP_USR02_export.csv" in html
     assert "Télécharger" in html
+
+
+# ---------------------------------------------------------------- file viewer
+def preview_url(f):
+    return "/apercu/" + "/".join(quote(s) for s in f["path"])
+
+
+def test_preview_needs_login(share_anon):
+    r = share_anon.get("/apercu/Basis%20SAP/Exports/sap_hint.txt")
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+
+
+def test_every_file_has_a_preview_page(share, share_module):
+    mod = sys.modules["share_app"]
+    for f in mod.FILES:
+        page = share.get(preview_url(f)).data.decode()
+        assert f'<h1>{f["name"]}</h1>' in page, f["name"]
+        assert f'href="{url_for_file(f)}">Télécharger' in page
+        if f["kind"] in ("pcap", "img"):
+            assert "Aperçu non disponible" in page
+
+
+def test_preview_renders_text_csv_and_zip(share, dist):
+    hint = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    first = (dist / "sap_hint.txt").read_text().splitlines()[0]
+    assert '<pre class="code">' in hint and esc(first) in hint
+    grid = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv").data.decode()
+    assert '<table class="grid">' in grid and "<td>VLINDQVIST</td>" in grid and "<th>G</th>" in grid
+    archive = share.get("/apercu/Direction%20de%20course/Dossier%20incident/case_file.zip").data.decode()
+    assert "<td>flag.txt</td>" in archive and "protégée par un mot de passe" in archive
+    assert "TRIATHLON{" not in archive              # names only, never the encrypted content
+
+
+def test_listing_opens_viewer_and_keeps_details(share):
+    page = share.get("/d/Basis%20SAP/Exports").data.decode()
+    assert 'href="/apercu/Basis%20SAP/Exports/sap_hint.txt">sap_hint.txt</a>' in page
+    assert 'class="dots" href="?f=sap_hint.txt"' in page
+    callout = share.get("/d/Basis%20SAP/Exports?f=sap_hint.txt").data.decode()
+    assert 'href="/apercu/Basis%20SAP/Exports/sap_hint.txt">Ouvrir</a>' in callout
+    assert 'class="peek"' in callout
+
+
+@pytest.mark.parametrize("path", ["/apercu/Basis%20SAP/Exports/nope.csv", "/apercu/..%2f..%2fapp.py",
+                                  "/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv/../../../etc/passwd"])
+def test_preview_unknown_is_404(share, path):
+    assert share.get(path).status_code == 404
+
+
+def test_preview_of_missing_file(share, share_module, monkeypatch, tmp_path):
+    monkeypatch.setattr(sys.modules["share_app"], "HANDOUT_DIR", str(tmp_path))
+    page = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv")
+    assert page.status_code == 200 and "pas encore disponible" in page.data.decode()

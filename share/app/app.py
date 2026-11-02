@@ -18,12 +18,15 @@ the shared intranet chrome (intranet.py + static/intranet.css).
   html-escaped, inside the search field. Sort and filter parameters are
   whitelisted and never echoed.
 """
+import csv
 import hmac
+import io
 import os
 import sys
 import time
 import unicodedata
 import uuid
+import zipfile
 from html import escape as esc
 from urllib.parse import quote, urlencode
 
@@ -298,6 +301,14 @@ def download_href(f):
     return "/telecharger/" + "/".join(quote(s) for s in f["path"])
 
 
+def preview_href(f):
+    return "/apercu/" + "/".join(quote(s) for s in f["path"])
+
+
+def details_href(f):
+    return folder_href(f["path"][:-1]) + "?f=" + quote(f["name"])
+
+
 def is_available(f):
     if f["decoy"]:
         return True
@@ -484,7 +495,7 @@ def activity_items(limit=None):
     for f in fs:
         verb = "a ajouté" if f["ver"] in ("1.0", "0.1") else "a modifié"
         folder = f["path"][:-1]
-        out.append(f'<li>{icon(f["kind"])}<div><a href="{folder_href(folder)}?f={quote(f["name"])}">'
+        out.append(f'<li>{icon(f["kind"])}<div><a href="{preview_href(f)}">'
                    f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} ce fichier le {fr_dt(f["when"], " à ")}, '
                    f'dans {esc(" / ".join(folder))}</small></div></li>')
     return '<ul class="feed">' + "".join(out) + '</ul>'
@@ -655,10 +666,12 @@ def file_row(f, selected, tri, ordre):
     meta = (f'{size}, {esc(f["who"])}, le {fr_dt(f["when"], " à ")}' if size is not None
             else f'pas encore disponible, {esc(f["who"])}')
     href = qs(f=f["name"], tri=tri if tri != "nom" else None, ordre=ordre if ordre != "asc" else None)
-    return (f'<tr{SEL if sel else ""}><td class="ck">{"✓" if sel else "○"}</td>'
+    return (f'<tr{SEL if sel else ""}><td class="ck"><a href="{href}" title="Sélectionner">'
+            f'{"✓" if sel else "○"}</a></td>'
             f'<td class="ty">{icon(f["kind"], f["type"])}</td>'
-            f'<td><a href="{href}">{esc(f["name"])}</a>'
-            f'<span class="meta">{meta}</span></td>'
+            f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
+            f'<a class="dots" href="{href}" title="Afficher les détails" aria-label="Détails de {esc(f["name"])}">'
+            f'...</a><span class="meta">{meta}</span></td>'
             f'<td class="c-date num">{fr_dt(f["when"])}</td><td class="c-who">{esc(f["who"])}</td>'
             f'{sizecell}<td class="c-ver num">{esc(f["ver"])}</td></tr>')
 
@@ -667,8 +680,13 @@ def callout(f, row):
     avail = is_available(f)
     size = file_size(f) or "Non disponible"
     link = request.host_url.rstrip("/") + download_href(f)
-    acts = (f'<a href="{download_href(f)}">Télécharger</a>' if avail
+    acts = (f'<a href="{preview_href(f)}">Ouvrir</a><a href="{download_href(f)}">Télécharger</a>' if avail
             else '<span class="off">Pas encore disponible</span>')
+    peek = ""
+    if avail and f["kind"] in TEXT_KINDS | {"csv"}:
+        lines = as_text(read_bytes(f, 4096)).splitlines()[:PEEK_LINES]
+        peek = (f'<a class="peek" href="{preview_href(f)}" title="Ouvrir l\'aperçu">'
+                f'<pre>{esc(chr(10).join(lines))}</pre></a>')
     meta = [("Type", esc(f["type"])), ("Taille", size), ("Version", esc(f["ver"]))]
     if f["desc"]:
         meta.append(("Description", esc(f["desc"])))
@@ -677,7 +695,7 @@ def callout(f, row):
     return (f'<aside class="callout" id="details" style="--row:{row}" aria-label="Détails du fichier">'
             f'<h2>{esc(f["name"])}</h2>'
             f'<p>Modifié le {fr_dt(f["when"], " à ")} par {esc(f["who"])}</p>'
-            f'<dl>{dl}</dl><div class="link" title="{esc(link)}">{esc(link)}</div>'
+            f'{peek}<dl>{dl}</dl><div class="link" title="{esc(link)}">{esc(link)}</div>'
             f'<div class="acts">{acts}</div></aside>')
 
 
@@ -759,7 +777,7 @@ def search():
     else:
         trs = "".join(
             f'<tr><td class="ty">{icon(f["kind"], f["type"])}</td>'
-            f'<td><a href="{folder_href(f["path"][:-1])}?f={quote(f["name"])}">{esc(f["name"])}</a>'
+            f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
             f'<span class="meta">{esc(" / ".join(f["path"][:-1]))}, le {fr_dt(f["when"], " à ")}</span></td>'
             f'<td class="hide-sm"><a href="{folder_href(f["path"][:-1])}">'
             f'{esc(" / ".join(f["path"][:-1]))}</a></td>'
@@ -778,6 +796,147 @@ def search():
             '<button class="btn" type="submit" style="min-width:0;padding:3px 14px">Rechercher</button>'
             f'<span class="mute" style="margin-left:auto">{count}</span></form>' + result)
     return html(page("Recherche", "docs", body))
+
+
+# --------------------------------------------------------------------------
+# File viewer (read-only preview, like the Office Web Apps viewer)
+# --------------------------------------------------------------------------
+TEXT_KINDS = {"txt", "abap", "sap"}
+PREVIEW_BYTES = 1_000_000
+PREVIEW_LINES = 2000
+PREVIEW_ROWS = 500
+GRID_SPARE_COLS = 10
+GRID_MIN_ROWS = 30
+PEEK_LINES = 7
+
+
+def read_bytes(f, limit=PREVIEW_BYTES):
+    """The file's first `limit` bytes (None if the handout is missing)."""
+    if f["decoy"]:
+        return f["text"].encode("utf-8")[:limit]
+    p = os.path.join(HANDOUT_DIR, f["source"])
+    if not os.path.isfile(p):
+        return None
+    with open(p, "rb") as fh:
+        return fh.read(limit)
+
+
+def as_text(data):
+    if data is None:
+        return ""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("cp1252", errors="replace")
+
+
+def cut_note(shown, total, unit):
+    if shown >= total:
+        return ""
+    return (f'<p class="vcut">Aperçu limité aux {shown} premières {unit}. '
+            'Téléchargez le fichier pour le consulter en entier.</p>')
+
+
+def text_view(f, data):
+    lines = as_text(data).splitlines() or [""]
+    rows = "".join(f'<span class="l">{esc(line)}</span>' for line in lines[:PREVIEW_LINES])
+    return (cut_note(min(len(lines), PREVIEW_LINES), len(lines), "lignes") +
+            f'<div class="sheet"><pre class="code">{rows}</pre></div>')
+
+
+def col_name(i):
+    out = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        out = chr(65 + r) + out
+    return out
+
+
+def csv_view(f, data):
+    text = as_text(data)
+    first = text.split("\n", 1)[0]
+    delim = ";" if first.count(";") > first.count(",") else ","
+    rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    shown = rows[:PREVIEW_ROWS]
+    # like a spreadsheet, the grid carries on past the data with empty cells
+    ncol = max((len(r) for r in shown), default=1) + GRID_SPARE_COLS
+    shown = shown + [[]] * max(GRID_MIN_ROWS - len(shown), 0)
+    head = '<tr><th class="corner"></th>' + "".join(f"<th>{col_name(i)}</th>" for i in range(ncol)) + "</tr>"
+    body = "".join(f"<tr><th>{n}</th>" + "".join(f"<td>{esc(c)}</td>" for c in r + [""] * (ncol - len(r)))
+                   + "</tr>" for n, r in enumerate(shown, 1))
+    return (cut_note(min(len(rows), PREVIEW_ROWS), len(rows), "lignes") +
+            f'<div class="sheet wide"><div class="gridwrap"><table class="grid"><thead>{head}</thead>'
+            f'<tbody>{body}</tbody></table></div></div>')
+
+
+def zip_view(f, data):
+    try:
+        entries = zipfile.ZipFile(io.BytesIO(data)).infolist()
+    except zipfile.BadZipFile:
+        return no_preview(f)
+    locked = any(e.flag_bits & 1 for e in entries)
+    trs = "".join(
+        f'<tr><td class="ty">{icon("folder" if e.is_dir() else "txt")}</td><td>{esc(e.filename)}</td>'
+        f'<td class="c-size num">{"" if e.is_dir() else fr_size(e.file_size)}</td>'
+        f'<td class="c-ver">{"Oui" if e.flag_bits & 1 else "Non"}</td></tr>' for e in entries)
+    note = ('<p class="status">Archive protégée par un mot de passe. Téléchargez-la pour l\'extraire.</p>'
+            if locked else "")
+    return (f'<div class="sheet pad">{note}<table class="list"><thead><tr><th class="ty"></th><th>Nom</th>'
+            '<th class="c-size">Taille</th><th class="c-ver">Chiffré</th></tr></thead>'
+            f'<tbody>{trs}</tbody></table>'
+            f'<div class="pager">{elements_label(len(entries))} dans l\'archive</div></div>')
+
+
+def no_preview(f, missing=False):
+    if missing:
+        title, text, act = ("Fichier pas encore disponible",
+                            "Ce fichier est en cours de dépôt sur le partage. Réessayez dans quelques minutes.",
+                            "")
+    else:
+        title = "Aperçu non disponible"
+        text = (f"Les fichiers de type {esc(f['type'])} ne peuvent pas être affichés dans le navigateur. "
+                "Téléchargez le fichier pour l'ouvrir avec l'application adaptée.")
+        act = f'<a class="btn" href="{download_href(f)}">Télécharger</a>'
+    return (f'<div class="sheet nopv">{icon(f["kind"])}<h2>{title}</h2><p>{text}</p>{act}</div>')
+
+
+def viewer_page(f, content, wide=False):
+    folder = f["path"][:-1]
+    crumbs = ['<a href="/documents">Documents</a>'] + [
+        f'<a href="{folder_href(folder[:i + 1])}">{esc(s)}</a>' for i, s in enumerate(folder)]
+    size = file_size(f)
+    meta = (f'Version {esc(f["ver"])}, modifié le {fr_dt(f["when"], " à ")} par {esc(f["who"])}'
+            + (f", {size}" if size else ""))
+    dl = (f'<a href="{download_href(f)}">Télécharger</a>' if is_available(f)
+          else '<span class="off">Télécharger</span>')
+    bar = (f'<div class="vbar"><div class="vname">{icon(f["kind"], f["type"])}<div>'
+           f'<h1>{esc(f["name"])}</h1><small>{" / ".join(crumbs)}</small></div></div>'
+           f'<nav class="vacts" aria-label="Fichier">{dl}<a href="{details_href(f)}">Détails</a>'
+           f'<a class="x" href="{folder_href(folder)}" title="Fermer l\'aperçu">Fermer</a></nav></div>')
+    return (intranet.head(f'{f["name"]} - {SITE}') + intranet.SPRITE +
+            intranet.suite("intranet", "docs", display_user(), "/logout") + bar +
+            f'<main class="viewer{" wide" if wide else ""}" id="main"><p class="vmeta">{meta}</p>{content}</main>'
+            '</body></html>')
+
+
+@app.get("/apercu/<path:filepath>")
+def preview(filepath):
+    f = FILES_BY_PATH.get(tuple(s for s in filepath.split("/") if s))
+    if f is None:
+        abort(404)
+    data = read_bytes(f)
+    if data is None:
+        content = no_preview(f, missing=True)
+    elif f["kind"] in TEXT_KINDS:
+        content = text_view(f, data)
+    elif f["kind"] == "csv":
+        content = csv_view(f, data)
+    elif f["kind"] == "zip":
+        content = zip_view(f, read_bytes(f, 50_000_000))
+    else:
+        content = no_preview(f)
+    return html(viewer_page(f, content, wide=f["kind"] == "csv" and data is not None))
 
 
 @app.get("/telecharger/<path:filepath>")

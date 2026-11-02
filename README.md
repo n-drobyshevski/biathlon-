@@ -127,6 +127,12 @@ IT / Sauvegardes postes / portable-equipe-03 / dflop_erp.sap     -> 13
 Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap           -> 15
 ```
 
+Clicking a file name opens a read-only viewer (`/apercu/<chemin>`): text, ABAP
+and `.sap` files with line numbers, CSV as a spreadsheet grid, ZIP archives as
+their file list (names only, the encrypted content is never read). PCAP and disk
+images show "Aperçu non disponible". Downloads (`/telecharger/<chemin>`) stay
+byte-for-byte.
+
 On the **DécaFlop site** (`:8001`): the poster (02) in its press area
 (`/presse`) and the race photo (03) in its actualités (`/actualites`), served
 byte-for-byte at `:8001/medias/...`.
