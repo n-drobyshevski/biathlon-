@@ -18,9 +18,15 @@ docker build -t decaflop-gen -f handouts/Dockerfile .
 
 echo "[*] Generating handout files -> handouts/dist/"
 mkdir -p handouts/dist
-docker run --rm \
+# Git Bash on Windows rewrites /c/... paths in arguments, which mangles the -v
+# mount so the files land somewhere other than handouts/dist. Give Docker a
+# native host path (C:/... via cygpath when available) and turn the rewriting
+# off. On Linux (the Pi) cygpath is absent and MSYS_NO_PATHCONV is ignored.
+HOST_DIR="$PWD"
+command -v cygpath >/dev/null 2>&1 && HOST_DIR="$(cygpath -m "$PWD")"
+MSYS_NO_PATHCONV=1 docker run --rm \
   --env-file .env \
-  -v "$PWD/handouts/dist:/out" \
+  -v "$HOST_DIR/handouts/dist:/out" \
   decaflop-gen
 
 echo
