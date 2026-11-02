@@ -1,0 +1,103 @@
+/* Cellule de crise: dark "situation room" theme, deliberately unlike the
+   DécaFlop shop (light, blue/mint) and the SAP mock (light Fiori). */
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2b3440;
+  --text:#e6edf3; --mute:#8b97a6; --amber:#f5a524; --teal:#2dd4bf;
+  --green:#3fb950; --red:#f85149;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column}
+#main{flex:1}
+a{color:var(--teal)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.in{max-width:1120px;margin:0 auto;padding:0 16px}
+.h{font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;line-height:1.1}
+.small{font-size:13px;color:var(--mute)}
+.mute{color:var(--mute)}
+
+/* top bar */
+.top{background:#0a0d12;border-bottom:1px solid var(--line)}
+.top .in{display:flex;align-items:center;justify-content:space-between;gap:12px;height:52px}
+.mark{display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;
+  font-family:var(--mono);font-weight:700;letter-spacing:.12em;font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 0 0 rgba(248,81,73,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(248,81,73,0)}100%{box-shadow:0 0 0 0 rgba(248,81,73,0)}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.org{font-family:var(--mono);font-size:12px;color:var(--mute)}
+
+/* briefing */
+.banner{border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#141a22,var(--bg))}
+.banner .in{padding-top:36px;padding-bottom:36px}
+.tagline{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--amber);
+  border:1px solid var(--amber);border-radius:3px;padding:2px 8px}
+.banner h1{font-size:clamp(30px,5.5vw,52px);margin:14px 0 14px}
+.banner h1 em{font-style:normal;color:var(--amber)}
+.banner p{max-width:740px;color:#c9d3de;margin:0 0 16px}
+.banner b{color:var(--text)}
+
+/* buttons */
+.btn{display:inline-block;font:inherit;font-weight:700;font-size:14px;text-decoration:none;
+  border-radius:4px;padding:10px 16px;border:1px solid var(--amber);background:var(--amber);color:#16120a}
+.btn:hover{filter:brightness(1.08)}
+.btn.blue{background:transparent;border-color:var(--teal);color:var(--teal)}
+.btn.blue:hover{background:var(--teal);color:#06201c}
+
+/* rules strip */
+.sec .in{padding-top:28px;padding-bottom:48px}
+.rules{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.rules div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;font-size:14px}
+.rules b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.rules code{font-family:var(--mono);font-weight:700;color:var(--amber)}
+
+/* mission board */
+.missions{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.mission{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;
+  display:flex;flex-direction:column}
+.mission:hover{border-color:#3a4552}
+.mhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mnum{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--mute);
+  border:1px solid var(--line);border-radius:3px;padding:1px 6px;margin-right:4px}
+.tag{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;border-radius:3px;padding:2px 7px;border:1px solid}
+.tag.cat{color:#c9d3de;border-color:var(--line);background:var(--panel2)}
+.tag.lv1{color:var(--green);border-color:rgba(63,185,80,.5)}
+.tag.lv2{color:var(--amber);border-color:rgba(245,165,36,.5)}
+.tag.lv3{color:var(--red);border-color:rgba(248,81,73,.5)}
+.pts{margin-left:auto;font-family:var(--mono);font-weight:700;color:var(--amber)}
+.mission h3{font-size:17px;margin:14px 0 8px}
+.mission p{margin:0 0 16px;color:#b8c3cf;font-size:14px;flex:1}
+.mact{display:flex;flex-direction:column;gap:8px}
+.mact .btn{text-align:center}
+.dl{display:block;background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+  padding:8px 12px;text-decoration:none;color:var(--text)}
+.dl:hover{border-color:var(--teal)}
+.dl b{display:block;font-size:13.5px}
+.dl span{font-family:var(--mono);font-size:12px;color:var(--mute)}
+.dl:hover span{color:var(--teal)}
+.dl.off{border-style:dashed;color:var(--mute);background:transparent}
+
+/* 404 */
+.page{max-width:620px;margin:0 auto;padding:48px 16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px}
+.panel h1{font-size:24px;margin:0 0 8px}
+
+/* footer */
+.foot{border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--mute)}
+.foot .in{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+
+@media (max-width:860px){
+  .missions{grid-template-columns:1fr 1fr}
+  .rules{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .missions,.rules{grid-template-columns:1fr}
+  .org{display:none}
+}

@@ -20,15 +20,14 @@ app = Flask(__name__)
 def layout(title, body):
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<div class="strip"><div class="in"><span>DécaFlop · usage interne</span>
-<span>Équipe IT d'urgence</span></div></div>
+<title>{title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
 <header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Cellule de crise</small></a>
+ <a class="mark" href="/"><span class="dot" aria-hidden="true"></span>CELLULE DE CRISE</a>
+ <span class="org">DécaFlop · usage interne · équipe IT d'urgence</span>
 </div></header>
 <main id="main">{body}</main>
-<footer class="foot"><div class="legal"><div class="in"><span>© DécaFlop · usage interne</span>
-<span>Finale 2026</span></div></div></footer></body></html>"""
+<footer class="foot"><div class="in"><span>DécaFlop · usage interne</span>
+<span>Finale 2026</span></div></footer></body></html>"""
 
 
 def html(page, status=200):

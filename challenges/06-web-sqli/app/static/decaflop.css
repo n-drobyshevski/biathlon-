@@ -1,5 +1,5 @@
-/* DécaFlop house style. Identical copies live in 01, 04, 06 and hub/
-   (each Docker build only sees its own app/ folder) — edit all four. */
+/* DécaFlop house style. Identical copies live in 01, 04 and 06
+   (each Docker build only sees its own app/ folder) — edit all three. */
 :root{
   --blue:#3643ba; --blue-dark:#262f8a; --blue-ink:#1b2266;
   --mint:#7affa6; --ink:#101010; --grey:#f5f4f5; --line:#dcdbe0;
@@ -222,38 +222,7 @@ body:has(> #main)>#main{flex:1}
 .faq[open] summary::after{content:"\2212"}
 .faq p{margin:0 0 16px;color:#333}
 
-/* crisis cell (hub/): players' entry point */
-.banner.crisis{background:var(--ink)}
-.banner.crisis p{max-width:720px;color:#d6d6dc}
-.banner.crisis .small{color:#a9a9b3}
-.rules{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
-  border:1px solid var(--line);margin-bottom:28px}
-.rules div{background:#fff;padding:14px 16px;font-size:14px}
-.rules b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin-bottom:4px}
-.rules code{font-weight:700;color:var(--blue)}
-.missions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.mission{border:1px solid var(--line);border-top:6px solid var(--blue);padding:18px;
-  display:flex;flex-direction:column;background:#fff}
-.mhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.mnum{font-weight:900;font-style:italic;font-size:22px;color:var(--blue);margin-right:4px}
-.tag.cat{background:var(--grey);color:var(--ink)}
-.tag.lv1{background:#e3fbe9;color:#0a5a2a}.tag.lv2{background:#fff3d6;color:#6b4500}
-.tag.lv3{background:var(--ink);color:#fff}
-.pts{margin-left:auto;font-weight:800;font-style:italic}
-.mission h3{font-size:20px;margin:12px 0 6px}
-.mission p{margin:0 0 16px;color:#333;font-size:14.5px;flex:1}
-.mact{display:flex;flex-direction:column;gap:8px}
-.mact .btn{text-align:center}
-.dl{display:block;border:2px solid var(--ink);padding:8px 12px;text-decoration:none;color:var(--ink);border-radius:2px}
-.dl:hover{background:var(--ink);color:#fff}
-.dl b{display:block;font-size:14px}
-.dl span{font-size:12.5px;color:var(--mute);font-family:ui-monospace,Menlo,Consolas,monospace}
-.dl:hover span{color:#d6d6dc}
-.dl.off{border-style:dashed;border-color:#b7b7bf;color:var(--mute)}
-
 @media (max-width:860px){
-  .missions{grid-template-columns:1fr 1fr}
-  .rules{grid-template-columns:1fr 1fr}
   .sports,.three,.legs,.stores{grid-template-columns:1fr}
   .pdp{grid-template-columns:1fr;gap:20px}
   .grid{grid-template-columns:repeat(2,1fr)}
@@ -262,7 +231,6 @@ body:has(> #main)>#main{flex:1}
   .search{display:none}
 }
 @media (max-width:520px){
-  .missions,.rules{grid-template-columns:1fr}
   .strip span:last-child{display:none}
   .top .in{height:60px}
   .mark{font-size:22px}
