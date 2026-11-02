@@ -14,7 +14,7 @@ public internet:
   (Exception: if a team wants an online hash-cracker for 09, give them the
   `wordlist.txt` instead so the event stays fully offline.)
 - Give the Pi a static lease, e.g. `192.168.8.2`. Players start at
-  `http://192.168.8.2:8001/cellule-de-crise`, which links every challenge
+  `http://192.168.8.2:8080` (the cellule de crise), which links every challenge
   (`:8001` … `:8008`) and serves the handouts. Replace `<CTF-HOST>` in the
   challenge READMEs / scoreboard with that IP.
 
@@ -43,7 +43,7 @@ docker compose up -d --build
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 4 challenge containers (`mem_limit` 128–160 MB each) | ~0.3–0.5 GB actual |
+| 4 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.3–0.5 GB actual |
 | CTFd (if used) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
@@ -55,7 +55,7 @@ for each other.
 ## Serving the handout files
 
 Nothing to do: `docker-compose.yml` mounts `handouts/dist/` (read-only) into
-the DécaFlop container, and the crisis cell offers each file as a download.
+the hub container, and the cellule de crise offers each file as a download.
 Missions whose files aren't built yet show "pas encore disponible" until you
 run `./scripts/build-handouts.sh`, with no restart needed.
 
@@ -66,14 +66,14 @@ You can still attach them as files in CTFd, or drop them on a USB stick.
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] `docker compose up -d --build` → all 4 containers `Up`
+- [ ] `docker compose up -d --build` → all 5 containers `Up` (4 challenges + hub)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
 - [ ] `curl -s localhost:8008/sap/public/info` returns the SAP note
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
 - [ ] From a second device on the travel router, open
-      `http://<PiIP>:8001/cellule-de-crise`: 9 missions, every download works,
+      `http://<PiIP>:8080`: 9 missions, every download works,
       every "Ouvrir…" button reaches its challenge
 - [ ] Scoreboard loads and accepts a test flag
 - [ ] Decide whether the router's WAN stays off (recommended)

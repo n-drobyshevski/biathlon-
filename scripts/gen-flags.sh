@@ -39,7 +39,7 @@ FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
 SABOTEUR_NAME=viktor_lindqvist
 
-# Optional: adds a "Soumettre un flag" button to the crisis cell.
+# Optional: adds a "Soumettre un flag" button to the cellule de crise (hub, :8080).
 # SCOREBOARD_URL=http://192.168.8.2:8000
 EOF
 

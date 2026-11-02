@@ -1,6 +1,6 @@
 """
-"Cellule de crise": the players' entry point. One page on the DécaFlop site
-that briefs the emergency IT crew and lists every mission, with a link to each
+"Cellule de crise": the players' entry point (its own container, not a
+challenge). One page that briefs the emergency IT crew and lists every mission, with a link to each
 live challenge and downloads for every handout.
 
 - Handouts are read from HANDOUT_DIR (docker-compose mounts handouts/dist
@@ -12,11 +12,27 @@ live challenge and downloads for every handout.
 """
 import os
 
-from flask import Blueprint, abort, request, send_from_directory
+from flask import Flask, Response, abort, redirect, request, send_from_directory
 
-from shop import html, icon, layout
+app = Flask(__name__)
 
-hub = Blueprint("hub", __name__)
+
+def layout(title, body):
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
+<div class="strip"><div class="in"><span>DécaFlop · usage interne</span>
+<span>Équipe IT d'urgence</span></div></div>
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Cellule de crise</small></a>
+</div></header>
+<main id="main">{body}</main>
+<footer class="foot"><div class="legal"><div class="in"><span>© DécaFlop · usage interne</span>
+<span>Finale 2026</span></div></div></footer></body></html>"""
+
+
+def html(page, status=200):
+    return Response(page, status=status, mimetype="text/html")
 
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()
@@ -76,13 +92,11 @@ MISSIONS = [
      None, ["SAP_USR02_export.csv", "sap_hint.txt", "wordlist.txt", "case_file.zip"]),
 ]
 
-PORTS = {"idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006), "sap": ("SAP_URL", 8008)}
+PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006), "sap": ("SAP_URL", 8008)}
 
 
 def service_url(key):
     """URL of a live challenge, on the same host the player used to reach us."""
-    if key == "site":
-        return "/"
     env, port = PORTS[key]
     if os.environ.get(env):
         return os.environ[env]
@@ -101,7 +115,7 @@ def file_info(name):
         size /= 1024
 
 
-@hub.get("/cellule-de-crise/fichiers/<name>")
+@app.get("/fichiers/<name>")
 def download(name):
     if name not in FILES or not file_info(name):
         abort(404)
@@ -121,7 +135,7 @@ def mission_card(num, title, cat, level, pts, brief, live, files):
     for name in files:
         size = file_info(name)
         if size:
-            actions.append(f'<a class="dl" href="/cellule-de-crise/fichiers/{name}" download>'
+            actions.append(f'<a class="dl" href="/fichiers/{name}" download>'
                            f'<b>{FILES[name]}</b><span>{name} · {size}</span></a>')
         else:
             actions.append(f'<span class="dl off"><b>{FILES[name]}</b>'
@@ -136,7 +150,7 @@ def mission_card(num, title, cat, level, pts, brief, live, files):
 </article>"""
 
 
-@hub.get("/cellule-de-crise")
+@app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
     from html import escape
@@ -164,3 +178,19 @@ def crisis_cell():
  <div class="missions">{"".join(mission_card(*m) for m in MISSIONS)}</div>
 </div></section>"""
     return html(layout("Cellule de crise · DécaFlop", body))
+
+
+@app.get("/cellule-de-crise")
+def old_path():
+    return redirect("/")
+
+
+@app.errorhandler(404)
+def not_found(_e):
+    return html(layout("Introuvable · Cellule de crise", """<div class="page"><div class="panel">
+ <h1 class="h">Introuvable</h1><p class="mute">Cette page ou ce fichier n'existe pas.</p>
+ <a class="btn blue" href="/">Retour à la cellule de crise</a></div></div>"""), 404)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, threaded=True)

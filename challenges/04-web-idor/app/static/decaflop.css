@@ -1,5 +1,5 @@
-/* DécaFlop house style. Identical copies live in 01, 04 and 06
-   (each Docker build only sees its own app/ folder) — edit all three. */
+/* DécaFlop house style. Identical copies live in 01, 04, 06 and hub/
+   (each Docker build only sees its own app/ folder) — edit all four. */
 :root{
   --blue:#3643ba; --blue-dark:#262f8a; --blue-ink:#1b2266;
   --mint:#7affa6; --ink:#101010; --grey:#f5f4f5; --line:#dcdbe0;
@@ -222,13 +222,7 @@ body:has(> #main)>#main{flex:1}
 .faq[open] summary::after{content:"\2212"}
 .faq p{margin:0 0 16px;color:#333}
 
-/* crisis cell (01): players' entry point */
-.crisis-link{color:var(--mint);font-weight:700;text-decoration:none;white-space:nowrap}
-.crisis-link:hover{color:#fff;text-decoration:underline}
-.alert{background:var(--mint);color:var(--ink)}
-.alert .in{display:flex;align-items:center;justify-content:space-between;gap:16px;
-  flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
-.alert p{margin:0;max-width:760px}
+/* crisis cell (hub/): players' entry point */
 .banner.crisis{background:var(--ink)}
 .banner.crisis p{max-width:720px;color:#d6d6dc}
 .banner.crisis .small{color:#a9a9b3}
@@ -268,7 +262,6 @@ body:has(> #main)>#main{flex:1}
   .search{display:none}
 }
 @media (max-width:520px){
-  .strip .opt{display:none}
   .missions,.rules{grid-template-columns:1fr}
   .strip span:last-child{display:none}
   .top .in{height:60px}

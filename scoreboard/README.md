@@ -25,15 +25,15 @@ Then in the CTFd admin UI:
    points, description, hints with their point costs).
 2. Set each flag to the matching value from your `.env`
    (`FLAG_01_STAFF` … `FLAG_09_SAP_USR02`). **Static, case-sensitive.**
-3. Handout files are served by the crisis cell
-   (`http://<PiIP>:8001/cellule-de-crise`), so you can just link it. Uploading
+3. Handout files are served by the cellule de crise
+   (`http://<PiIP>:8080`), so you can just link it. Uploading
    them as CTFd challenge files also works.
 4. For the live web/SAP challenges, put the connection URL
-   (`http://<PiIP>:8001` …) in the description, or link the crisis cell,
+   (`http://<PiIP>:8001` …) in the description, or link the cellule de crise,
    which has a button for each.
 5. Set `SCOREBOARD_URL=http://<PiIP>:8000` in `.env` (then
-   `docker compose up -d`) to add a "Soumettre un flag" button to the crisis
-   cell.
+   `docker compose up -d`) to add a "Soumettre un flag" button to the
+   cellule de crise.
 
 > Flags change every time you run `gen-flags.sh`. Re-enter them in CTFd after
 > rotating, or keep the flags fixed between runs by not re-running gen-flags.
