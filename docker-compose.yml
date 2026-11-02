@@ -32,6 +32,10 @@ services:
     environment:
       FLAG: "${FLAG_01_STAFF}"
       HANDOUT_DIR: /handouts
+      # Shown on the staff portal so solving 01 reveals the share login.
+      # SAME values as the share service below (one source feeds both).
+      SHARE_USER: "${SHARE_USER:-equipe-it}"
+      SHARE_PASSWORD: "${SHARE_PASSWORD:-transition2026}"
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
     ports: ["8001:5000"]
@@ -46,7 +50,7 @@ services:
   share:
     build: ./share
     environment:
-      SHARE_USER: "equipe-it"
+      SHARE_USER: "${SHARE_USER:-equipe-it}"
       SHARE_PASSWORD: "${SHARE_PASSWORD:-transition2026}"
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh

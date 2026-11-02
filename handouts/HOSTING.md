@@ -61,21 +61,35 @@ The hub serves **no files**. Everything is built into `handouts/dist/` by
 publish it, so players *find* each file in context:
 
 - **Partage DFlop** — the internal file share (`share/`, `:8020`). The crew logs
-  in (`equipe-it` / `transition2026`, overridable with `SHARE_PASSWORD`) and
-  browses department folders for the evidence: the pcap (05), the USB image
-  (07), the SAP export + note + wordlist + encrypted zip (09), the `.sap`
-  shortcut (13) and the ABAP source (15). Files are served byte-for-byte through
-  an explicit path→name map; nothing else is downloadable and there is no path
-  traversal. A file that isn't built yet shows "pas encore disponible" in the
-  listing and 404s on download.
+  in (default `equipe-it` / `transition2026`; override with `SHARE_USER` /
+  `SHARE_PASSWORD`) and browses department folders for the evidence: the pcap
+  (05), the USB image (07), the SAP export + note + wordlist + encrypted zip
+  (09), the `.sap` shortcut (13) and the ABAP source (15). Files are served
+  byte-for-byte through an explicit path→name map; nothing else is downloadable
+  and there is no path traversal. A file that isn't built yet shows "pas encore
+  disponible" in the listing and 404s on download.
 - **DécaFlop site** (`:8001`): the poster (02) in `/presse` and the race photo
   (03) in `/actualites`, served byte-for-byte at `:8001/medias/...` (only those
   two names; placeholders before they're built).
 
 No restart is needed after `./scripts/build-handouts.sh` — both services read
-`handouts/dist/` live. The share's crew login is also printed on the hub's
-Contexte sheet. You can still attach the files in CTFd, or drop them on a USB
-stick.
+`handouts/dist/` live. You can still attach the files in CTFd, or drop them on a
+USB stick.
+
+### Challenge 01 gates the share login
+
+The share login is **no longer printed by the hub**. Players learn it by solving
+challenge 01: `/robots.txt` on the DécaFlop site points to the hidden staff
+portal, and that portal shows the share address (`:8020`) and the login. So 01
+(easy, 50 pts) is now a soft prerequisite for the five share-hosted challenges —
+**05, 07, 09, 13, 15, ~700 pts in all, including the 250-pt finale (09)**. It's a
+reference, not a hard gate: the share's own login is unchanged, so a teammate who
+already has the credentials can log in directly.
+
+`docker-compose.yml` feeds the SAME `SHARE_USER` / `SHARE_PASSWORD` to both the
+staff portal (01) and the share, so they can never drift. If a team is stuck on
+01, an organizer can just read them the login — it's `equipe-it` /
+`transition2026` unless you overrode it in `.env`.
 
 ## Pre-event test checklist
 
@@ -84,7 +98,9 @@ Run through this once, ideally the day before:
 - [ ] `uname -m` is `aarch64`
 - [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
       + hub + share + CTFd)
-- [ ] `curl -s localhost:8001/robots.txt` shows the staff path
+- [ ] `curl -s localhost:8001/robots.txt` shows the staff path; opening that
+      staff portal shows the Partage DFlop address (`:8020`) and the share login
+      (the same one the share accepts)
 - [ ] `curl -s localhost:8001/presse` and `:8001/actualites` load; the poster
       downloads at `:8001/medias/decaflop_poster.png` and the race photo at
       `:8001/medias/transition_shot.jpg` (both byte-identical to `handouts/dist/`)

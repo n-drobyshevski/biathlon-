@@ -7,13 +7,23 @@ listed in robots.txt, which anyone can read.
 Teaches: robots.txt recon, that "hidden" != "secret".
 """
 import os
-from flask import Flask, Response
+from html import escape
+
+from flask import Flask, Response, request
 
 from shop import shop, layout, html
 
 app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
+
+# Crew login for the internal file share "Partage DFlop" (:8020). The staff
+# portal hands it out, so solving 01 is how players learn how to log in. Read
+# from the SAME env the share reads, with the share's defaults, so the two stay
+# in sync (docker-compose feeds both services from one value).
+SHARE_PORT = 8020
+SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")
+SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 
 HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -33,6 +43,17 @@ STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
   <p>Vous avez trouvé l'espace « caché ». Il était dans <code>/robots.txt</code> depuis le début.</p>
   <div class="flag"><span>Flag</span><code id="flag">{flag}</code>
    <button type="button" onclick="copyFlag(this)">Copier</button></div>
+ </div>
+ <div class="panel grey">
+  <h2 class="h">Outils de l'équipe</h2>
+  <p style="margin:0 0 12px">Les pièces de l'enquête sont déposées sur le partage
+   documentaire interne <b>Partage DFlop</b>. Connectez-vous avec le compte de
+   l'équipe&#160;:</p>
+  <dl class="facts">
+   <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
+   <dt>Identifiant</dt><dd><code>{share_user}</code></dd>
+   <dt>Mot de passe</dt><dd><code>{share_pass}</code></dd>
+  </dl>
  </div>
  <div class="panel grey">
   <h2 class="h">Note de l'équipe</h2>
@@ -75,7 +96,15 @@ def robots():
 
 @app.get("/staff-portal-7f3a9")
 def staff():
-    return Response(STAFF.replace("{copyjs}", COPY_JS).replace("{flag}", FLAG), mimetype="text/html")
+    # The share runs on the same host the player reached us on, port 8020.
+    host = request.host.rsplit(":", 1)[0] if not request.host.endswith("]") else request.host
+    share_url = f"http://{host}:{SHARE_PORT}"
+    page = (STAFF.replace("{copyjs}", COPY_JS)
+                 .replace("{share_url}", escape(share_url))
+                 .replace("{share_user}", escape(SHARE_USER))
+                 .replace("{share_pass}", escape(SHARE_PASSWORD))
+                 .replace("{flag}", FLAG))
+    return Response(page, mimetype="text/html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, threaded=True)

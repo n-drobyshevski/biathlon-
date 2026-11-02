@@ -57,11 +57,12 @@ def test_hub_home_links_missions_to_service(hub):
         assert "/fichiers/" not in row
 
 
-def test_hub_contexte_shows_share_login(hub):
+def test_hub_contexte_links_share_without_creds(hub):
     ctx = hub.get("/contexte").data.decode()
-    assert "equipe-it" in ctx
-    assert "transition2026" in ctx
-    assert ":8020" in ctx
+    assert ":8020" in ctx                       # still names/links the share
+    assert "portail staff" in ctx               # points players at challenge 01
+    assert "transition2026" not in ctx          # no longer prints the credentials
+    assert "equipe-it" not in ctx
 
 
 def _load_ctfd_setup():
