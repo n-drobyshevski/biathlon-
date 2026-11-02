@@ -19,7 +19,7 @@ SAP* default behaviour.
 """
 import os
 from html import escape
-from flask import Flask, Response, request
+from flask import Flask, Response, request, redirect
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
@@ -65,7 +65,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:8px;cursor:pointer}
 .flag{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#ebf8ff;
  border:1px solid #0070f2;border-radius:8px;padding:10px 12px}
 .flag span{font-size:12px;font-weight:700;color:#0064d9;text-transform:uppercase}
-.flag code{flex:1;min-width:0;font-size:15px;font-weight:700;overflow-wrap:anywhere;user-select:all}
+.flag code{flex:1 1 220px;min-width:0;font-size:15px;font-weight:700;overflow-wrap:anywhere;user-select:all}
 .flag button{background:#fff;color:#0064d9;border:1px solid #0064d9;padding:5px 12px;font-size:13px}
 .tw{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
@@ -81,7 +81,7 @@ VP = '<meta name="viewport" content="width=device-width,initial-scale=1">'
 
 COPY_JS = """<script>
 function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent='Copy'},1500)}
+ function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
  function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
   a.style.opacity='0';document.body.appendChild(a);a.select();
   try{document.execCommand('copy');ok()}catch(e){}a.remove()}
@@ -90,29 +90,29 @@ function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
 </script>"""
 
 def launchpad(form_msg="", client="001", user=""):
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">{VP}
-<title>SAP DFlop ERP — Logon</title><style>{CSS}</style></head><body>
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">{VP}
+<title>SAP DFlop ERP — Connexion</title><style>{CSS}</style></head><body>
 <div class="shell"><b>SAP DFlop ERP</b><span class="sys">NetWeaver Fiori Launchpad</span></div>
 <main class="logon"><div class="box">
- <h1>Log On</h1>
- <p class="sub">System DFL · Production</p>
+ <h1>Connexion</h1>
+ <p class="sub">Système DFL · Production</p>
  <div class="msg" role="alert">{form_msg}</div>
  <form method="post" action="/sap/bc/ui2/logon">
    <div class="pair">
-    <div><label for="c">Client</label>
+    <div><label for="c">Mandant</label>
      <input id="c" name="client" value="{escape(client)}" inputmode="numeric" autocomplete="off"></div>
-    <div><label for="l">Language</label>
-     <select id="l" name="lang"><option>EN</option><option>DE</option><option>FR</option></select></div>
+    <div><label for="l">Langue</label>
+     <select id="l" name="lang"><option>FR</option><option>EN</option><option>DE</option></select></div>
    </div>
-   <label for="u">User</label>
+   <label for="u">Utilisateur</label>
    <input id="u" name="user" value="{escape(user)}" autofocus autocomplete="off"
     autocapitalize="characters" autocorrect="off" spellcheck="false">
-   <label for="p">Password</label>
+   <label for="p">Mot de passe</label>
    <input id="p" name="password" type="password" autocomplete="off">
-   <button class="primary">Log On</button>
+   <button class="primary">Se connecter</button>
  </form>
 </div>
-<p class="legal">Production system DFL. Unauthorized access prohibited.</p>
+<p class="legal">Système de production DFL. Tout accès non autorisé est interdit.</p>
 </main></body></html>"""
 
 INFO = """HTTP/1.1 200 OK
@@ -126,39 +126,42 @@ Server: SAP NetWeaver Application Server / ABAP
   CLIENTS           = 000 (SAP master), 001 (DFLOP PROD), 066 (EarlyWatch)
   ICF_SERVICES      = /sap/public/info [PUBLIC], /sap/bc/ui2/logon,
                       /sap/bc/soap/rfc [restricted], /sap/public/icman
-  NOTE_FROM_BASIS   = "Audit finding: the emergency user SAP* was DELETED from
-                       client 001 last week and never recreated. Until Basis
-                       recreates it, logons as SAP* fall back to the kernel
-                       default. Fix ASAP (login/no_automatic_user_sapstar=1)."
+  NOTE_FROM_BASIS   = "Constat d'audit : l'utilisateur d'urgence SAP* a été
+                       SUPPRIMÉ du mandant 001 la semaine dernière et jamais
+                       recréé. Tant que Basis ne l'a pas recréé, les connexions
+                       en SAP* retombent sur le comportement par défaut du
+                       noyau. À corriger d'urgence
+                       (login/no_automatic_user_sapstar=1)."
 </SAP:SYSINFO>
 """
 
 def admin_page():
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">{VP}
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">{VP}
 <title>DFL — SAP GUI</title><style>{CSS}</style></head><body>
 <div class="shell"><b>SAP Easy Access</b><span class="sys">DFL (001) · SAP*</span>
- <div class="av" aria-label="User SAP*">S*</div></div>
+ <div class="av" aria-label="Utilisateur SAP*">S*</div></div>
 <div class="layout">
- <nav class="side" aria-label="Menu"><div>Favorites</div><div>Office</div>
-  <div>Logistics</div><div>Human Resources</div><div>Tools</div>
-  <div class="on">SU01 · User Maintenance</div><div>SE16 · Data Browser</div></nav>
+ <nav class="side" aria-label="Menu"><div>Favoris</div><div>Bureautique</div>
+  <div>Logistique</div><div>Ressources humaines</div><div>Outils</div>
+  <div class="on">SU01 · Gestion des utilisateurs</div><div>SE16 · Navigateur de données</div></nav>
  <main class="content">
-  <h1>Logged on to client 001 as SAP*</h1>
-  <span class="ok">✓ Logon successful</span>
+  <h1>Connecté au mandant 001 en tant que SAP*</h1>
+  <span class="ok">✓ Connexion réussie</span>
   <div class="card"><div class="flag"><span>Flag</span><code id="flag">{FLAG}</code>
-   <button type="button" onclick="copyFlag(this)">Copy</button></div>
-   <p style="margin:12px 0 0">You used the SAP* kernel backdoor (default password 06071992) because the
-   SAP* user record was deleted from client 001 and never recreated.</p></div>
-  <div class="card"><h2>Transaction SU01 — relevant users in client 001</h2>
-   <div class="tw"><table><thead><tr><th>User</th><th>Name</th><th>Role</th><th>Status</th></tr></thead><tbody>
-    <tr><td><code>RESULTS_ADMIN</code></td><td>—</td><td>service account</td><td class="st r">Locked</td></tr>
-    <tr><td><code>VLINDQVIST</code></td><td>Viktor Lindqvist</td><td>results_operator, created 3 days ago</td><td class="st g">Active</td></tr>
-    <tr><td><code>MSORENSEN</code></td><td>Maria Sorensen</td><td>read-only</td><td class="st n">Active</td></tr>
+   <button type="button" onclick="copyFlag(this)">Copier</button></div>
+   <p style="margin:12px 0 0">Vous avez utilisé la porte dérobée SAP* du noyau (mot de passe par défaut
+   06071992), car l'utilisateur SAP* a été supprimé du mandant 001 et jamais recréé.</p></div>
+  <div class="card"><h2>Transaction SU01 — utilisateurs concernés du mandant 001</h2>
+   <div class="tw"><table><thead><tr><th>Utilisateur</th><th>Nom</th><th>Rôle</th><th>Statut</th></tr></thead><tbody>
+    <tr><td><code>RESULTS_ADMIN</code></td><td>—</td><td>compte de service</td><td class="st r">Verrouillé</td></tr>
+    <tr><td><code>VLINDQVIST</code></td><td>Viktor Lindqvist</td><td>results_operator, créé il y a 3 jours</td><td class="st g">Actif</td></tr>
+    <tr><td><code>MSORENSEN</code></td><td>Maria Sorensen</td><td>lecture seule</td><td class="st n">Actif</td></tr>
    </tbody></table></div></div>
-  <div class="card"><h2>Next</h2>
-   <p style="margin:0">The authoritative results table <code>ZRACE_RESULT</code> was changed by one of
-   these users. To prove who, export the password/user table <code>USR02</code> and check
-   the last-logon + change records. (That export is handed out separately.)</p></div>
+  <div class="card"><h2>Étape suivante</h2>
+   <p style="margin:0">La table officielle des résultats <code>ZRACE_RESULT</code> a été modifiée par
+   l'un de ces utilisateurs. Pour prouver lequel, exportez la table des utilisateurs et mots de passe
+   <code>USR02</code> et vérifiez les dernières connexions et les modifications. (Cet export est
+   distribué séparément.)</p></div>
  </main>
 </div>{COPY_JS}</body></html>"""
 
@@ -176,6 +179,10 @@ def robots():
     return Response("User-agent: *\nDisallow: /sap/public/\nDisallow: /sap/bc/\n",
                     mimetype="text/plain")
 
+@app.get("/sap/bc/ui2/logon")
+def logon_get():
+    return redirect("/")
+
 @app.post("/sap/bc/ui2/logon")
 def logon():
     user = request.form.get("user", "").strip().upper()
@@ -184,7 +191,7 @@ def logon():
     # VULN 2: SAP* backdoor active (SAP* missing in client 001)
     if client == "001" and user == "SAP*" and pw == "06071992":
         return Response(admin_page(), mimetype="text/html")
-    return Response(launchpad("Name or password is incorrect. Logon failed.",
+    return Response(launchpad("Nom ou mot de passe incorrect. Échec de la connexion.",
                               client=request.form.get("client", "001"),
                               user=request.form.get("user", "")),
                     mimetype="text/html")

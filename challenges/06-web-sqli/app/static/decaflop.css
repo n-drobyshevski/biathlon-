@@ -63,7 +63,7 @@ img,svg{display:block}
 .sched h2{font-size:15px;margin:0 0 8px}
 .sched table{width:100%;border-collapse:collapse;font-size:14px}
 .sched td{padding:8px 0;border-top:1px solid var(--line)}
-.sched td:first-child{font-weight:700;font-variant-numeric:tabular-nums;width:64px}
+.sched td:first-child{font-weight:700;font-variant-numeric:tabular-nums;width:76px;white-space:nowrap}
 .sched td:last-child{text-align:right;color:var(--mute)}
 .banner .sched p{color:var(--mute);max-width:none}
 
@@ -72,7 +72,7 @@ img,svg{display:block}
 .sec.grey{background:var(--grey)}
 .sec h2{font-size:26px;margin:0 0 18px}
 .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.row a{font-weight:700;font-size:14px}
+.row a{font-weight:700;font-size:14px;white-space:nowrap}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .prod{background:#fff;text-decoration:none;color:var(--ink);display:block}
 .prod .ph{aspect-ratio:1/1;background:var(--grey);display:grid;place-items:center;color:var(--blue)}
@@ -124,6 +124,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px;margin:0;line-h
 .tag.crew{background:var(--mint);color:var(--ink)}
 .tag.athlete{background:#e4e6ff;color:var(--blue-ink)}
 .who{display:flex;gap:16px;align-items:center}
+.who>div:last-child{min-width:0}
+.who h1{font-size:clamp(21px,6vw,28px);overflow-wrap:anywhere;hyphens:auto}
 .bib{flex:none;width:64px;height:64px;background:var(--blue);color:#fff;display:grid;
   place-items:center;font-weight:900;font-style:italic;font-size:18px;border-radius:2px}
 .bib.ink{background:var(--ink)}
@@ -142,11 +144,15 @@ dl.facts dt{color:var(--mute)}dl.facts dd{margin:0;font-weight:600}
 .note.db{background:#fff6e0;border-left:4px solid var(--amber);color:#4a3000}
 .note pre{margin-top:6px;font-size:12.5px}
 
+.forgot{margin-top:14px;font-size:14px}
+.forgot summary{cursor:pointer;color:var(--blue);font-weight:600}
+.forgot p{margin:8px 0 0;color:var(--mute)}
+
 /* flag */
 .flag{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--mint);
   padding:12px 14px;margin:16px 0;border-radius:2px}
 .flag span{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.flag code{flex:1;min-width:0;font-size:15px;font-weight:700;overflow-wrap:anywhere;user-select:all}
+.flag code{flex:1 1 220px;min-width:0;font-size:15px;font-weight:700;overflow-wrap:anywhere;user-select:all}
 .flag button{border:0;background:var(--ink);color:#fff;font:inherit;font-size:13px;
   font-weight:700;padding:7px 14px;border-radius:2px;cursor:pointer}
 
@@ -166,5 +172,5 @@ table.std td{border-bottom:1px solid var(--line);padding:9px 8px 9px 0;font-vari
   .strip span:last-child{display:none}
   .top .in{height:60px}
   .mark{font-size:22px}
-  .acct a.opt{display:none}
+  .acct .opt{display:none}
 }

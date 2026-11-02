@@ -9,7 +9,7 @@ Teaches: SQL injection, auth bypass, why you parameterize queries.
 """
 import os, sqlite3
 from html import escape
-from flask import Flask, Response, request
+from flask import Flask, Response, request, redirect
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
@@ -27,7 +27,7 @@ def db():
 
 COPY_JS = """<script>
 function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent='Copy'},1500)}
+ function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
  function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
   a.style.opacity='0';document.body.appendChild(a);a.select();
   try{document.execCommand('copy');ok()}catch(e){}a.remove()}
@@ -36,13 +36,13 @@ function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
 </script>"""
 
 def shell(title, body, right=""):
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
-<div class="strip"><div class="in"><span>Results Admin · authorized crew only</span>
-<span>Final race — results lock at 16:00</span></div></div>
+<div class="strip"><div class="in"><span>Admin résultats · réservé au staff autorisé</span>
+<span>Finale — résultats figés à 16 h 00</span></div></div>
 <header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Results admin</small></a>
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Admin résultats</small></a>
  <nav class="acct">{right}</nav>
 </div></header>
 {body}</body></html>"""
@@ -50,54 +50,69 @@ def shell(title, body, right=""):
 def FORM(msg="", username=""):
     # The typed username is kept (HTML-escaped) so players can tweak a payload
     # instead of retyping it. The SQL itself is still built from raw input.
-    return shell("DécaFlop Results Admin", f"""<main class="page" style="max-width:460px">
+    return shell("DécaFlop · Admin résultats", f"""<main class="page" style="max-width:460px">
 <div class="panel">
- <h1 class="h">Sign in</h1>
- <p class="mute small" style="margin:0 0 18px">Official results management. Authorized crew only.</p>
+ <h1 class="h">Connexion</h1>
+ <p class="mute small" style="margin:0 0 18px">Gestion officielle des résultats. Réservé au staff autorisé.</p>
  {msg}
  <form method="post" action="/login">
-  <div class="field"><label for="u">Username</label>
+  <div class="field"><label for="u">Nom d'utilisateur</label>
    <input id="u" name="username" value="{escape(username)}" autofocus
     autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
-  <div class="field"><label for="p">Password</label>
+  <div class="field"><label for="p">Mot de passe</label>
    <input id="p" name="password" type="password" autocomplete="off"></div>
-  <button class="btn blue wide">Sign in</button>
+  <button class="btn blue wide">Se connecter</button>
  </form>
+ <details class="forgot"><summary>Mot de passe oublié ?</summary>
+  <p>Contactez le bureau de course (poste 214). Les mots de passe ne sont
+   jamais envoyés par e-mail.</p></details>
 </div>
-<p class="small mute">Lost access? Ask the race office. Do not share crew accounts.</p>
+<p class="small mute">Ne partagez jamais un compte staff.</p>
 </main>""")
 
-STANDINGS = [("1", "Astrid Bjornsen", "0", "38:12.4"),
-             ("2", "Mikkel Haugen", "2", "38:40.9"),
-             ("3", "—", "—", "pending")]
+STANDINGS = [("1", "Astrid Bjornsen", "0", "38:12,4"),
+             ("2", "Mikkel Haugen", "2", "38:40,9"),
+             ("3", "—", "—", "en attente")]
 
 def ok_page():
     rows = "".join(f"<tr><td>{r}</td><td>{n}</td><td>{m}</td><td>{t}</td></tr>"
                    for r, n, m, t in STANDINGS)
-    return shell("Results Admin", f"""<main class="page">
-<div class="crumb">results / dashboard</div>
+    return shell("Admin résultats", f"""<main class="page">
+<div class="crumb">résultats / tableau de bord</div>
 <div class="panel">
- <h1 class="h">Signed in</h1>
- <p class="mute" style="margin:0">Results Admin dashboard.</p>
+ <h1 class="h">Connecté·e</h1>
+ <p class="mute" style="margin:0">Tableau de bord de l'admin résultats.</p>
  <div class="flag"><span>Flag</span><code id="flag">{FLAG}</code>
-  <button type="button" onclick="copyFlag(this)">Copy</button></div>
- <div class="log"><pre>RESULTS SYSTEM NOTICE
----------------------
-The authoritative results live in the SAP DFlop ERP (table ZRACE_RESULT).
-The web admin is only a front-end. To find WHO altered the final standings,
-pull the SAP user table (USR02) from the ERP host.</pre></div>
+  <button type="button" onclick="copyFlag(this)">Copier</button></div>
+ <div class="log"><pre>AVIS — SYSTÈME DE RÉSULTATS
+---------------------------
+Les résultats officiels sont stockés dans le SAP DFlop ERP (table ZRACE_RESULT).
+Cette admin web n'est qu'une interface. Pour savoir QUI a modifié le classement
+final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.</pre></div>
 </div>
 <div class="panel">
- <h2 class="h">Final race · provisional</h2>
- <p class="small mute" style="margin:0 0 10px">Read-only mirror of SAP table ZRACE_RESULT.</p>
- <table class="std"><thead><tr><th>Rank</th><th>Athlete</th><th>Misses</th><th>Time</th></tr></thead>
+ <h2 class="h">Finale · classement provisoire</h2>
+ <p class="small mute" style="margin:0 0 10px">Copie en lecture seule de la table SAP ZRACE_RESULT.</p>
+ <table class="std"><thead><tr><th>Rang</th><th>Athlète</th><th>Fautes</th><th>Temps</th></tr></thead>
  <tbody>{rows}</tbody></table>
 </div>
-</main>{COPY_JS}""", right='<a href="/">Sign out</a>')
+</main>{COPY_JS}""", right='<a href="/">Se déconnecter</a>')
 
 @app.get("/")
 def home():
     return Response(FORM(msg=""), mimetype="text/html")
+
+@app.get("/login")
+def login_get():
+    return redirect("/")
+
+@app.errorhandler(404)
+def not_found(_e):
+    return Response(shell("Page introuvable", """<main class="page" style="max-width:460px">
+<div class="panel"><h1 class="h">Page introuvable</h1>
+ <p class="mute">Cette page n'existe pas.</p>
+ <a class="btn blue" href="/">Retour à la connexion</a></div></main>"""),
+        status=404, mimetype="text/html")
 
 @app.post("/login")
 def login():
@@ -108,13 +123,13 @@ def login():
     try:
         row = db().execute(q).fetchone()
     except sqlite3.Error as e:
-        return Response(FORM(msg=f'<div class="note db" role="alert"><b>Database error</b>'
-                             f'<pre>SQL error: {escape(str(e))}</pre></div>',
+        return Response(FORM(msg=f'<div class="note db" role="alert"><b>Erreur de base de données</b>'
+                             f'<pre>Erreur SQL : {escape(str(e))}</pre></div>',
                              username=u),
                         mimetype="text/html")
     if row:
         return Response(ok_page(), mimetype="text/html")
-    return Response(FORM(msg='<div class="note err" role="alert">Invalid credentials.</div>',
+    return Response(FORM(msg='<div class="note err" role="alert">Identifiants incorrects.</div>',
                          username=u),
                     mimetype="text/html")
 

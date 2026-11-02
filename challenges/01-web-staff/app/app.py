@@ -7,12 +7,12 @@ listed in robots.txt, which anyone can read.
 Teaches: robots.txt recon, that "hidden" != "secret".
 """
 import os
-from flask import Flask, Response
+from flask import Flask, Response, request
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
 
-HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>"""
 
@@ -26,10 +26,10 @@ ICON = {
 }
 
 PRODUCTS = [
-    ("ski", "Skiflop", "Skate skis Race 900, carbon-ish", "349", "399", "4.1 · 212 reviews"),
-    ("goggle", "Nordik'O", "Anti-fog goggles (fog sold separately)", "24", "", "3.2 · 1 048 reviews"),
-    ("flask", "Bofbof", "Insulated bottle 0.5 L, keeps tea warm-ish", "9", "12", "3.9 · 87 reviews"),
-    ("bib", "DécaFlop", "Official 2026 race bib, replica", "15", "", "4.6 · 33 reviews"),
+    ("ski", "Skiflop", "Skis skating Race 900, presque carbone", "349", "399", "4,1 · 212 avis"),
+    ("goggle", "Nordik'O", "Masque anti-buée (buée vendue séparément)", "24", "", "3,2 · 1 048 avis"),
+    ("flask", "Bofbof", "Gourde isotherme 0,5 L, garde le thé à peu près chaud", "9", "12", "3,9 · 87 avis"),
+    ("bib", "DécaFlop", "Dossard officiel 2026, réplique", "15", "", "4,6 · 33 avis"),
 ]
 
 def product(icon, brand, title, price, was, rate):
@@ -38,86 +38,87 @@ def product(icon, brand, title, price, was, rate):
 <div class="b"><div class="brand">{brand}</div><div class="t">{title}</div>
 <span class="price">{price} €{old}</span><div class="rate">★ {rate}</div></div></a>"""
 
-PAGE = HEAD.replace("{title}", "DécaFlop · Official Sponsor of the Regional Biathlon Championship") + """
-<div class="strip"><div class="in"><span>Free click &amp; collect in all 3 stores</span>
-<span>30-day returns*  ·  *conditions apply, mostly</span></div></div>
+PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat régional de biathlon") + """
+<div class="strip"><div class="in"><span>Retrait gratuit dans nos 3 magasins</span>
+<span>Retours sous 30 jours*  ·  *voir conditions, en gros</span></div></div>
 <header class="top"><div class="in">
  <a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
- <form class="search" action="/" role="search"><input name="q" aria-label="Search"
-   placeholder="Search 40 000 products and 3 sports"><button>Search</button></form>
- <nav class="acct"><a class="opt" href="#help">Help</a><a href="#help">Stores</a></nav>
+ <form class="search" action="/" role="search"><input name="q" aria-label="Rechercher"
+   placeholder="Rechercher parmi 40 000 produits et 3 sports"><button>Rechercher</button></form>
+ <nav class="acct"><a class="opt" href="#help">Aide</a><a href="#help">Magasins</a></nav>
 </div></header>
-<nav class="cats" aria-label="Departments"><ul>
+<nav class="cats" aria-label="Rayons"><ul>
  <li><a href="#race" aria-current="page">Biathlon</a></li>
- <li><a href="#shop">Cross-country ski</a></li><li><a href="#shop">Shooting</a></li>
- <li><a href="#shop">Clothing</a></li><li><a href="#shop">Outlet</a></li>
- <li><a href="#careers">Careers</a></li></ul></nav>
+ <li><a href="#shop">Ski de fond</a></li><li><a href="#shop">Tir</a></li>
+ <li><a href="#shop">Vêtements</a></li><li><a href="#shop">Déstockage</a></li>
+ <li><a href="#careers">Recrutement</a></li></ul></nav>
+<!--notice-->
 
 <section class="banner" id="race"><div class="in">
  <div>
-  <span class="tagline">Title sponsor · Regional Biathlon Championship</span>
-  <h1 class="h">The Final Race<br>is <em>tomorrow</em></h1>
-  <p>Welcome to the official site of <b>DécaFlop</b>, proud title sponsor of the
-     Regional Biathlon Championship. Skis, rifles, questionable returns policy.</p>
-  <a class="btn" href="#shop">Shop the race kit</a><a class="btn line" href="#race">Race info</a>
+  <span class="tagline">Sponsor titre · Championnat régional de biathlon</span>
+  <h1 class="h">La finale,<br>c'est <em>demain</em></h1>
+  <p>Bienvenue sur le site officiel de <b>DécaFlop</b>, fier sponsor titre du
+     Championnat régional de biathlon. Skis, carabines, politique de retour discutable.</p>
+  <a class="btn" href="#shop">L'équipement course</a><a class="btn line" href="#race">Infos course</a>
  </div>
  <div class="sched">
-  <h2 class="h">Race day schedule</h2>
-  <table><tr><td>08:30</td><td>Zeroing</td><td>Range</td></tr>
-   <tr><td>10:00</td><td>Women's final</td><td>Stadium</td></tr>
-   <tr><td>12:30</td><td>Men's final</td><td>Stadium</td></tr>
-   <tr><td>15:00</td><td>Podium</td><td>Big tent</td></tr></table>
-  <p class="small mute" style="margin:10px 0 0">Start lists, timing and results are
-   managed by our event crew. Public visitors can view the schedule soon.</p>
+  <h2 class="h">Programme du jour J</h2>
+  <table><tr><td>8 h 30</td><td>Réglage des carabines</td><td>Pas de tir</td></tr>
+   <tr><td>10 h 00</td><td>Finale femmes</td><td>Stade</td></tr>
+   <tr><td>12 h 30</td><td>Finale hommes</td><td>Stade</td></tr>
+   <tr><td>15 h 00</td><td>Podium</td><td>Grand chapiteau</td></tr></table>
+  <p class="small mute" style="margin:10px 0 0">Listes de départ, chronométrage et résultats
+   sont gérés par notre équipe événement. Le programme public arrive bientôt.</p>
  </div>
 </div></section>
 
 <section class="sec" id="shop"><div class="in">
- <div class="row"><h2 class="h">Race-week deals</h2><a href="#shop">See all</a></div>
+ <div class="row"><h2 class="h">Les bons plans de la semaine</h2><a href="#shop">Tout voir</a></div>
  <div class="grid">""" + "".join(product(*p) for p in PRODUCTS) + """</div>
 </div></section>
 
 <section class="sec grey"><div class="in two">
- <div class="tile"><h3 class="h">Ski rental</h3>
-  <p>Race-tuned skate skis for the weekend. Wax included, dignity not.</p>
-  <a class="btn blue" href="#help">Find a store</a></div>
- <div class="tile dark" id="careers"><h3 class="h">Careers</h3>
-  <p>DécaFlop is always hiring. We definitely do not have an internal-only
-     area on this very website. Please do not look for it.</p>
-  <a href="#careers">Open positions (0)</a></div>
+ <div class="tile"><h3 class="h">Location de skis</h3>
+  <p>Skis skating préparés course pour le week-end. Fart inclus, dignité non.</p>
+  <a class="btn blue" href="#help">Trouver un magasin</a></div>
+ <div class="tile dark" id="careers"><h3 class="h">Recrutement</h3>
+  <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé
+     au personnel sur ce site. Merci de ne pas le chercher.</p>
+  <a href="#careers">Offres d'emploi (0)</a></div>
 </div></section>
 
 <footer class="foot" id="help"><div class="in">
- <div><b>Help</b><ul><li><a href="#help">Order tracking</a></li><li><a href="#help">Returns</a></li><li><a href="#help">Warranty</a></li></ul></div>
- <div><b>Stores</b><ul><li>DécaFlop Stadium</li><li>DécaFlop Centre-ville</li><li>DécaFlop Outlet (parking lot)</li></ul></div>
- <div><b>Company</b><ul><li><a href="#careers">Careers</a></li><li><a href="#race">Sponsoring</a></li></ul></div>
- <div><b>Hotline</b>0 800 FLOP FLOP<br><span class="small">Mon–Fri, when someone answers</span></div>
+ <div><b>Aide</b><ul><li><a href="#help">Suivi de commande</a></li><li><a href="#help">Retours</a></li><li><a href="#help">Garantie</a></li></ul></div>
+ <div><b>Magasins</b><ul><li>DécaFlop Stade</li><li>DécaFlop Centre-ville</li><li>DécaFlop Déstockage (sur le parking)</li></ul></div>
+ <div><b>Entreprise</b><ul><li><a href="#careers">Recrutement</a></li><li><a href="#race">Sponsoring</a></li></ul></div>
+ <div><b>Service client</b>0 800 FLOP FLOP<br><span class="small">Du lundi au vendredi, quand quelqu'un décroche</span></div>
 </div>
-<div class="legal"><div class="in"><span>© DécaFlop. All flops reserved.</span>
-<span>Crawlers welcome — see <a href="/robots.txt">/robots.txt</a></span></div></div>
+<div class="legal"><div class="in"><span>© DécaFlop. Tous flops réservés.</span>
+<span>Robots d'indexation bienvenus — voir <a href="/robots.txt">/robots.txt</a></span></div></div>
 </footer></body></html>"""
 
-STAFF = HEAD.replace("{title}", "DécaFlop — Staff Portal") + """
-<div class="strip"><div class="in"><span>INTERNAL · DécaFlop staff network</span>
-<span>Do not share links from this area</span></div></div>
+STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
+<div class="strip"><div class="in"><span>INTERNE · Réseau staff DécaFlop</span>
+<span>Ne partagez pas les liens de cet espace</span></div></div>
 <header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Staff portal</small></a>
- <nav class="acct"><span class="mute">Event crew</span></nav>
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Portail staff</small></a>
+ <nav class="acct"><span class="mute">Équipe événement</span></nav>
 </div></header>
 <main class="page">
- <div class="crumb"><a href="/">decaflop</a> / staff-portal (internal)</div>
+ <div class="crumb"><a href="/">decaflop</a> / staff-portal (interne)</div>
  <div class="panel">
-  <h1 class="h">Staff portal</h1>
-  <p>You found the "hidden" area. It was in <code>/robots.txt</code> the whole time.</p>
+  <h1 class="h">Portail staff</h1>
+  <p>Vous avez trouvé l'espace « caché ». Il était dans <code>/robots.txt</code> depuis le début.</p>
   <div class="flag"><span>Flag</span><code id="flag">{flag}</code>
-   <button type="button" onclick="copyFlag(this)">Copy</button></div>
+   <button type="button" onclick="copyFlag(this)">Copier</button></div>
  </div>
  <div class="panel grey">
-  <h2 class="h">Crew note</h2>
-  <p style="margin:0">All staff accounts follow the convention
-   <code>first-initial + lastname</code> and are mirrored into our
-   <b>SAP DFlop ERP</b> system as the matching SAP user. Remember this —
-   it matters for the results system.</p>
+  <h2 class="h">Note de l'équipe</h2>
+  <p style="margin:0">Tous les comptes staff suivent la convention
+   <code>initiale du prénom + nom</code> et sont répliqués dans notre système
+   <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant. Retenez-le —
+   c'est important pour le système de résultats.</p>
  </div>
 </main>{copyjs}</body></html>"""
 
@@ -125,7 +126,7 @@ STAFF = HEAD.replace("{title}", "DécaFlop — Staff Portal") + """
 # HTTP on a LAN IP, where navigator.clipboard is unavailable.
 COPY_JS = """<script>
 function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent='Copy'},1500)}
+ function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
  function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
   a.style.opacity='0';document.body.appendChild(a);a.select();
   try{document.execCommand('copy');ok()}catch(e){}a.remove()}
@@ -135,13 +136,32 @@ function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
-# internal only — do not index the results tooling
+# interne uniquement — ne pas indexer les outils de résultats
 Disallow: /sap/
 """
 
+SEARCH_NOTICE = """<div class="in" style="padding-top:12px"><p class="note db" role="status"
+ style="margin:0">La recherche en ligne est indisponible pendant la compétition.
+ Nos vendeurs vous attendent en magasin.</p></div>"""
+
+NOT_FOUND = HEAD.replace("{title}", "Page introuvable · DécaFlop") + """
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
+</div></header>
+<main class="page"><div class="panel">
+ <h1 class="h">Page introuvable</h1>
+ <p class="mute">Cette page n'existe pas ou a été déplacée.</p>
+ <a class="btn blue" href="/">Retour à l'accueil</a>
+</div></main></body></html>"""
+
 @app.get("/")
 def home():
-    return Response(PAGE, mimetype="text/html")
+    notice = SEARCH_NOTICE if "q" in request.args else ""
+    return Response(PAGE.replace("<!--notice-->", notice), mimetype="text/html")
+
+@app.errorhandler(404)
+def not_found(_e):
+    return Response(NOT_FOUND, status=404, mimetype="text/html")
 
 @app.get("/robots.txt")
 def robots():
