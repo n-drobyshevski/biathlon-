@@ -50,13 +50,40 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
-  # ---- 08 · SAP · hard (default SAP* backdoor + unauth ICF path) ---------
-  sap:
-    build: ./challenges/08-sap-icf
+  # ---- 10 · Web · hard (JWT weak secret) --------------------------------
+  jwt:
+    build: ./challenges/10-web-jwt
     environment:
-      FLAG: "${FLAG_08_SAP_ICF}"
-    ports: ["8008:5000"]
-    mem_limit: 160m
+      FLAG: "${FLAG_10_JWT}"
+    ports: ["8010:5000"]
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # ---- 11 · Web · hard (exposed .git) -----------------------------------
+  gitleak:
+    build: ./challenges/11-web-gitleak
+    environment:
+      FLAG: "${FLAG_11_GIT}"
+    ports: ["8011:5000"]
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # ---- 12 · Web · hard (SSTI) -------------------------------------------
+  ssti:
+    build: ./challenges/12-web-ssti
+    environment:
+      FLAG: "${FLAG_12_SSTI}"
+    ports: ["8012:5000"]
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # ---- 14 · SAP · medium (gateway reginfo, simulated) -------------------
+  sapgw:
+    build: ./challenges/14-sap-gateway
+    environment:
+      FLAG: "${FLAG_14_SAP_GW}"
+    ports: ["8014:5000"]
+    mem_limit: 128m
     restart: unless-stopped
 
   # ---- Scoreboard: CTFd (teams, flags, hints, scores) --------------------

@@ -1,7 +1,7 @@
 # 09 · Who Rigged the Race? — `SAP` · Hard · 250 pts · 🏁 FINALE
 
-> Inside SAP DFlop ERP you found that the results table `ZRACE_RESULT` was
-> altered the night before the final race. The system kept the user master
+> The results table `ZRACE_RESULT` in SAP DFlop ERP was altered the night
+> before the final race. The Basis team exported the system's user master
 > table **USR02** — every account, its last logon, and its (weak, legacy)
 > password hash. Prove who did it.
 
