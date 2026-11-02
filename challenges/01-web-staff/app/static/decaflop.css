@@ -222,8 +222,39 @@ body:has(> #main)>#main{flex:1}
 .faq[open] summary::after{content:"\2212"}
 .faq p{margin:0 0 16px;color:#333}
 
+/* press + actualités (01) */
+.news-teaser{display:block;background:#fff;border:1px solid var(--line);
+  border-left:6px solid var(--blue);padding:18px 20px;text-decoration:none;color:var(--ink)}
+.news-teaser:hover{border-color:var(--blue);color:var(--ink);box-shadow:inset 0 -4px 0 var(--blue)}
+.date{display:block;font-size:12px;font-weight:800;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--mute)}
+.news-teaser b{display:block;font-size:22px;margin:4px 0 6px}
+.more{font-weight:700;font-size:14px;color:var(--blue)}
+.news-list{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.news{display:block;background:var(--grey);border-top:6px solid var(--blue);padding:20px;
+  text-decoration:none;color:var(--ink)}
+.news:hover{color:var(--ink);box-shadow:inset 0 -4px 0 var(--blue)}
+.news b{display:block;font-size:20px;margin:4px 0 8px}
+.news p{margin:0 0 10px;color:#333}
+.two.press{align-items:start}
+.press-art .poster{display:block;width:100%;max-width:360px;height:auto;border:1px solid var(--line)}
+.post{max-width:760px;padding-top:24px;padding-bottom:48px}
+.post .date{margin-bottom:6px}
+.post h1{font-size:clamp(26px,4vw,38px);margin:0 0 14px}
+.post .lede{font-size:18px;color:#333;margin:0 0 20px}
+.post p{margin:0 0 14px;max-width:64ch}
+.post .back{margin-top:24px}
+.news-photo{margin:0 0 20px}
+.news-photo img{width:100%;height:auto;border:1px solid var(--line)}
+.news-photo figcaption{font-size:13px;color:var(--mute);margin-top:8px}
+.poster.missing,.news-photo.missing{display:grid;place-items:center;text-align:center;
+  background:var(--grey);border:1px dashed var(--line);color:var(--mute);font-weight:700;
+  min-height:260px;padding:24px;max-width:360px}
+.news-photo.missing{max-width:none}
+.btn.off{background:var(--mute);cursor:not-allowed;pointer-events:none}
+
 @media (max-width:860px){
-  .sports,.three,.legs,.stores{grid-template-columns:1fr}
+  .sports,.three,.legs,.stores,.news-list{grid-template-columns:1fr}
   .pdp{grid-template-columns:1fr;gap:20px}
   .grid{grid-template-columns:repeat(2,1fr)}
   .banner .in,.two{grid-template-columns:1fr}

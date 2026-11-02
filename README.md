@@ -36,8 +36,8 @@ enough for 6 people to split up and work in parallel.
 | # | Title | Category | Difficulty | Pts | Type |
 |---|-------|----------|-----------|-----|------|
 | 01 | The Sponsor's Secret | Web | Easy | 50 | live (`:8001`) |
-| 02 | Share Everywhere | Forensics/Stego | Easy | 50 | handout |
-| 03 | In Transition | Forensics | Easy | 75 | handout |
+| 02 | Share Everywhere | Forensics/Stego | Easy | 50 | live (`:8001`) |
+| 03 | In Transition | Forensics | Easy | 75 | live (`:8001`) |
 | 04 | Not Your Profile | Web (IDOR) | Medium | 100 | live (`:8004`) |
 | 05 | The Timing Booth | Forensics (pcap) | Medium | 100 | handout |
 | 06 | Results Admin | Web (SQLi) | Medium | 125 | live (`:8006`) |
@@ -110,14 +110,18 @@ Handout files after step 3 (downloadable from the cellule de crise as soon as th
 are built; you can also attach them in CTFd or pass a USB stick around):
 
 ```
-decaflop_poster.png     -> 02
-transition_shot.jpg     -> 03
 timing_booth.pcap       -> 05
 referee_usb.img         -> 07
 SAP_USR02_export.csv + sap_hint.txt + wordlist.txt + case_file.zip  -> 09
 dflop_erp.sap           -> 13
 ZDFLOP_RESULT_EXPORT.abap -> 15
 ```
+
+The poster (02) and the race photo (03) are built into `handouts/dist/` too,
+but players don't download them from the hub: the DécaFlop site publishes them
+itself — the poster in its press area and the photo in its actualités, served
+byte-for-byte at `:8001/medias/...`. (`handouts/dist/` is mounted read-only into
+the site container as well.)
 
 See [`scoreboard/README.md`](scoreboard/README.md) for the scoreboard options
 and [`handouts/HOSTING.md`](handouts/HOSTING.md) for the Pi 5 + travel-router

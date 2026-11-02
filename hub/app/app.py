@@ -93,10 +93,10 @@ def scoreboard_url():
         return f"http://{host}:{CTFD_PORT}/"
     return ""
 
-# mission files: name -> short label shown on the button
+# mission files: name -> short label shown on the button.
+# The poster (02) and the race photo (03) are NOT served here: players find
+# them published on the sponsor's own site (challenge 01, :8001).
 FILES = {
-    "decaflop_poster.png": "Affiche (PNG)",
-    "transition_shot.jpg": "Photo (JPG)",
     "timing_booth.pcap": "Capture réseau (PCAP)",
     "referee_usb.img": "Image de la clé (IMG)",
     "SAP_USR02_export.csv": "Export USR02 (CSV)",
@@ -114,14 +114,14 @@ MISSIONS = [
      "« espace interne » — et pour un truc interne, ils l'ont drôlement bien "
      "signalé aux moteurs de recherche.", "site", []),
     ("02", "Partagez partout", "Stégano", "Facile", 50,
-     "Le marketing a diffusé une affiche pour la finale en demandant de la "
-     "« partager partout ». Elle a l'air normale… mais elle est un peu lourde "
-     "pour une simple affiche.", None, ["decaflop_poster.png"]),
+     "Le marketing du sponsor a publié l'affiche officielle de la finale sur son "
+     "site et demande de la « partager partout ». Elle a l'air normale… mais elle "
+     "est un peu lourde pour une simple affiche.", "site", []),
     ("03", "En transition", "Forensics", "Facile", 75,
-     "Une photo de l'appareil de l'équipe est apparue sur le PC de la cabine de "
-     "chronométrage. Une photo de course comme une autre — mais un appareil se "
-     "souvient de plus de choses qu'il n'en montre. Quand, où, et qui l'a prise ?",
-     None, ["transition_shot.jpg"]),
+     "Le sponsor a mis en ligne sur son site une photo de la zone de transition, "
+     "prise par son équipe. Une photo de course comme une autre — mais un appareil "
+     "se souvient de plus de choses qu'il n'en montre. Quand, où, et qui l'a "
+     "prise ?", "site", []),
     ("04", "Pas votre profil", "Web", "Moyen", 100,
      "L'espace athlètes permet à chacun de consulter son propre profil. Vous êtes "
      "connecté avec le dossard 1042. Le staff et les admins utilisent le même "

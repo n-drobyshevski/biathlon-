@@ -24,10 +24,16 @@ services:
     restart: unless-stopped
 
   # ---- 01 · Web · easy ---------------------------------------------------
+  # Also publishes the sponsor's official poster (02) and a race photo (03) in
+  # its press area / actualités: handouts/dist is mounted read-only and served
+  # byte-for-byte at /medias/<name>.
   staff:
     build: ./challenges/01-web-staff
     environment:
       FLAG: "${FLAG_01_STAFF}"
+      HANDOUT_DIR: /handouts
+    volumes:
+      - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
     ports: ["8001:5000"]
     mem_limit: 128m
     restart: unless-stopped

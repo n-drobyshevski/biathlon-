@@ -60,7 +60,19 @@ the hub container, and the cellule de crise offers each file as a download.
 Missions whose files aren't built yet show "pas encore disponible" until you
 run `./scripts/build-handouts.sh`, with no restart needed.
 
-You can still attach them as files in CTFd, or drop them on a USB stick.
+The same `handouts/dist/` is also mounted (read-only) into the **site**
+container (challenge 01, `:8001`), which publishes two of the files itself,
+byte-for-byte, so players *find* them instead of downloading them from the hub:
+
+- the poster (02) in the press area — `/presse`, link on `/medias/decaflop_poster.png`;
+- the race photo (03) in the actualités — `/actualites`, full-size original on
+  `/medias/transition_shot.jpg`.
+
+Only those two names are served from `/medias/`; anything else is a 404. Before
+they are built, the pages show a placeholder instead of a broken image. The
+hub no longer serves or links these two files.
+
+You can still attach the handout files in CTFd, or drop them on a USB stick.
 
 ## Pre-event test checklist
 
@@ -70,6 +82,9 @@ Run through this once, ideally the day before:
 - [ ] `docker compose up -d --build` → all containers `Up` (8 live challenges
       + hub + CTFd)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
+- [ ] `curl -s localhost:8001/presse` and `:8001/actualites` load; the poster
+      downloads at `:8001/medias/decaflop_poster.png` and the race photo at
+      `:8001/medias/transition_shot.jpg` (both byte-identical to `handouts/dist/`)
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
       `:8012` and `:8014` load
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`

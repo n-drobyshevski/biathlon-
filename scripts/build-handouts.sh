@@ -27,9 +27,11 @@ echo
 echo "[+] Done. Files for players:"
 ls -la handouts/dist/
 echo
-echo "Hand these out (per challenge):"
-echo "  02 stego    -> decaflop_poster.png"
-echo "  03 exif     -> transition_shot.jpg"
+echo "Published on the DécaFlop site (served by the 'staff' container, :8001):"
+echo "  02 stego    -> decaflop_poster.png   (espace presse: /presse)"
+echo "  03 exif     -> transition_shot.jpg   (actualités:    /actualites)"
+echo
+echo "Hand out via the cellule de crise (hub, :8080):"
 echo "  05 pcap     -> timing_booth.pcap"
 echo "  07 usb      -> referee_usb.img"
 echo "  09 sap      -> SAP_USR02_export.csv  + sap_hint.txt"

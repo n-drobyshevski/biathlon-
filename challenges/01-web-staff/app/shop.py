@@ -4,7 +4,9 @@ of the challenge). Every page is static; no user input is echoed back, so the
 storefront offers no rabbit holes. The challenge itself (robots.txt + the
 staff portal) lives in app.py.
 """
-from flask import Blueprint, Response, abort, request
+import os
+
+from flask import Blueprint, Response, abort, request, send_from_directory
 
 shop = Blueprint("shop", __name__)
 
@@ -133,7 +135,7 @@ def layout(title, body, current="", notice=""):
 <footer class="foot"><div class="in">
  <div><b>Aide</b><ul><li><a href="/aide#commande">Suivi de commande</a></li><li><a href="/aide#retours">Retours</a></li><li><a href="/aide#garantie">Garantie</a></li></ul></div>
  <div><b>Magasins</b><ul><li><a href="/magasins">DécaFlop Stade</a></li><li><a href="/magasins">DécaFlop Centre-ville</a></li><li><a href="/magasins">DécaFlop Déstockage (sur le parking)</a></li></ul></div>
- <div><b>Entreprise</b><ul><li><a href="/recrutement">Recrutement</a></li><li><a href="/triathlon">Sponsoring</a></li></ul></div>
+ <div><b>Entreprise</b><ul><li><a href="/actualites">Actualités</a></li><li><a href="/presse">Espace presse</a></li><li><a href="/recrutement">Recrutement</a></li><li><a href="/triathlon">Sponsoring</a></li></ul></div>
  <div><b>Service client</b>0 800 FLOP FLOP<br><span class="small">Du lundi au vendredi, 9 h – 18 h</span></div>
 </div>
 <div class="legal"><div class="in"><span>© DécaFlop. Tous flops réservés.</span>
@@ -157,6 +159,71 @@ def crumbs(*items):
     parts = [f'<a href="{h}">{t}</a>' if h else f"<span>{t}</span>" for h, t in items]
     return '<nav class="crumb" aria-label="Fil d\'Ariane">' + " / ".join(parts) + "</nav>"
 
+def fr(text):
+    """French typography: non-breaking spaces inside « » and before : ? !"""
+    nb = chr(160)  # non-breaking space
+    for a, b in (("« ", "«" + nb), (" »", nb + "»"), (" :", nb + ":"), (" ?", nb + "?"), (" !", nb + "!")):
+        text = text.replace(a, b)
+    return text
+
+# --------------------------------------------------------------------------
+# Press / news media. The poster (02) and the race photo (03) are built into
+# handouts/dist and mounted read-only at HANDOUT_DIR (see docker-compose). Only
+# these two files are ever served, byte-for-byte — the stego trailer and the
+# EXIF must survive, so nothing here re-encodes or resizes them.
+# --------------------------------------------------------------------------
+HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
+MEDIA = {"decaflop_poster.png", "transition_shot.jpg"}
+
+def media_available(name):
+    return os.path.isfile(os.path.join(HANDOUT_DIR, name))
+
+# Actualités: three short posts, newest first. The race-eve post shows a photo
+# the event crew shared and links its full-size original — like many event
+# sites, nothing strips the metadata.
+NEWS = [
+    {"slug": "parc-a-velos-pret", "date": "1 novembre 2026",
+     "title": "Le parc à vélos est prêt pour la finale", "photo": True,
+     "lede": "À la veille de la finale, la zone de transition a pris ses quartiers au "
+             "bord de la plage. Tout est en place pour le grand jour.",
+     "body": [
+        "Les barrières aux couleurs de DécaFlop sont montées, les râteliers alignés et "
+        "numérotés : demain matin, chaque finaliste y déposera son vélo avant le départ "
+        "de la natation.",
+        "Nos équipes ont passé la journée sur place pour que la transition se fasse sans "
+        "accroc. Un stand de réparation DécaFlop restera ouvert tout le week-end, à deux "
+        "pas du parc à vélos.",
+        "Rendez-vous demain dès 7 h pour l'ouverture du parc. Et d'ici là, partagez "
+        "l'affiche de la finale autour de vous !",
+     ]},
+    {"slug": "navettes-spectateurs", "date": "30 octobre 2026",
+     "title": "Des navettes gratuites pour les spectateurs", "photo": False,
+     "lede": "Pour venir encourager les finalistes sans galérer à se garer, des navettes "
+             "relient le centre-ville au stade tout le week-end.",
+     "body": [
+        "Les navettes partent du centre-ville toutes les 15 minutes, de 6 h 30 à 17 h, et "
+        "déposent les spectateurs à l'entrée du village partenaires.",
+        "Un parking vélo surveillé est installé près du stade pour celles et ceux qui "
+        "préfèrent venir sur deux roues. L'accès au site reste gratuit.",
+        "Besoin d'un dernier accessoire avant la course ? Nos trois magasins sont ouverts "
+        "tout le week-end.",
+     ]},
+    {"slug": "magasins-ouverts-week-end", "date": "27 octobre 2026",
+     "title": "Nos trois magasins ouverts tout le week-end", "photo": False,
+     "lede": "Combinaison qui fuit, lacet cassé, bidon oublié : nos magasins restent "
+             "ouverts pour parer aux imprévus d'avant-course.",
+     "body": [
+        "Les magasins DécaFlop Stade, Centre-ville et Déstockage gardent leurs portes "
+        "ouvertes tout le week-end de la finale, avec des horaires élargis.",
+        "L'atelier vélo du magasin Stade assure les réglages de dernière minute et la "
+        "location de vélos de chrono, casque inclus, sur présentation d'une pièce "
+        "d'identité.",
+        "Un conseil d'avant-course ? Nos vendeurs, souvent pratiquants eux-mêmes, sont "
+        "là pour ça.",
+     ]},
+]
+NEWS_BY_SLUG = {p["slug"]: p for p in NEWS}
+
 # --------------------------------------------------------------------------
 # Pages
 # --------------------------------------------------------------------------
@@ -170,6 +237,7 @@ SPORT_DIST = {"natation": "1,5 km", "velo": "40 km", "course-a-pied": "10 km"}
 @shop.get("/")
 def home():
     notice = SEARCH_NOTICE if "q" in request.args else ""
+    latest = NEWS[0]
     sports = "".join(
         f"""<a class="sport" href="/{slug}"><span class="ic">{icon(SPORT_ICON[slug], 56)}</span>
 <span><b class="h">{name}</b><small>{SPORT_DIST[slug]} · voir le rayon</small></span></a>"""
@@ -211,6 +279,15 @@ def home():
   <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé
      au personnel sur ce site. Merci de ne pas le chercher.</p>
   <a href="/recrutement">Offres d'emploi (0)</a></div>
+</div></section>
+
+<section class="sec grey"><div class="in">
+ <div class="row"><h2 class="h">Actualités</h2><a href="/actualites">Toutes les actualités</a></div>
+ <a class="news-teaser" href="/actualites/{latest['slug']}">
+  <span class="date">{latest['date']}</span>
+  <b class="h">{latest['title']}</b>
+  <span class="more">Lire l'article →</span>
+ </a>
 </div></section>"""
     return html(layout("DécaFlop · Sponsor officiel du Championnat régional de triathlon",
                        body, notice=notice))
@@ -328,6 +405,9 @@ def championship():
   <div class="tile"><h3 class="h">Sur place</h3><p>Écran géant au grand chapiteau,
    village partenaires et stand de réparation DécaFlop ouvert toute la journée.</p></div>
  </div>
+ <p class="small mute" style="margin:16px 0 0">Médias et supporters : l'affiche
+  officielle de la finale est à télécharger dans notre <a href="/presse">espace
+  presse</a>.</p>
 </div></section>"""
     return html(layout("Le championnat · DécaFlop", body, current="/triathlon"))
 
@@ -402,3 +482,90 @@ def careers():
   Déposez une candidature spontanée à l'accueil de votre magasin.</p></div>
 </div></section>"""
     return html(layout("Recrutement · DécaFlop", body, current="/recrutement"))
+
+@shop.get("/medias/<name>")
+def media(name):
+    # Serve ONLY the two press/news files, exactly as built (no re-encoding, so
+    # the appended ZIP and the EXIF survive). Anything else, a traversal attempt
+    # or a file that isn't built yet falls through to the French 404.
+    if name not in MEDIA or not media_available(name):
+        abort(404)
+    return send_from_directory(HANDOUT_DIR, name)
+
+@shop.get("/presse")
+def press():
+    if media_available("decaflop_poster.png"):
+        art = ('<img class="poster" src="/medias/decaflop_poster.png" '
+               'alt="Affiche officielle du Championnat régional de triathlon 2026">')
+        dl = ('<a class="btn blue" href="/medias/decaflop_poster.png" download>'
+              "Télécharger l'affiche (PNG)</a>")
+    else:
+        art = ('<div class="poster missing" role="img" '
+               'aria-label="Affiche officielle (bientôt disponible)">'
+               "<span>Affiche officielle<br>bientôt disponible</span></div>")
+        dl = ('<span class="btn blue off" aria-disabled="true">'
+              "Affiche bientôt disponible</span>")
+    body = f"""<section class="cathead"><div class="in">
+ {crumbs(("/", "Accueil"), (None, "Espace presse"))}
+ <h1 class="h">Espace presse</h1>
+ <p>L'affiche officielle du Championnat régional de triathlon 2026, à partager
+    sans modération.</p>
+</div></section>
+<section class="sec"><div class="in two press">
+ <div class="press-art">{art}</div>
+ <div class="press-txt">
+  <h2 class="h">Affiche officielle</h2>
+  <p>Notre affiche de la finale est libre de partage : imprimez-la, affichez-la,
+     postez-la. Partagez-la partout !</p>
+  {dl}
+  <p class="small mute" style="margin:14px 0 0">Format PNG, prête à imprimer.</p>
+  <div class="tile" style="margin-top:22px">
+   <h3 class="h">Contact presse</h3>
+   <p style="margin:0">Service Marketing — Communication DécaFlop<br>
+    Poste 120 · <a href="/aide">nous contacter</a></p>
+  </div>
+ </div>
+</div></section>"""
+    return html(layout("Espace presse · DécaFlop", fr(body)))
+
+@shop.get("/actualites")
+def news_list():
+    items = "".join(
+        f"""<a class="news" href="/actualites/{p['slug']}">
+<span class="date">{p['date']}</span><b class="h">{p['title']}</b>
+<p>{p['lede']}</p><span class="more">Lire l'article →</span></a>"""
+        for p in NEWS)
+    body = f"""<section class="cathead"><div class="in">
+ {crumbs(("/", "Accueil"), (None, "Actualités"))}
+ <h1 class="h">Actualités</h1>
+ <p>Les nouvelles de DécaFlop et du Championnat régional de triathlon.</p>
+</div></section>
+<section class="sec"><div class="in"><div class="news-list">{items}</div></div></section>"""
+    return html(layout("Actualités · DécaFlop", fr(body)))
+
+@shop.get("/actualites/<slug>")
+def news_post(slug):
+    p = NEWS_BY_SLUG.get(slug)
+    if not p:
+        abort(404)
+    if p["photo"] and media_available("transition_shot.jpg"):
+        figure = """<figure class="news-photo">
+ <img src="/medias/transition_shot.jpg" alt="La zone de transition de la finale, en soirée">
+ <figcaption>Photo : équipe DécaFlop · <a href="/medias/transition_shot.jpg">voir l'original</a></figcaption>
+</figure>"""
+    elif p["photo"]:
+        figure = ('<div class="news-photo missing" role="img" aria-label="Photo '
+                  '(bientôt disponible)"><span>Photo bientôt disponible</span></div>')
+    else:
+        figure = ""
+    paras = "".join(f"<p>{t}</p>" for t in p["body"])
+    body = f"""<article class="in post">
+ {crumbs(("/", "Accueil"), ("/actualites", "Actualités"), (None, p['title']))}
+ <span class="date">{p['date']}</span>
+ <h1 class="h">{p['title']}</h1>
+ <p class="lede">{p['lede']}</p>
+ {figure}
+ {paras}
+ <p class="back"><a href="/actualites">← Toutes les actualités</a></p>
+</article>"""
+    return html(layout(f"{p['title']} · DécaFlop", fr(body)))
