@@ -12,7 +12,8 @@ cat <<'BANNER'
           unzip, xxd, jq, curl, wget, python3.
  Les fichiers de preuve sont sur le Partage DFlop (:8020) et
  les services tournent sur l'IP du Pi. Récupérez-les au besoin
- (ex. : git-dumper http://<IP-du-Pi>:8011/.git/ dump && cd dump).
+ avec curl ou wget, par exemple :
+   wget http://<IP-du-Pi>:<port>/<chemin>
 BANNER
 echo " Espace de travail : $ws"
 echo

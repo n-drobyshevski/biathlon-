@@ -154,3 +154,10 @@ def test_hub_pages_use_plain_punctuation(hub, hub_module, monkeypatch):
     banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text()
     for ch in ("—", "–", "→"):
         assert ch not in banner, repr(ch)
+
+
+def test_terminal_banner_gives_no_mission_technique():
+    # the banner's example is generic: no challenge port, no .git, no dump recipe
+    banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text().split("BANNER", 2)[1]
+    for bad in (".git", ":8011", "git-dumper http", " dump"):
+        assert bad not in banner, bad
