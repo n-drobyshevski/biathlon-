@@ -1,8 +1,8 @@
 # 05 · The Timing Booth — `Forensics` · Medium · 100 pts
 
-> The timing booth submits race splits over the crew Wi-Fi. Someone was kind
-> enough (foolish enough) to run the booth's login over plain HTTP. We grabbed
-> a capture off the air. See what the booth was sending.
+> The timing booth submits race splits over the crew Wi-Fi, and its login
+> still runs over plain HTTP. We grabbed a capture off the air. See what the
+> booth was sending.
 
 **Handout:** `timing_booth.pcap`
 

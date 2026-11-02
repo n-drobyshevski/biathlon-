@@ -80,7 +80,7 @@ PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat ré
 
 <section class="sec grey"><div class="in two">
  <div class="tile"><h3 class="h">Location de vélos</h3>
-  <p>Vélos de chrono réglés course pour le week-end. Casque inclus, dignité non.</p>
+  <p>Vélos de chrono réglés course pour le week-end. Casque inclus.</p>
   <a class="btn blue" href="#help">Trouver un magasin</a></div>
  <div class="tile dark" id="careers"><h3 class="h">Recrutement</h3>
   <p>DécaFlop recrute toujours. Nous n'avons absolument pas d'espace réservé
@@ -92,7 +92,7 @@ PAGE = HEAD.replace("{title}", "DécaFlop · Sponsor officiel du Championnat ré
  <div><b>Aide</b><ul><li><a href="#help">Suivi de commande</a></li><li><a href="#help">Retours</a></li><li><a href="#help">Garantie</a></li></ul></div>
  <div><b>Magasins</b><ul><li>DécaFlop Stade</li><li>DécaFlop Centre-ville</li><li>DécaFlop Déstockage (sur le parking)</li></ul></div>
  <div><b>Entreprise</b><ul><li><a href="#careers">Recrutement</a></li><li><a href="#race">Sponsoring</a></li></ul></div>
- <div><b>Service client</b>0 800 FLOP FLOP<br><span class="small">Du lundi au vendredi, quand quelqu'un décroche</span></div>
+ <div><b>Service client</b>0 800 FLOP FLOP<br><span class="small">Du lundi au vendredi, 9 h – 18 h</span></div>
 </div>
 <div class="legal"><div class="in"><span>© DécaFlop. Tous flops réservés.</span>
 <span>Robots d'indexation bienvenus — voir <a href="/robots.txt">/robots.txt</a></span></div></div>
