@@ -18,17 +18,48 @@ from flask import Flask, Response, abort, redirect, request, send_from_directory
 app = Flask(__name__)
 
 
-def layout(title, body):
+TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/contacts", "Contacts")]
+
+# Formula bar follows the clicked cell; "Statut" choices are kept in the
+# player's own browser (localStorage), never sent anywhere.
+SCRIPT = """<script>
+(function(){
+ var ref=document.getElementById('ref'),val=document.getElementById('val');
+ document.querySelectorAll('.grid td[data-ref]').forEach(function(td){
+  td.addEventListener('click',function(){
+   document.querySelectorAll('.grid .sel').forEach(function(x){x.classList.remove('sel')});
+   td.classList.add('sel');ref.textContent=td.dataset.ref;
+   val.textContent=td.dataset.f||td.innerText.trim().replace(/\\s+/g,' ');
+  });
+ });
+ var store=null;try{store=window.localStorage}catch(e){}
+ document.querySelectorAll('select[data-k]').forEach(function(sel){
+  var k='statut-'+sel.dataset.k;
+  try{var v=store&&store.getItem(k);if(v)sel.value=v}catch(e){}
+  var paint=function(){sel.closest('tr').dataset.statut=sel.value};paint();
+  sel.addEventListener('change',function(){try{store&&store.setItem(k,sel.value)}catch(e){}paint()});
+ });
+})();
+</script>"""
+
+
+def layout(title, body, tab="/", cell="", formula="", note=""):
+    here = ' aria-current="page"'
+    tabs = "".join(f'<a href="{h}"{here if h == tab else ""}>{t}</a>' for h, t in TABS)
+    score = (f'<a class="score" href="{escape(SCOREBOARD_URL)}">Tableau des scores ↗</a>'
+             if SCOREBOARD_URL else "")
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
-<header class="top"><div class="in">
- <a class="mark" href="/">DécaFlop <span>/ Cellule de crise</span></a>
- <span class="org">Usage interne</span>
-</div></header>
-<main id="main"><div class="in">{body}</div></main>
-<footer class="foot"><div class="in">DécaFlop — usage interne · finale 2026</div></footer>
-</body></html>"""
+<header class="title"><span class="doc" aria-hidden="true"></span>
+ <div><b>suivi_incident_finale_2026.ods</b> <span class="share">partagé avec l'équipe IT d'urgence</span></div>
+ {score}</header>
+<div class="menu" aria-hidden="true"><span>Fichier</span><span>Édition</span><span>Affichage</span><span>Insertion</span><span>Format</span><span>Outils</span></div>
+{note}
+<div class="fx"><span class="ref" id="ref">{cell}</span><span class="f">fx</span><span class="v" id="val">{formula}</span></div>
+<main id="main" class="sheet">{body}</main>
+<nav class="tabs" aria-label="Feuilles">{tabs}</nav>
+{SCRIPT}</body></html>"""
 
 
 def html(page, status=200):
@@ -123,8 +154,9 @@ def download(name):
 
 
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
-LIVE_LABEL = {"site": "Ouvrir le site DécaFlop", "idor": "Ouvrir l'espace athlètes",
-              "sqli": "Ouvrir l'admin résultats", "sap": "Ouvrir SAP DFlop ERP"}
+LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "idor": ("Espace athlètes", ":8004"),
+              "sqli": ("Admin résultats", ":8006"), "sap": ("SAP DFlop ERP", ":8008")}
+COLS = "ABCDEFGH"
 
 
 def fr(text):
@@ -135,56 +167,91 @@ def fr(text):
     return text
 
 
-def mission_row(num, title, cat, level, pts, brief, live, files):
-    links = []
+def grid(header, rows, extra="", cls=""):
+    """A sheet: lettered columns, numbered rows, each cell knows its reference."""
+    letters = "".join(f"<th>{COLS[i]}</th>" for i in range(len(header)))
+    head = "".join(f'<td data-ref="{COLS[i]}1">{h}</td>' for i, h in enumerate(header))
+    body = [f'<tr class="h"><th class="r">1</th>{head}</tr>']
+    for n, (attrs, cells) in enumerate(rows, start=2):
+        tds = "".join(f'<td data-ref="{COLS[i]}{n}"{c[1]}>{c[0]}</td>' for i, c in enumerate(cells))
+        body.append(f'<tr{attrs}><th class="r">{n}</th>{tds}</tr>')
+    return (f'<table class="grid {cls}"><thead><tr><th class="r"></th>{letters}</tr></thead>'
+            f'<tbody>{"".join(body)}{extra}</tbody></table>')
+
+
+def access(live, files):
+    out = []
     if live:
-        links.append(f'<li><a href="{escape(service_url(live))}">{LIVE_LABEL[live]}</a></li>')
+        name, port = LIVE_LABEL[live]
+        out.append(f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>')
     for name in files:
-        size = file_info(name)
-        if size:
-            links.append(f'<li><a class="file" href="/fichiers/{name}" download>{name}</a>'
-                         f' <span class="size">{size}</span></li>')
+        info = file_info(name)
+        if info:
+            out.append(f'<a class="file" href="/fichiers/{name}" download>{name}</a> <span class="mute">· {info}</span>')
         else:
-            links.append(f'<li><span class="file off">{name}</span>'
-                         f' <span class="size">pas encore disponible</span></li>')
-    return f"""<tr class="mission" id="mission-{num}">
- <td class="num">{num}</td>
- <td class="what"><b>{fr(title)}</b><p>{fr(brief)}</p></td>
- <td class="meta"><span>{cat}</span><span class="{LEVEL_CLASS[level]}">{level}</span></td>
- <td class="pts">{pts}</td>
- <td class="access"><ul>{"".join(links)}</ul></td>
-</tr>"""
+            out.append(f'<span class="file mute">{name}</span> <span class="mute">· pas encore disponible</span>')
+    return "<br>".join(out)
 
 
 @app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
-    score = (f'<a href="{escape(SCOREBOARD_URL)}">Tableau des scores</a>' if SCOREBOARD_URL
-             else "tableau des scores fourni par l'organisation")
-    body = f"""<section class="doc-head">
- <p class="status">Incident en cours · finale 2026</p>
- <h1>Cellule de crise</h1>
- <p class="lede">La veille de la finale, quelqu'un s'est introduit dans les systèmes de
-  l'événement et a truqué la liste de départ en échangeant les puces de chronométrage.
-  Vous êtes l'équipe IT d'urgence : suivez la piste à travers le site DécaFlop, la cabine
-  de chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière
-  mission désigne le coupable.</p>
- <dl class="facts">
-  <dt>Format des flags</dt><dd><code>TRIATHLON{{...}}</code></dd>
-  <dt>Missions</dt><dd>9 missions, {total} points</dd>
-  <dt>Ordre</dt><dd>Conseillé dans l'ordre, mais chaque mission se joue seule</dd>
-  <dt>Périmètre</dt><dd>Uniquement les services et fichiers listés ici. Pas besoin d'internet.</dd>
-  <dt>Flags</dt><dd>À soumettre sur le {score}</dd>
- </dl>
-</section>
-<section class="board">
- <h2>Missions</h2>
- <table>
-  <thead><tr><th>N°</th><th>Mission</th><th>Catégorie</th><th>Points</th><th>Accès</th></tr></thead>
-  <tbody>{"".join(mission_row(*m) for m in MISSIONS)}</tbody>
- </table>
-</section>"""
-    return html(layout("Cellule de crise · DécaFlop", fr(body)))
+    rows = []
+    for num, title, cat, level, pts, brief, live, files in MISSIONS:
+        status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
+                  '<option>À faire</option><option>En cours</option><option>Résolu</option></select>')
+        rows.append((f' class="mission" id="mission-{num}"', [
+            (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
+            (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
+            (access(live, files), ' class="acc"'), (status, "")]))
+    n = len(rows) + 2
+    total_row = (f'<tr class="tot"><th class="r">{n}</th><td data-ref="A{n}"></td><td data-ref="B{n}">Total</td>'
+                 f'<td data-ref="C{n}"></td><td data-ref="D{n}"></td><td data-ref="E{n}"></td>'
+                 f'<td data-ref="F{n}" class="num sel" data-f="=SOMME(F2:F{n-1})">{total}</td>'
+                 f'<td data-ref="G{n}"></td><td data-ref="H{n}"></td></tr>')
+    body = grid(["N°", "Mission", "Description", "Catégorie", "Niveau", "Points", "Accès / pièces jointes", "Statut"],
+                rows, total_row, "frozen")
+    note = (f'<p class="note"><b>Contexte :</b> la veille de la finale, la liste de départ a été truquée '
+            f'en échangeant les puces de chronométrage. Suivez la piste jusqu\'au coupable. '
+            f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · 9 missions, {total} points · '
+            f'détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
+    return html(layout("Missions · suivi_incident_finale_2026", fr(body), "/", f"F{n}",
+                       f"=SOMME(F2:F{n-1})", fr(note)))
+
+
+@app.get("/contexte")
+def context():
+    score = (f'<a href="{escape(SCOREBOARD_URL)}">{escape(SCOREBOARD_URL)}</a>' if SCOREBOARD_URL
+             else "fourni par l'organisation")
+    rows = [("", [(k, ""), (v, ' class="desc"')]) for k, v in [
+        ("Incident", "Liste de départ de la finale falsifiée"),
+        ("Contexte", "La veille de la finale, quelqu'un s'est introduit dans les systèmes de l'événement "
+                     "et a truqué la liste de départ en échangeant les puces de chronométrage. Vous êtes "
+                     "l'équipe IT d'urgence : suivez la piste à travers le site DécaFlop, la cabine de "
+                     "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière "
+                     "mission désigne le coupable."),
+        ("Format des flags", "<code>TRIATHLON{...}</code>"),
+        ("Missions", f"9 missions, {sum(m[4] for m in MISSIONS)} points"),
+        ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
+        ("Périmètre", "Uniquement les services et fichiers listés dans l'onglet Missions. Pas besoin d'internet."),
+        ("Tableau des scores", score),
+    ]]
+    return html(layout("Contexte · suivi_incident_finale_2026", fr(grid(["Élément", "Valeur"], rows)),
+                       "/contexte", "A1", "Élément"))
+
+
+@app.get("/contacts")
+def contacts():
+    rows = [("", [(a, ""), (b, ""), (c, ' class="num"'), (d, ' class="desc"')]) for a, b, c, d in [
+        ("Direction de course", "Bureau de course", "214", "Ouvre l'incident, valide les résultats"),
+        ("Support IT", "Astreinte IT", "300", "Accès aux systèmes de l'événement"),
+        ("Chronométrage", "Cabine de chronométrage", "231", "Wi-Fi staff, temps intermédiaires"),
+        ("Arbitrage", "Jury de course", "240", "Clé USB retrouvée dans la cabine"),
+        ("Basis SAP", "Équipe SAP DFlop", "410", "Exports et comptes SAP"),
+        ("Marketing", "Communication DécaFlop", "120", "Affiche officielle"),
+    ]]
+    return html(layout("Contacts · suivi_incident_finale_2026",
+                       fr(grid(["Rôle", "Contact", "Poste", "Remarque"], rows)), "/contacts", "A1", "Rôle"))
 
 
 @app.get("/cellule-de-crise")
@@ -194,9 +261,9 @@ def old_path():
 
 @app.errorhandler(404)
 def not_found(_e):
-    return html(layout("Introuvable · Cellule de crise", """<section class="doc-head">
- <h1>Introuvable</h1><p class="lede">Cette page ou ce fichier n'existe pas.</p>
- <p><a href="/">Retour à la cellule de crise</a></p></section>"""), 404)
+    body = ('<div class="empty"><b>Feuille introuvable</b><p>Cette page ou ce fichier n\'existe pas.</p>'
+            '<p><a href="/">Retour à l\'onglet Missions</a></p></div>')
+    return html(layout("Introuvable · suivi_incident_finale_2026", body, "", "", "#REF!"), 404)
 
 
 if __name__ == "__main__":
