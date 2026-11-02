@@ -1,8 +1,9 @@
 # 02 · Share Everywhere — `Forensics / Stego` · Easy · 50 pts
 
-> DécaFlop's marketing team published the official race poster on the sponsor's
-> website and asked everyone to "share it everywhere!" The poster looks normal.
-> It is a little heavier than a poster should be, though.
+> DécaFlop's marketing pushed the official race poster out and told everyone to
+> "share it everywhere!" — which is how the first leak of this whole case went
+> viral. The image looks like an ordinary poster, but someone smuggled something
+> inside it: it's a little heavier than a poster should be.
 
 **Connect:** `http://<CTF-HOST>:8001`
 

@@ -1,8 +1,10 @@
 # 07 · The Referee's USB — `Forensics` · Medium · 125 pts
 
-> A referee left a USB stick in the timing booth. They swear they "deleted
-> everything sensitive." Deleting a file doesn't erase its bytes, though — it
-> just forgets where they are. We imaged the stick. Recover what was removed.
+> A referee left a USB stick in the timing booth and swears they "deleted
+> everything sensitive." The deleted file is their chip rotation sheet — proof
+> that timing transponders were swapped between athletes, backing up the booth
+> traffic from 05 and the ERP tampering in 09. Deleting a file doesn't erase its
+> bytes; recover it.
 
 **Connect:** `http://<CTF-HOST>:8020` — internal wiki **Intranet DFlop**, space **Arbitrage**, page « Clé USB retrouvée » (`referee_usb.img`). Credentials are on the DécaFlop staff portal — see challenge 01.
 

@@ -151,9 +151,25 @@ def gen_stego():
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("flag.txt", f + "\n\nNice. The poster was hiding a zip at the end.\n")
+        z.writestr("note_interne.txt", POSTER_MEMO)   # the inciting leak (lore, no flag)
     with open(os.path.join(OUT, "decaflop_poster.png"), "wb") as fh:
         fh.write(png + zbuf.getvalue())          # PNG renders; unzip finds the trailer
     print("[02] decaflop_poster.png")
+
+
+# The first leak: a staff memo fragment smuggled inside the viral poster. In-world
+# French; names the finale, hints the results were touched, points at the staff
+# area. No flag, no credentials, no technique spoiler.
+POSTER_MEMO = """\
+Memo interne DecaFlop -- NE PAS DIFFUSER
+Finale "Derniere Transition" (championnat regional de triathlon).
+
+Le classement officiel (table ZRACE_RESULT) a ete modifie la veille de la course.
+Les puces de chronometrage ne correspondent plus aux dossards. Tout est trace
+dans l'espace staff interne du site -- c'est par la qu'il faut commencer.
+
+Si vous lisez ceci, l'affiche a trop circule. Ne la rediffusez plus.
+"""
 
 # ---------------------------------------------------------------------------
 # 03 · EXIF (easy) — flag + GPS + timestamp in metadata
@@ -351,13 +367,34 @@ def gen_pcap():
 # ---------------------------------------------------------------------------
 def gen_usb():
     f = flag("FLAG_07_USB", "TRIATHLON{usb_placeholder}")
-    hidden_png = text_png_bytes(
-        ["RECOVERED FILE  (was deleted from the referee USB)", "", f,
-         "", "note: carved from unallocated space - nice work."],
-        w=940, h=150, bg=(245,245,245))
+
+    # The carved file is the referee's chip rotation sheet: proof that timing
+    # transponders were swapped between athletes (ties to 05 and 09). Rendered as
+    # ASCII lines (the default bitmap font is fixed-width, so str.ljust aligns the
+    # columns). The flag stays printed on the image.
+    def row(bib, old, new, reason):
+        return bib.ljust(6) + old.ljust(13) + new.ljust(13) + reason
+    sheet = [
+        "DFLOP TIMING - CHIP REASSIGNMENT (ROTATION) SHEET",
+        "recovered file - carved from unallocated space",
+        "",
+        row("BIB", "OLD CHIP", "NEW CHIP", "REASON / INIT"),
+        row("1041", "CHP-0317", "CHP-0317", "ok"),
+        row("1042", "CHP-0204", "CHP-0188", "reassigned   !! VL"),
+        row("1043", "CHP-0188", "CHP-0204", "swapped      !! VL"),
+        row("1044", "CHP-0355", "CHP-0355", "ok"),
+        row("1051", "CHP-0412", "CHP-0427", "reassigned   VL"),
+        row("1052", "CHP-0427", "CHP-0412", "swapped      !! VL"),
+        row("1060", "CHP-0501", "CHP-0501", "ok"),
+        "",
+        "FLAG: " + f,
+        "(carved from the referee USB's unallocated space - nice work.)",
+    ]
+    hidden_png = text_png_bytes(sheet, w=820, h=360, bg=(245, 245, 245))
+
     blob = bytearray()
     blob += b"DECAFLOP-REMOVABLE-MEDIA\x00FAT16\x00" + b"\x00" * 480
-    blob += b"NOTE.TXT (deleted)\nref rotation sheet, do not sha" + b"\x00" * 300  # partially 'overwritten'
+    blob += b"ROTATION.PNG (deleted)\nchip reassignment sheet - do not sha" + b"\x00" * 300  # partially 'overwritten'
     blob += os.urandom(2048)
     blob += hidden_png                                    # <-- carve this PNG
     blob += os.urandom(4096)
