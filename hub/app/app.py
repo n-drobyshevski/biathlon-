@@ -244,6 +244,10 @@ def grid(header, rows, extra="", cls=""):
     head = "".join(f'<td data-ref="{COLS[i]}1">{h}</td>' for i, h in enumerate(header))
     body = [f'<tr class="h"><th class="r">1</th>{head}</tr>']
     for n, (attrs, cells) in enumerate(rows, start=2):
+        if attrs == "__ACT__":          # a full-width section heading (presentational)
+            body.append(f'<tr class="act"><th class="r">{n}</th>'
+                        f'<td class="actcell" colspan="{len(header)}" data-ref="A{n}">{cells}</td></tr>')
+            continue
         tds = "".join(f'<td data-ref="{COLS[i]}{n}"{c[1]}>{c[0]}</td>' for i, c in enumerate(cells))
         body.append(f'<tr{attrs}><th class="r">{n}</th>{tds}</tr>')
     return (f'<table class="grid {cls}"><thead><tr><th class="r"></th>{letters}</tr></thead>'
@@ -291,8 +295,13 @@ def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
     board = scoreboard_url()
     ids = ctfd_ids()
-    rows = []
+    # Two-act arc: l'enquête (01–09) then l'audit (10–15). Presentational
+    # grouping only — per-mission data, order, links and the lock logic are
+    # untouched; act rows are full-width headings inserted between the blocks.
+    rows = [("__ACT__", "Acte I · l'enquête — prouver que la course a été truquée")]
     for num, title, cat, level, pts, brief, live, _files in MISSIONS:
+        if num == "10":
+            rows.append(("__ACT__", "Acte II · l'audit — montrer comment les systèmes l'ont permis"))
         submit = ""
         if board:
             target = f"{board}challenges"
@@ -321,8 +330,10 @@ def crisis_cell():
             + (f' · à soumettre sur le <a href="{escape(board)}">tableau des scores</a>' if board else "")
             + ' · '
             f'détails dans l\'onglet <a href="/contexte">Contexte</a>. '
+            '<b>Deux actes :</b> l\'enquête (missions 01 à 09) désigne le coupable, '
+            'l\'audit (missions 10 à 15) montre comment les systèmes l\'ont permis. '
             'Les missions grisées attendent un prérequis : c\'est un repère, '
-            'le vrai accès reste la connexion au partage (mission 01) — rien n\'est bloqué ici.</p>')
+            'le vrai accès reste la connexion à l\'intranet (mission 01) — rien n\'est bloqué ici.</p>')
     return html(layout("Missions · suivi_incident_finale_2026", fr(body), "/", f"F{n}",
                        f"=SOMME(F2:F{n-1})", fr(note)))
 

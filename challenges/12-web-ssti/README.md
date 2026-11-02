@@ -1,7 +1,8 @@
 # 12 · Print Your Own — `Web` · Hard · 175 pts
 
-> DécaFlop lets finishers generate a certificate with their name on it. The
-> generator is a little too literal about the name you give it.
+> The audit sweep isn't only about the ERP — DécaFlop also runs public-facing
+> tools. One is the finisher certificate generator, which prints the name you
+> give it onto a keepsake certificate. It's a little too literal about that name.
 
 **Connect:** `http://<CTF-HOST>:8012`
 

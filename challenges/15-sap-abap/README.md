@@ -1,8 +1,9 @@
 # 15 · Hardcoded — `SAP` · Medium · 150 pts
 
-> The last audit finding: a custom ABAP report, `ZDFLOP_RESULT_EXPORT`, that
-> pushes the results over RFC. Its export token is "not committed" — except it's
-> right there in the source, just not spelled out in one place.
+> The last audit finding closes the loop opened in finale 09: `ZDFLOP_RESULT_EXPORT`
+> is the very job that pushed the rigged `ZRACE_RESULT` standings out over RFC.
+> Its export token is "not committed" — except it's right there in the source,
+> just not spelled out in one place.
 
 **Connect:** `http://<CTF-HOST>:8020` — internal wiki **Intranet DFlop**, space **Basis SAP**, page « Développements » (`ZDFLOP_RESULT_EXPORT.abap`). Credentials are on the DécaFlop staff portal — see challenge 01.
 

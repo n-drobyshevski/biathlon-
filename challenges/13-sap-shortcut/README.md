@@ -1,8 +1,9 @@
 # 13 · Saved for Convenience — `SAP` · Easy · 75 pts
 
 > On a crew laptop the audit finds a **SAP GUI shortcut** (`.sap`) for the DFlop
-> ERP. Someone ticked "save password" so they wouldn't have to type it. Handy —
-> and readable.
+> ERP — system DFL, client 001, the very system whose user table named the
+> saboteur in finale 09. Someone ticked "save password" so they wouldn't have to
+> type it. Handy — and readable.
 
 **Connect:** `http://<CTF-HOST>:8020` — internal wiki **Intranet DFlop**, space **IT**, page « Sauvegardes postes » (`dflop_erp.sap`). Credentials are on the DécaFlop staff portal — see challenge 01.
 

@@ -63,6 +63,10 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 .grid .acc .lock{display:inline-flex;align-items:flex-start;gap:5px;color:var(--mute);font-size:12.5px}
 .grid .acc .lock .lk{flex:none;margin-top:1px}
 .grid select:disabled{opacity:.55;cursor:not-allowed}
+/* two-act section headings (presentational grouping of the mission rows) */
+.grid tr.act th.r{background:var(--head);border-top:2px solid #c3c6c9}
+.grid tr.act td.actcell{background:#eceef0;color:#202124;font-weight:700;letter-spacing:.02em;
+  font-size:12.5px;padding:7px 10px;border-top:2px solid #c3c6c9;cursor:default}
 .grid tr.tot td{font-weight:700;border-top:2px solid #9aa0a6}
 .submit{display:block;margin-top:6px;font-size:12.5px;white-space:nowrap}
 .grid tr:target td,.grid tr:target td:nth-child(3){background:#e8f0fe}  /* row opened from a CTFd link */

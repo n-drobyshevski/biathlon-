@@ -1,9 +1,9 @@
 # 10 · Forged Credentials — `Web` · Hard · 175 pts
 
 > During the post-incident audit, the crew finds DécaFlop's **Results API** —
-> the JSON service that's replacing the old web results admin. It hands out a
-> session token when you ask, and the official results are "admin only". The
-> token is a JWT — and whoever set it up used a secret you can guess.
+> the JSON service that took over from the old web Results Admin (challenge 06).
+> It hands out a session token when you ask, and the official results are "admin
+> only". The token is a JWT — and whoever set it up used a secret you can guess.
 
 **Connect:** `http://<CTF-HOST>:8010`
 

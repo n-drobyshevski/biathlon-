@@ -31,7 +31,7 @@ echo "Published on the DécaFlop site ('staff' container, :8001):"
 echo "  02 stego    -> decaflop_poster.png   (espace presse: /presse)"
 echo "  03 exif     -> transition_shot.jpg   (actualités:    /actualites)"
 echo
-echo "On the internal share 'Partage DFlop' ('share' container, :8020):"
+echo "On the internal wiki 'Intranet DFlop' ('share' container, :8020):"
 echo "  05 pcap     -> Chronométrage / Captures / timing_booth.pcap"
 echo "  07 usb      -> Arbitrage / Pièces / referee_usb.img"
 echo "  09 sap      -> Basis SAP / Exports / SAP_USR02_export.csv + sap_hint.txt"

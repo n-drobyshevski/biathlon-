@@ -1,8 +1,9 @@
 # 14 · The Open Gateway — `SAP` · Medium · 150 pts
 
-> The audit reaches the **SAP DFlop ERP gateway**. Its monitor is on the event
-> network, and the Basis team never got around to locking down who may talk to
-> it.
+> The audit reaches the **SAP DFlop ERP gateway** — the front door to the same
+> system you cracked in finale 09 and found a saved login for in 13. Its monitor
+> is on the event network, and the Basis team never got around to locking down
+> who may talk to it.
 
 **Connect:** `http://<CTF-HOST>:8014`
 

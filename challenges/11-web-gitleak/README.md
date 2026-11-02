@@ -1,8 +1,9 @@
 # 11 · Deleted, Not Gone — `Web` · Hard · 150 pts
 
-> The DécaFlop timing site is deployed with `git pull` straight onto the server
-> — and the `.git` folder came along for the ride. Someone did clean the secrets
-> out of the config "to be safe". Git, however, keeps everything.
+> This is the same timing chain whose booth login you sniffed in challenge 05 —
+> here's its public site. It's deployed with `git pull` straight onto the server,
+> so the `.git` folder came along for the ride. Someone did clean the secrets out
+> of the config "to be safe"; git, however, keeps everything.
 
 **Connect:** `http://<CTF-HOST>:8011`
 
