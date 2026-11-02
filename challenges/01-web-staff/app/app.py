@@ -10,9 +10,11 @@ import os
 from flask import Flask, Response
 
 from shop import shop, layout, html
+from hub import hub
 
 app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
+app.register_blueprint(hub)    # "cellule de crise": players' entry point to every mission
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">

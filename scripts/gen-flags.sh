@@ -38,6 +38,9 @@ FLAG_08_SAP_ICF=TRIATHLON{anchor_leg_$(tok 10)}
 FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
 SABOTEUR_NAME=viktor_lindqvist
+
+# Optional: adds a "Soumettre un flag" button to the crisis cell.
+# SCOREBOARD_URL=http://192.168.8.2:8000
 EOF
 
 chmod 600 "$ENV_FILE"

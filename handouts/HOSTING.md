@@ -13,9 +13,10 @@ public internet:
   need internet for any challenge — handouts and the scoreboard are local.
   (Exception: if a team wants an online hash-cracker for 09, give them the
   `wordlist.txt` instead so the event stays fully offline.)
-- Give the Pi a static lease, e.g. `192.168.8.2`. Players reach challenges at
-  `http://192.168.8.2:8001` … `:8008`. Replace `<CTF-HOST>` in the challenge
-  READMEs / scoreboard with that IP.
+- Give the Pi a static lease, e.g. `192.168.8.2`. Players start at
+  `http://192.168.8.2:8001/cellule-de-crise`, which links every challenge
+  (`:8001` … `:8008`) and serves the handouts. Replace `<CTF-HOST>` in the
+  challenge READMEs / scoreboard with that IP.
 
 ## Setup
 
@@ -53,15 +54,12 @@ for each other.
 
 ## Serving the handout files
 
-Any of these work on the LAN:
+Nothing to do: `docker-compose.yml` mounts `handouts/dist/` (read-only) into
+the DécaFlop container, and the crisis cell offers each file as a download.
+Missions whose files aren't built yet show "pas encore disponible" until you
+run `./scripts/build-handouts.sh`, with no restart needed.
 
-```bash
-# simplest: a static file server from handouts/dist
-cd handouts/dist && python3 -m http.server 8080
-# players download from http://192.168.8.2:8080/
-```
-
-Or attach them as files in CTFd, or drop them on a USB stick and pass it around.
+You can still attach them as files in CTFd, or drop them on a USB stick.
 
 ## Pre-event test checklist
 
@@ -74,7 +72,9 @@ Run through this once, ideally the day before:
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)
-- [ ] From a second device on the travel router, reach `http://<PiIP>:8001`
+- [ ] From a second device on the travel router, open
+      `http://<PiIP>:8001/cellule-de-crise`: 9 missions, every download works,
+      every "Ouvrir…" button reaches its challenge
 - [ ] Scoreboard loads and accepts a test flag
 - [ ] Decide whether the router's WAN stays off (recommended)
 

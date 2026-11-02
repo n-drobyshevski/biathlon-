@@ -69,17 +69,24 @@ docker compose up -d --build
 ./scripts/build-handouts.sh
 ```
 
+**Players only need one address: `http://<PiIP>:8001/cellule-de-crise`.**
+That page on the DécaFlop site is the in-story "crisis cell": it briefs the
+team, lists all 9 missions, links the live challenges and serves every handout
+file (straight from `handouts/dist/`). The shop's homepage and every page's
+top strip link to it. It never links the hidden staff portal, so challenge 01
+stays a puzzle, and no mission is locked behind another.
+
 Live services after step 2:
 
 | Port | Challenge |
 |------|-----------|
-| 8001 | 01 staff portal |
+| 8001 | DécaFlop site + crisis cell (players' entry point) · 01 staff portal |
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
 | 8008 | 08 SAP DFlop ERP |
 
-Handout files after step 3 (give these to players — e.g. host on the
-scoreboard, a Samba share, or a USB):
+Handout files after step 3 (downloadable from the crisis cell as soon as they
+are built; you can also attach them in CTFd or pass a USB stick around):
 
 ```
 decaflop_poster.png     -> 02

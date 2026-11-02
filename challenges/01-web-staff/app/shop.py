@@ -119,8 +119,8 @@ def layout(title, body, current="", notice=""):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
 <a class="skip" href="#main">Aller au contenu</a>
-<div class="strip"><div class="in"><span>Retrait gratuit dans nos 3 magasins</span>
-<span>Retours sous 30 jours*  ·  *voir conditions, en gros</span></div></div>
+<div class="strip"><div class="in"><span class="opt">Retrait gratuit · Retours sous 30 jours*  ·  *voir conditions, en gros</span>
+<a class="crisis-link" href="/cellule-de-crise">Équipe IT d'urgence : cellule de crise →</a></div></div>
 <header class="top"><div class="in">
  <a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
  <form class="search" action="/" role="search"><input name="q" aria-label="Rechercher"
@@ -174,7 +174,12 @@ def home():
         f"""<a class="sport" href="/{slug}"><span class="ic">{icon(SPORT_ICON[slug], 56)}</span>
 <span><b class="h">{name}</b><small>{SPORT_DIST[slug]} · voir le rayon</small></span></a>"""
         for slug, (name, _intro) in CATEGORIES.items())
-    body = f"""<section class="banner"><div class="in">
+    body = f"""<section class="alert"><div class="in">
+ <p><b>Incident sur les systèmes de course.</b> La liste de départ de la finale a été
+  truquée. Équipe IT d'urgence : toutes les missions sont à la cellule de crise.</p>
+ <a class="btn" href="/cellule-de-crise">Ouvrir la cellule de crise</a>
+</div></section>
+<section class="banner"><div class="in">
  <div>
   <span class="tagline">Sponsor titre · Championnat régional de triathlon</span>
   <h1 class="h">La finale,<br>c'est <em>demain</em></h1>
