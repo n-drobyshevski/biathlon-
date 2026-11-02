@@ -7,14 +7,14 @@ Nothing here is committed with real flags; files are built on the Pi.
 
 Challenges produced:
   02 stego   -> decaflop_poster.png     (PNG with an appended ZIP)
-  03 exif    -> range_shot.jpg          (flag + GPS + timestamp in EXIF)
+  03 exif    -> transition_shot.jpg     (flag + GPS + timestamp in EXIF)
   05 pcap    -> timing_booth.pcap       (HTTP Basic-Auth creds = flag)
   07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
 """
 import io, os, sys, zipfile, struct, socket, hashlib, base64, subprocess, tempfile
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 import piexif
 
 OUT = "/out" if os.path.isdir("/out") else os.path.join(os.path.dirname(__file__), "dist")
@@ -24,6 +24,50 @@ def flag(name, default):
     return os.environ.get(name, default)
 
 FONT = ImageFont.load_default()
+
+# Poster fonts: DejaVu from the toolbox image (fonts-dejavu-core); falls back
+# to Pillow's built-in scalable font, then to the tiny bitmap one.
+_DEJAVU = "/usr/share/fonts/truetype/dejavu/DejaVuSans{}.ttf"
+
+def _has_dejavu():
+    try:
+        ImageFont.truetype(_DEJAVU.format("-Bold"), 10)
+        return True
+    except OSError:
+        return False
+
+HAS_DEJAVU = _has_dejavu()
+
+def plain(text):
+    """Pillow's fallback font has no accents, × or em dash: fold them to ASCII."""
+    if HAS_DEJAVU:
+        return text
+    import unicodedata
+    text = text.replace("×", "x").replace("—", "-").replace("·", "-")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+def text(d, xy, s, **kw):
+    d.text(xy, plain(s), **kw)
+
+def font(size, bold=False):
+    try:
+        return ImageFont.truetype(_DEJAVU.format("-Bold" if bold else ""), size)
+    except OSError:
+        try:
+            return ImageFont.load_default(size=size)
+        except TypeError:
+            return FONT
+
+def slanted(img, xy, text, fnt, fill, shear=0.2):
+    """Draw text with a forward slant (the site's heavy-italic look); return the x after it."""
+    text = plain(text)
+    l, t, r, b = fnt.getbbox(text)
+    w, h = r + int(shear * b) + 4, b + 4
+    layer = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(layer).text((int(shear * b), 0), text, font=fnt, fill=255)
+    layer = layer.transform((w, h), Image.AFFINE, (1, shear, 0, 0, 1, 0), resample=Image.BICUBIC)
+    img.paste(Image.new("RGB", (w, h), fill), (xy[0], xy[1]), layer)
+    return xy[0] + int(fnt.getlength(text))
 
 def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
     img = Image.new("RGB", (w, h), bg)
@@ -38,14 +82,68 @@ def text_png_bytes(lines, w=920, h=150, bg=(255,255,255), fg=(0,0,0)):
 # 02 · STEGO (easy) — PNG poster with an appended ZIP (polyglot)
 # ---------------------------------------------------------------------------
 def gen_stego():
-    f = flag("FLAG_02_STEGO", "BIATHLON{stego_placeholder}")
-    img = Image.new("RGB", (800, 1000), (11, 61, 46))
+    f = flag("FLAG_02_STEGO", "TRIATHLON{stego_placeholder}")
+    W, H = 800, 1000
+    BLUE, DARK, MINT, INK, WHITE = (54, 67, 186), (38, 47, 138), (122, 255, 166), (16, 16, 16), (255, 255, 255)
+    img = Image.new("RGB", (W, H), BLUE)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, 800, 120], fill=(7, 41, 31))
-    d.text((40, 48), "DECAFLOP  x  REGIONAL BIATHLON CHAMPIONSHIP", fill=(234,255,245), font=FONT)
-    d.text((40, 300), "THE FINAL RACE", fill=(25,195,125), font=FONT)
-    d.text((40, 340), "Sport pour (presque) tous.", fill=(143,233,196), font=FONT)
-    d.text((40, 900), "Official promo poster — share everywhere!", fill=(95,174,143), font=FONT)
+
+    # top band: wordmark + event
+    d.rectangle([0, 0, W, 112], fill=INK)
+    x = slanted(img, (48, 30), "DÉCA", font(56, bold=True), (124, 134, 255))
+    slanted(img, (x, 30), "FLOP", font(56, bold=True), WHITE)
+    text(d, (W - 48, 42), "×  CHAMPIONNAT RÉGIONAL", font=font(18, bold=True), fill=WHITE, anchor="ra")
+    text(d, (W - 48, 66), "DE TRIATHLON 2026", font=font(18, bold=True), fill=MINT, anchor="ra")
+
+    # headline
+    tag, tf = plain("2 NOVEMBRE · LA PLAGE"), font(20, bold=True)
+    d.rectangle([48, 168, 48 + int(tf.getlength(tag)) + 24, 206], fill=MINT)
+    text(d, (60, 175), tag, font=tf, fill=INK)
+    size = 118                                   # largest size where the widest line fits
+    while font(size, bold=True).getlength("C'EST DEMAIN") * 1.04 > W - 96 and size > 40:
+        size -= 2
+    hf, lead = font(size, bold=True), int(size * 1.12)
+    block = 2 * lead + 26 + 30                   # two headline lines + gap + subtitle
+    top = 206 + (586 - 206 - block) // 2         # centred between the date tag and the cards
+    slanted(img, (44, top), "LA FINALE,", hf, WHITE)
+    x = slanted(img, (44, top + lead), "C'EST ", hf, WHITE)
+    slanted(img, (x, top + lead), "DEMAIN", hf, MINT)
+    text(d, (50, top + 2 * lead + 26), "Nage. Vélo. Course. Venez encourager les finalistes !",
+           font=font(25), fill=WHITE)
+
+    # three legs: swim / bike / run, each in a card
+    cards = [(48, "1,5 km", "NAGE"), (290, "40 km", "VÉLO"), (532, "10 km", "COURSE")]
+    for cx, dist, label in cards:
+        d.rectangle([cx, 586, cx + 220, 836], fill=DARK)
+        d.rectangle([cx, 586, cx + 220, 594], fill=MINT)
+        text(d, (cx + 110, 768), dist, font=font(34, bold=True), fill=MINT, anchor="ma")
+        text(d, (cx + 110, 806), label, font=font(20, bold=True), fill=WHITE, anchor="ma")
+    import math                                              # swim: three smooth waves
+    for i in range(3):
+        y0 = 654 + i * 28
+        pts = [(x, y0 + 8 * math.sin((x - 78) / 72 * 2 * math.pi)) for x in range(78, 239, 4)]
+        d.line(pts, fill=MINT, width=6, joint="curve")
+    bx = 290 + 110                                           # bike
+    rear, front, bb, seat, head = (bx - 58, 712), (bx + 58, 712), (bx - 6, 712), (bx - 18, 664), (bx + 38, 666)
+    for wx, wy in (rear, front):
+        d.ellipse([wx - 32, wy - 32, wx + 32, wy + 32], outline=MINT, width=6)
+    for p1, p2 in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
+        d.line([p1, p2], fill=MINT, width=6)
+    d.line([(bx - 30, 657), (bx - 6, 657)], fill=MINT, width=7)
+    d.line([(head[0], head[1]), (head[0] + 4, 648), (head[0] + 20, 648)], fill=MINT, width=6)
+    rx = 532 + 110                                           # run: runner mid-stride
+    d.ellipse([rx - 6, 630, rx + 20, 656], outline=MINT, width=6)
+    d.line([(rx + 4, 660), (rx - 8, 704)], fill=MINT, width=7)
+    d.line([(rx - 8, 704), (rx - 34, 740)], fill=MINT, width=7)
+    d.line([(rx - 8, 704), (rx + 22, 734)], fill=MINT, width=7)
+    d.line([(rx + 22, 734), (rx + 36, 728)], fill=MINT, width=7)
+    d.line([(rx + 1, 674), (rx - 26, 690)], fill=MINT, width=7)
+    d.line([(rx + 1, 674), (rx + 30, 686)], fill=MINT, width=7)
+
+    # footer band
+    d.rectangle([0, 884, W, H], fill=MINT)
+    text(d, (48, 908), "Affiche officielle — partagez-la partout !", font=font(26, bold=True), fill=INK)
+    text(d, (48, 950), "#DecaFlopTri  ·  sport pour (presque) tous", font=font(20), fill=INK)
     png = io.BytesIO(); img.save(png, "PNG"); png = png.getvalue()
 
     zbuf = io.BytesIO()
@@ -58,36 +156,142 @@ def gen_stego():
 # ---------------------------------------------------------------------------
 # 03 · EXIF (easy) — flag + GPS + timestamp in metadata
 # ---------------------------------------------------------------------------
-def gen_exif():
-    f = flag("FLAG_03_EXIF", "BIATHLON{exif_placeholder}")
-    img = Image.new("RGB", (640, 426), (120, 140, 160))
+def transition_scene(W=1280, H=853):
+    """Evening photo of the floodlit transition zone: racked bikes, branded barriers."""
+    import random
+    rnd = random.Random(20261101)                      # deterministic picture
+    img = Image.new("RGB", (W, H))
     d = ImageDraw.Draw(img)
-    d.text((20, 200), "shooting range — athletes on the mat", fill=(20,20,20), font=FONT)
+    hz = int(H * 0.40)                                 # horizon
+    vp = (W // 2, hz)                                  # vanishing point
+    for y in range(hz):                                # night sky
+        t = y / hz
+        d.line([(0, y), (W, y)], fill=(int(8 + 18 * t), int(11 + 22 * t), int(30 + 40 * t)))
+    ridge, x = [(0, hz)], 0                            # treeline silhouette
+    while x < W:
+        x += rnd.randint(14, 40)
+        ridge.append((x, hz - rnd.randint(16, 64)))
+    d.polygon(ridge + [(W, hz)], fill=(6, 8, 16))
+    for y in range(hz, H):                             # asphalt, lighter towards the camera
+        t = (y - hz) / (H - hz)
+        g = int(26 + 30 * t)
+        d.line([(0, y), (W, y)], fill=(g, g + 1, g + 6))
+    for k in range(-6, 7):                             # faint lane markings to the vanishing point
+        bx = W // 2 + k * 260
+        for i in range(4, 20, 2):                      # skip the far end (no fan at the horizon)
+            t0, t1 = i / 20, (i + 1) / 20
+            p0 = (vp[0] + (bx - vp[0]) * t0, hz + (H - hz) * t0)
+            p1 = (vp[0] + (bx - vp[0]) * t1, hz + (H - hz) * t1)
+            d.line([p0, p1], fill=(70, 72, 80), width=max(1, int(4 * t1)))
 
-    # Ostersund biathlon arena, Sweden: 63.1792 N, 14.6357 E
+    # floodlights: small halos at the lamps + soft pools of light on the ground
+    halo, pool = Image.new("L", (W, H), 0), Image.new("L", (W, H), 0)
+    lamps = [(190, hz - 175), (640, hz - 200), (1090, hz - 175)]
+    for fx, fy in lamps:
+        ImageDraw.Draw(halo).ellipse([fx - 70, fy - 50, fx + 70, fy + 60], fill=210)
+        ImageDraw.Draw(pool).ellipse([fx - 320, H - 330, fx + 320, H + 80], fill=46)
+    halo = halo.filter(ImageFilter.GaussianBlur(38))
+    pool = pool.filter(ImageFilter.GaussianBlur(90))
+    glow = ImageChops.add(halo, pool)
+    light = Image.merge("RGB", [glow, glow.point(lambda v: int(v * 0.88)), glow.point(lambda v: int(v * 0.66))])
+    img = ImageChops.add(img, light)
+    d = ImageDraw.Draw(img)
+    for fx, fy in lamps:
+        d.line([(fx, fy), (fx, hz + 24)], fill=(14, 16, 24), width=7)
+        d.rectangle([fx - 30, fy - 12, fx + 30, fy + 4], fill=(255, 250, 232))
+
+    def bike(cx, bar_y, s, facing, frame, wheel, shadow):
+        r = 30 * s
+        hub_y = bar_y + 58 * s
+        X = lambda dx: cx + facing * dx * s
+        d.ellipse([cx - 80 * s, hub_y + r - 6 * s, cx + 80 * s, hub_y + r + 8 * s], fill=shadow)
+        rear, front = (X(-46), hub_y), (X(46), hub_y)
+        for hx, hy in (rear, front):
+            d.ellipse([hx - r, hy - r, hx + r, hy + r], outline=wheel, width=max(2, int(4 * s)))
+        bb, seat, head = (X(-6), hub_y), (X(-16), bar_y + 6 * s), (X(34), bar_y + 10 * s)
+        w = max(2, int(5 * s))
+        for p1, p2 in ((rear, seat), (seat, bb), (bb, rear), (seat, head), (head, bb), (head, front)):
+            d.line([p1, p2], fill=frame, width=w)
+        d.line([(X(-28), bar_y + 2 * s), (X(-4), bar_y + 2 * s)], fill=(16, 16, 20), width=w + 1)
+        d.line([head, (X(38), head[1] - 8 * s), (X(56), head[1] - 8 * s)], fill=frame, width=w)
+
+    # mostly dark and grey frames, a few coloured ones
+    frames = ([(24, 24, 28)] * 8 + [(70, 74, 84)] * 4 + [(205, 205, 212)] * 3 +
+              [(54, 67, 186)] * 2 + [(122, 255, 166)] + [(176, 38, 48)] * 2)
+
+    def rack_row(base_y, s, shade):
+        bar_y = base_y - 92 * s
+        lum = max(0, min(255, int(26 + 30 * (base_y - hz) / (H - hz))))
+        shadow = (int(lum * 0.55),) * 2 + (int(lum * 0.6),)
+        for lx in range(int(30 * s), W, int(300 * s)):
+            d.line([(lx, bar_y), (lx, base_y)], fill=tuple(int(c * shade) for c in (130, 132, 140)), width=max(2, int(5 * s)))
+        x, facing = 70 * s, 1
+        while x < W + 80 * s:
+            if rnd.random() > 0.15:                      # some empty slots
+                f = tuple(int(c * shade) for c in rnd.choice(frames))
+                bike(x, bar_y, s, facing, f, tuple(int(c * shade) for c in (12, 12, 16)), shadow)
+            facing = -facing                             # racked nose / tail alternately
+            x += (172 + rnd.randint(-14, 14)) * s
+        d.line([(0, bar_y), (W, bar_y)], fill=tuple(int(c * shade) for c in (165, 168, 176)), width=max(2, int(5 * s)))
+
+    def barrier(y, h):                                 # DécaFlop-coloured fencing, no text
+        d.rectangle([0, y, W, y + h], fill=(44, 54, 150))
+        d.rectangle([0, y + h - max(3, int(h * 0.22)), W, y + h], fill=(98, 205, 133))
+        for px in range(0, W, 200):
+            d.line([(px, y), (px, y + h)], fill=(30, 38, 110), width=3)
+
+    rack_row(hz + 66, 0.42, 0.5)
+    barrier(hz + 72, 18)
+    rack_row(hz + 196, 0.68, 0.72)
+    barrier(hz + 204, 26)
+    rack_row(H - 52, 1.12, 0.95)
+
+    img = img.filter(ImageFilter.GaussianBlur(0.8))
+    grain = Image.effect_noise((W, H), 26).convert("RGB")
+    img = Image.blend(img, grain, 0.06)
+    vig = Image.new("L", (W, H), 0)                    # vignette
+    ImageDraw.Draw(vig).ellipse([-W * 0.12, -H * 0.18, W * 1.12, H * 1.18], fill=255)
+    vig = vig.filter(ImageFilter.GaussianBlur(130))
+    return Image.composite(img, Image.new("RGB", (W, H), (0, 0, 0)), vig)
+
+def gen_exif():
+    f = flag("FLAG_03_EXIF", "TRIATHLON{exif_placeholder}")
+    # The organizer-supplied photo (metadata already stripped); the drawn scene
+    # is only a fallback if the asset is missing.
+    photo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "transition_photo.jpg")
+    img = Image.open(photo).convert("RGB") if os.path.exists(photo) else transition_scene()
+
+    # Kalmar triathlon transition area, Sweden: 56.6634 N, 16.3568 E
     def deg(dd):
         dd = abs(dd); dmin, sec = int(dd), (dd-int(dd))*60
         mm, ss = int(sec), (sec-int(sec))*60
         return ((dmin,1),(mm,1),(int(ss*100),100))
     gps = {
         piexif.GPSIFD.GPSLatitudeRef: b"N",
-        piexif.GPSIFD.GPSLatitude: deg(63.1792),
+        piexif.GPSIFD.GPSLatitude: deg(56.6634),
         piexif.GPSIFD.GPSLongitudeRef: b"E",
-        piexif.GPSIFD.GPSLongitude: deg(14.6357),
+        piexif.GPSIFD.GPSLongitude: deg(16.3568),
     }
     zeroth = {
         piexif.ImageIFD.Make: b"DecaFlopCam",
-        piexif.ImageIFD.Model: b"DFL-RangeCam 200",
+        piexif.ImageIFD.Model: b"DFL-T2Cam 200",
         piexif.ImageIFD.ImageDescription: f.encode(),       # <-- the flag
         piexif.ImageIFD.Artist: b"crew:v.lindqvist",        # story clue
+        piexif.ImageIFD.Software: b"DFL-T2Cam firmware 1.4",
+        piexif.ImageIFD.DateTime: b"2026:11:01 18:42:11",
     }
     exif_ifd = {
         piexif.ExifIFD.DateTimeOriginal: b"2026:11:01 18:42:11",  # sabotage window
-        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00range photo, final-race eve",
+        piexif.ExifIFD.UserComment: b"ASCII\x00\x00\x00crew camera upload, transition area",
+        piexif.ExifIFD.ExposureTime: (1, 800),                    # daylight, telephoto
+        piexif.ExifIFD.FNumber: (56, 10),
+        piexif.ExifIFD.ISOSpeedRatings: 200,
+        piexif.ExifIFD.FocalLength: (70, 1),
+        piexif.ExifIFD.Flash: 16,                                 # flash did not fire
     }
     exif_bytes = piexif.dump({"0th": zeroth, "Exif": exif_ifd, "GPS": gps})
-    img.save(os.path.join(OUT, "range_shot.jpg"), exif=exif_bytes, quality=85)
-    print("[03] range_shot.jpg")
+    img.save(os.path.join(OUT, "transition_shot.jpg"), exif=exif_bytes, quality=85)
+    print("[03] transition_shot.jpg")
 
 # ---------------------------------------------------------------------------
 # 05 · PCAP (medium) — HTTP Basic-Auth over plain HTTP; creds hold the flag
@@ -122,7 +326,7 @@ def _frame(src, dst, sport, dport, seq, ack, flags, http):
     return _eth(_ipv4(src, dst, 6, _tcp(sport, dport, seq, ack, flags, src, dst, http)))
 
 def gen_pcap():
-    f = flag("FLAG_05_PCAP", "BIATHLON{pcap_placeholder}")
+    f = flag("FLAG_05_PCAP", "TRIATHLON{pcap_placeholder}")
     creds = base64.b64encode(("timingop:" + f).encode()).decode()
     req = ("GET /timing/submit?bib=1042 HTTP/1.1\r\n"
            "Host: timing.decaflop.local\r\n"
@@ -144,10 +348,10 @@ def gen_pcap():
 # 07 · USB carving (medium) — a 'deleted' PNG (holding the flag) inside a raw image
 # ---------------------------------------------------------------------------
 def gen_usb():
-    f = flag("FLAG_07_USB", "BIATHLON{usb_placeholder}")
+    f = flag("FLAG_07_USB", "TRIATHLON{usb_placeholder}")
     hidden_png = text_png_bytes(
         ["RECOVERED FILE  (was deleted from the referee USB)", "", f,
-         "", "note: carved from unallocated space — nice work."],
+         "", "note: carved from unallocated space - nice work."],
         w=940, h=150, bg=(245,245,245))
     blob = bytearray()
     blob += b"DECAFLOP-REMOVABLE-MEDIA\x00FAT16\x00" + b"\x00" * 480
@@ -165,7 +369,7 @@ def gen_usb():
 # 09 · SAP USR02 (HARD, finale) — identify + crack the saboteur's legacy hash
 # ---------------------------------------------------------------------------
 def gen_sap():
-    f = flag("FLAG_09_SAP_USR02", "BIATHLON{sap_placeholder}")
+    f = flag("FLAG_09_SAP_USR02", "TRIATHLON{sap_placeholder}")
     saboteur = flag("SABOTEUR_NAME", "viktor_lindqvist").replace("_", " ").title()
     # NOTE: real SAP CODVN B (BCODE, hashcat -m 7700) is fiddly to reproduce
     # reliably offline, so for a self-hosted event we model the *legacy
@@ -174,13 +378,13 @@ def gen_sap():
     def codvn_b(pw):   # simplified legacy hash
         return hashlib.md5(pw.upper().encode()).hexdigest().upper()
 
-    operator_pw = "LANE7"            # the crackable password (also the zip password)
+    operator_pw = "CHIP7"            # the crackable password (also the zip password)
     rows = [
         # MANDT,BNAME,BCODE,CODVN,UFLAG,TRDAT,LTIME
         ("001", "RESULTS_ADMIN", codvn_b("ADMIN2019"), "B", "64", "20260715", "091500"),
         ("001", "VLINDQVIST",    codvn_b(operator_pw), "B", "00", "20261101", "184230"),
-        ("001", "MSORENSEN",     codvn_b("WINTER"),    "B", "00", "20261028", "133010"),
-        ("001", "JKOWALSKI",     codvn_b("SKI2020"),   "B", "00", "20261030", "171240"),
+        ("001", "MSORENSEN",     codvn_b("SUMMER"),    "B", "00", "20261028", "133010"),
+        ("001", "JKOWALSKI",     codvn_b("SWIM2020"),   "B", "00", "20261030", "171240"),
         ("000", "SAP*",          "",                    "A", "00", "20260101", "000000"),
     ]
     with open(os.path.join(OUT, "SAP_USR02_export.csv"), "w") as fh:
@@ -211,9 +415,9 @@ the saboteur.
 
     with open(os.path.join(OUT, "wordlist.txt"), "w") as fh:
         fh.write("\n".join([
-            "winter","summer","ski2020","admin2019","biathlon","results",
-            "lane7","rifle","target","sweden","ostersund","password",
-            "decaflop","timing","snow"]) + "\n")
+            "spring","summer","swim2020","admin2019","triathlon","results",
+            "chip7","wetsuit","transition","sweden","kalmar","password",
+            "decaflop","timing","aero"]) + "\n")
 
     # password-protected zip with the finale flag + story
     with tempfile.TemporaryDirectory() as td:
@@ -225,11 +429,11 @@ f"""CASE CLOSED.
 {f}
 
 The last logon on table ZRACE_RESULT before the sabotage was user VLINDQVIST
-(client 001), 2026-11-01 18:42 — the same timestamp as the range photo, the
+(client 001), 2026-11-01 18:42 — the same timestamp as the transition photo, the
 same operator seen in the IDOR audit log and the results-admin accounts.
 
 The saboteur is: {saboteur} (SAP user VLINDQVIST).
-He swapped the shooting-lane assignments to rig the final race.
+He swapped the timing-chip assignments to rig the final race.
 """)
         out_zip = os.path.join(OUT, "case_file.zip")
         if os.path.exists(out_zip): os.remove(out_zip)

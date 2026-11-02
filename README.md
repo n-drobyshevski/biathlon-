@@ -1,4 +1,4 @@
-# 🎿🎯 Opération Dernier Tir — a DécaFlop CTF
+# 🏊🚴🏃 Opération Dernière Transition — a DécaFlop CTF
 
 A small Jeopardy-style Capture The Flag built around one story. Designed for
 **~6 players, beginner → intermediate, 1h–1h30**, self-hosted on a **Raspberry
@@ -17,9 +17,9 @@ Pi 5 (4 GB)** behind a travel router with **no internet**.
 ## The story
 
 **DécaFlop** — "sport pour (presque) tous" — is a budget sporting-goods chain
-and the title sponsor of the Regional Biathlon Championship. The night before
+and the title sponsor of the Regional Triathlon Championship. The night before
 the final race, someone broke into the event systems and **rigged the start
-list**, swapping shooting-lane assignments to fix the result.
+list**, swapping timing-chip assignments to fix the result.
 
 Your team is the event's emergency IT crew. Follow the trail across DécaFlop's
 website, the timing booth, a referee's USB stick and the company's **SAP DFlop
@@ -37,7 +37,7 @@ enough for 6 people to split up and work in parallel.
 |---|-------|----------|-----------|-----|------|
 | 01 | The Sponsor's Secret | Web | Easy | 50 | live (`:8001`) |
 | 02 | Share Everywhere | Forensics/Stego | Easy | 50 | handout |
-| 03 | At the Range | Forensics | Easy | 75 | handout |
+| 03 | In Transition | Forensics | Easy | 75 | handout |
 | 04 | Not Your Profile | Web (IDOR) | Medium | 100 | live (`:8004`) |
 | 05 | The Timing Booth | Forensics (pcap) | Medium | 100 | handout |
 | 06 | Results Admin | Web (SQLi) | Medium | 125 | live (`:8006`) |
@@ -46,7 +46,7 @@ enough for 6 people to split up and work in parallel.
 | 09 | Who Rigged the Race? 🏁 | **SAP** | **Hard** | 250 | handout (finale) |
 
 3 easy · 4 medium · 2 hard. The two hard challenges are the SAP ones.
-Total 1075 pts. Flag format: `BIATHLON{...}`.
+Total 1075 pts. Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
 hints). The live web/SAP apps are Flask containers; the forensics/stego/SAP
@@ -83,7 +83,7 @@ scoreboard, a Samba share, or a USB):
 
 ```
 decaflop_poster.png     -> 02
-range_shot.jpg          -> 03
+transition_shot.jpg     -> 03
 timing_booth.pcap       -> 05
 referee_usb.img         -> 07
 SAP_USR02_export.csv + sap_hint.txt + wordlist.txt + case_file.zip  -> 09
@@ -114,6 +114,7 @@ Update the flags in your scoreboard to match the new `.env` after rotating.
 challenges/            one folder per challenge (player README + web app code)
 handouts/              generator for all downloadable forensics/SAP files
   generate.py          builds every handout from .env flags
+  assets/              base photo for 03 (AI-generated, metadata stripped)
   HOSTING.md           Pi 5 + travel-router hosting guide
 scoreboard/            how to run a scoreboard on the Pi (CTFd-lite / static)
 scripts/

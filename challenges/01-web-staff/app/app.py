@@ -9,63 +9,65 @@ Teaches: robots.txt recon, that "hidden" != "secret".
 import os
 from flask import Flask, Response
 
+from shop import shop, layout, html
+
 app = Flask(__name__)
-FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
+app.register_blueprint(shop)   # public storefront pages (decor)
+FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>DécaFlop · Official Sponsor of the Regional Biathlon Championship</title>
-<style>
- body{{font-family:system-ui,sans-serif;margin:0;background:#0b3d2e;color:#eafff5}}
- header{{background:#07291f;padding:28px 40px;border-bottom:4px solid #19c37d}}
- h1{{margin:0;font-size:28px;letter-spacing:1px}}
- .tag{{color:#8fe9c4}}
- main{{max-width:720px;margin:40px auto;padding:0 20px;line-height:1.6}}
- .card{{background:#0f4a39;border:1px solid #19704f;border-radius:10px;padding:20px;margin:16px 0}}
- footer{{color:#5fae8f;padding:30px 40px;font-size:13px}}
-</style></head><body>
-<header><h1>DÉCAFLOP <span class="tag">// sport pour (presque) tous</span></h1></header>
-<main>
- <p>Welcome to the official site of <b>DécaFlop</b>, proud title sponsor of the
-    Regional Biathlon Championship. Skis, rifles, questionable returns policy.</p>
- <div class="card">
-   <h3>🎿 The Final Race is tomorrow!</h3>
-   <p>Start lists, timing and results are managed by our event crew.
-      Public visitors can view the schedule soon.</p>
- </div>
- <div class="card">
-   <h3>Careers</h3>
-   <p>DécaFlop is always hiring. We definitely do not have an internal-only
-      area on this very website. Please do not look for it.</p>
- </div>
-</main>
-<footer>© DécaFlop. All flops reserved. Crawlers welcome — see /robots.txt</footer>
-</body></html>"""
+HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>"""
 
-STAFF = """<!doctype html><html><head><meta charset="utf-8">
-<title>DécaFlop — Staff Portal</title>
-<style>body{{font-family:monospace;background:#071f17;color:#b9ffe0;padding:40px}}
-.box{{border:1px dashed #19c37d;padding:20px;border-radius:8px;max-width:680px}}</style>
-</head><body>
-<h2>🔒 DÉCAFLOP STAFF PORTAL (internal)</h2>
-<div class="box">
-<p>You found the "hidden" area. It was in <code>/robots.txt</code> the whole time.</p>
-<p><b>Flag:</b> <code>{flag}</code></p>
-<hr>
-<p>📎 <b>Crew note:</b> All staff accounts follow the convention
-   <code>first-initial + lastname</code> and are mirrored into our
-   <b>SAP DFlop ERP</b> system as the matching SAP user. Remember this —
-   it matters for the results system.</p>
-</div></body></html>"""
+STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
+<div class="strip"><div class="in"><span>INTERNE · Réseau staff DécaFlop</span>
+<span>Ne partagez pas les liens de cet espace</span></div></div>
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Portail staff</small></a>
+ <nav class="acct"><span class="mute">Équipe événement</span></nav>
+</div></header>
+<main class="page">
+ <div class="crumb"><a href="/">decaflop</a> / staff-portal (interne)</div>
+ <div class="panel">
+  <h1 class="h">Portail staff</h1>
+  <p>Vous avez trouvé l'espace « caché ». Il était dans <code>/robots.txt</code> depuis le début.</p>
+  <div class="flag"><span>Flag</span><code id="flag">{flag}</code>
+   <button type="button" onclick="copyFlag(this)">Copier</button></div>
+ </div>
+ <div class="panel grey">
+  <h2 class="h">Note de l'équipe</h2>
+  <p style="margin:0">Tous les comptes staff suivent la convention
+   <code>initiale du prénom + nom</code> et sont répliqués dans notre système
+   <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant. Retenez-le —
+   c'est important pour le système de résultats.</p>
+ </div>
+</main>{copyjs}</body></html>"""
+
+# Copy button: falls back to execCommand because the Pi is served over plain
+# HTTP on a LAN IP, where navigator.clipboard is unavailable.
+COPY_JS = """<script>
+function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
+ function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
+ function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
+  a.style.opacity='0';document.body.appendChild(a);a.select();
+  try{document.execCommand('copy');ok()}catch(e){}a.remove()}
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,legacy)}
+ else{legacy()}}
+</script>"""
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
-# internal only — do not index the results tooling
+# interne uniquement — ne pas indexer les outils de résultats
 Disallow: /sap/
 """
 
-@app.get("/")
-def home():
-    return Response(PAGE.format(), mimetype="text/html")
+@app.errorhandler(404)
+def not_found(_e):
+    body = """<div class="page"><div class="panel">
+ <h1 class="h">Page introuvable</h1>
+ <p class="mute">Cette page n'existe pas ou a été déplacée.</p>
+ <a class="btn blue" href="/">Retour à l'accueil</a></div></div>"""
+    return html(layout("Page introuvable · DécaFlop", body), 404)
 
 @app.get("/robots.txt")
 def robots():
@@ -73,7 +75,7 @@ def robots():
 
 @app.get("/staff-portal-7f3a9")
 def staff():
-    return Response(STAFF.format(flag=FLAG), mimetype="text/html")
+    return Response(STAFF.replace("{copyjs}", COPY_JS).replace("{flag}", FLAG), mimetype="text/html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, threaded=True)

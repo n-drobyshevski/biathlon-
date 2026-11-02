@@ -9,7 +9,7 @@
 A file was deleted from this image. Carve it back out and read the flag.
 (Grepping for the flag won't work — the bytes you need aren't text.)
 
-**Flag format:** `BIATHLON{...}`
+**Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−15)</summary>File carving = finding files by their magic bytes in raw data.</details>
 <details><summary>Hint 2 (−30)</summary><code>binwalk -e referee_usb.img</code> or <code>foremost referee_usb.img</code>. Look for an embedded PNG, extract it, and open it.</details>
