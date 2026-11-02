@@ -275,8 +275,8 @@ def context():
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Partage interne", "Les fichiers de preuve sont sur « Partage DFlop », l'espace documentaire "
-                            "interne (:8020). Connexion de l'équipe IT : "
-                            "<code>equipe-it</code> / <code>transition2026</code>."),
+                            "interne (:8020). L'identifiant de connexion est affiché sur le portail "
+                            "staff du site DécaFlop (mission 01)."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Tableau des scores", score),
     ]]

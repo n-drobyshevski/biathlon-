@@ -236,6 +236,17 @@ _CONSIGNES = ("Consignes jury - rappel\n"
               "- Drafting interdit : 1 minute de penalite.\n"
               "- Combinaison autorisee si l'eau est sous 22 C.\n\n"
               "Pour toute reclamation, voir la direction de course (bureau de course).\n")
+_NOTES_BASIS = ("Notes Basis - SAP DFlop ERP (DFL / mandant 001)\n"
+                "===============================================\n\n"
+                "Rappels pour l'equipe, a trier apres la finale :\n\n"
+                "- Moniteur du gateway SAP accessible sur le reseau staff (port 8014).\n"
+                "  A verifier : les ACL reginfo/secinfo sont restees sur les valeurs\n"
+                "  par defaut depuis l'installation.\n"
+                "- Les rapports maison (dont l'export des resultats) sont dans le\n"
+                "  dossier 'Basis SAP / Developpements'. Rappel : ne pas laisser de\n"
+                "  jeton en dur dans le code.\n"
+                "- L'export de la table USR02 est archive dans 'Basis SAP / Exports'.\n\n"
+                "Document de travail interne, sans valeur officielle. Ne pas diffuser.\n")
 
 FILES = [
     ev(("Chronométrage", "Captures", "timing_booth.pcap"), "pcap",
@@ -255,6 +266,9 @@ FILES = [
     ev(("Basis SAP", "Développements", "ZDFLOP_RESULT_EXPORT.abap"), "abap",
        "Source ABAP", "Basis SAP", "28 oct. 2026", "16:48"),
     # --- mundane decoys (generated text, no clues) ---
+    # A Basis working note that casually names the SAP gateway monitor (:8014,
+    # challenge 14) and the ABAP dev folder — service names only, no secrets.
+    decoy(("Basis SAP", "notes_basis.txt"), "Basis SAP", "29 oct. 2026", "15:12", _NOTES_BASIS),
     decoy(("IT", "Outils", "LISEZ-MOI.txt"), "Équipe IT d'urgence", "31 oct. 2026", "17:41", _LISEZMOI),
     decoy(("Logistique", "Bénévoles", "planning_benevoles.txt"), "Logistique", "28 oct. 2026", "14:05", _PLANNING),
     decoy(("Direction de course", "Dossier incident", "note_parcours.txt"),

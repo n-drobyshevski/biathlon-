@@ -73,8 +73,9 @@ def home_page(base):
 <title>DécaFlop · Results API</title><style>{CSS}</style></head><body>
 <header><h1>🔑 DécaFlop · Results API</h1></header>
 <main>
-<div class="card"><p>API interne des résultats. L'authentification se fait par
-<b>jeton JWT</b> (en-tête <code>Authorization: Bearer &lt;token&gt;</code>).</p>
+<div class="card"><p>API interne des résultats. Elle remplace l'ancienne admin
+résultats web. L'authentification se fait par <b>jeton JWT</b>
+(en-tête <code>Authorization: Bearer &lt;token&gt;</code>).</p>
 <p>Récupérez un jeton d'invité : <code>GET /api/token</code></p>
 <p>Consultez les résultats : <code>GET /api/results</code> (jeton requis)</p></div>
 <div class="card"><h3>Démo</h3>

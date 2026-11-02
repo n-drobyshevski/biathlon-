@@ -3,6 +3,10 @@
 # old commit. The vuln: the whole .git directory is served to the web.
 set -e
 SITE="${SITE_DIR:-/srv/site}"
+# The results API's JWT signing secret (challenge 10). Same value 10 signs with;
+# docker-compose passes the same literal to both. It lands in the FIRST commit's
+# config below, so dumping .git leaks it — an alternate route into challenge 10.
+API_JWT_SECRET="${API_JWT_SECRET:-DecaFlop2026}"
 rm -rf "$SITE"; mkdir -p "$SITE"; cd "$SITE"
 git init -q
 git config user.email "crew@decaflop.local"
@@ -22,7 +26,8 @@ intermédiaires sont publiés ici pendant la course.</p>
 <p>Déploiement : <code>git pull</code> sur le serveur, comme d'habitude.</p></div></main></body></html>
 HTML
 
-# commit 1: the site, with a config file that still holds the export token
+# commit 1: the site, with a config file that still holds the secrets —
+# the results export token AND the results API's JWT signing secret
 cat > config.py <<CFG
 # DécaFlop chronométrage — configuration
 DB_HOST = "db.decaflop.local"
@@ -30,6 +35,8 @@ DB_USER = "timing"
 DB_PASS = "T1m1ng-db-2026"
 # Jeton d'export des résultats officiels (NE PAS committer)
 EXPORT_TOKEN = "$FLAG"
+# Clé de signature des jetons de l'API des résultats (partagée, NE PAS committer)
+RESULTS_API_JWT_SECRET = "$API_JWT_SECRET"
 CFG
 git add -A
 git commit -q -m "Initial timing site + config"
@@ -43,6 +50,7 @@ DB_HOST = os.environ.get("DB_HOST", "db.decaflop.local")
 DB_USER = os.environ.get("DB_USER", "timing")
 DB_PASS = os.environ.get("DB_PASS", "")
 EXPORT_TOKEN = os.environ.get("EXPORT_TOKEN", "")
+RESULTS_API_JWT_SECRET = os.environ.get("RESULTS_API_JWT_SECRET", "")
 CFG
 printf '.env\n__pycache__/\n' > .gitignore
 git add -A

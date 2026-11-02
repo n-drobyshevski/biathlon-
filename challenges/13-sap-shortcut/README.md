@@ -4,9 +4,13 @@
 > ERP. Someone ticked "save password" so they wouldn't have to type it. Handy —
 > and readable.
 
-**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `IT / Sauvegardes postes / portable-equipe-03` (`dflop_erp.sap`). Log in with `equipe-it` / `transition2026` (handed out by the cellule de crise).
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `IT / Sauvegardes postes / portable-equipe-03` (`dflop_erp.sap`). Credentials are on the DécaFlop staff portal — see challenge 01.
 
 Download the shortcut: it has a saved password. Recover it.
+
+The shortcut points at system **DFL**, client **001** — DécaFlop's production
+ERP. That's the same system behind the USR02 export in challenge 09 and the SAP
+gateway in challenge 14.
 
 **Flag format:** `TRIATHLON{...}`
 
