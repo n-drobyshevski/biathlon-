@@ -16,8 +16,13 @@ import hashlib
 import hmac
 import json
 import os
+import sys
+from html import escape
 
 from flask import Flask, Response, request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import intranet  # noqa: E402
 
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
@@ -59,31 +64,42 @@ def verify(token):
         return None
 
 
-CSS = """body{font-family:system-ui,sans-serif;background:#0f1a24;color:#e6f0f7;margin:0;line-height:1.6}
-header{background:#0a1118;padding:20px 24px;border-bottom:3px solid #2dd4bf}
-main{max-width:720px;margin:32px auto;padding:0 18px}
-.card{background:#162430;border:1px solid #28506a;border-radius:10px;padding:18px;margin:14px 0}
-code,pre{font-family:ui-monospace,Menlo,Consolas,monospace}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b141c;padding:14px;border-radius:6px;color:#9fe0c8}
-a{color:#2dd4bf}h1{margin:0;font-size:22px}"""
-
 def home_page(base):
-    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DécaFlop · Results API</title><style>{CSS}</style></head><body>
-<header><h1>🔑 DécaFlop · Results API</h1></header>
-<main>
-<div class="card"><p>API interne des résultats. Elle remplace l'ancienne admin
-résultats web. L'authentification se fait par <b>jeton JWT</b>
-(en-tête <code>Authorization: Bearer &lt;token&gt;</code>).</p>
-<p>Récupérez un jeton d'invité : <code>GET /api/token</code></p>
-<p>Consultez les résultats : <code>GET /api/results</code> (jeton requis)</p></div>
-<div class="card"><h3>Démo</h3>
-<pre>curl {base}api/token
+    base = escape(base)
+    body = f"""<h1 class="h1">Results API · documentation</h1>
+<p class="lead">API interne des résultats de la finale. Elle remplace l'ancienne admin résultats web
+ (ChronoRésultats). Les intégrations doivent basculer avant la saison 2027.</p>
+<div class="cols"><div>
+ <section class="wp"><h2>Authentification</h2>
+  <p>Chaque appel aux données porte un jeton JWT signé (HS256) dans l'en-tête
+   <code>Authorization: Bearer &lt;token&gt;</code>. Le paramètre <code>?token=</code> reste accepté
+   pour les anciens clients.</p>
+ </section>
+ <section class="wp"><h2>Points d'accès</h2>
+  <table class="list data"><thead><tr><th style="width:70px">Méthode</th><th style="width:150px">Chemin</th>
+   <th>Description</th><th style="width:90px">Jeton</th></tr></thead><tbody>
+  <tr><td><span class="verb">GET</span></td><td><code>/api/token</code></td>
+   <td class="wrap">Délivre un jeton invité (<code>role: viewer</code>).</td><td>non</td></tr>
+  <tr><td><span class="verb">GET</span></td><td><code>/api/results</code></td>
+   <td class="wrap">Classement. Résultats publics pour <code>viewer</code>, données officielles pour
+    <code>admin</code>.</td><td>oui</td></tr>
+  </tbody></table>
+ </section>
+ <section class="wp"><h2>Exemple</h2>
+<pre class="block">curl {base}api/token
 curl -H "Authorization: Bearer &lt;token&gt;" {base}api/results</pre>
-<p>Le compte invité (<code>role: viewer</code>) ne voit que les résultats publics.
-Seul un jeton <code>role: admin</code> donne accès aux données officielles.</p></div>
-</main></body></html>"""
+ </section>
+</div><div>
+ <section class="wp"><h2>Rôles</h2><dl class="kv">
+  <dt><code>viewer</code></dt><dd>Résultats publics (compte invité)</dd>
+  <dt><code>admin</code></dt><dd>Données officielles (équipe résultats)</dd></dl></section>
+ <section class="wp"><h2>Version</h2><dl class="kv">
+  <dt>API</dt><dd>v2.0.3</dd><dt>Format</dt><dd>JSON (UTF-8)</dd><dt>Statut</dt><dd>Production</dd></dl></section>
+ <section class="wp"><h2>Support</h2><p>Équipe résultats · astreinte IT (poste 300).</p></section>
+</div></div>"""
+    return intranet.page("Results API - documentation", body, app="api", site_title="Results API",
+                         site_href="/", logo="API", topnav=[("/", "Documentation", True)],
+                         product="Results API v2.0.3", foot_extra="Base URL\u00a0: " + base + "api/")
 
 
 @app.get("/")

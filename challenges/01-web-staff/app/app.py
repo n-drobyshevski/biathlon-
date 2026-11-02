@@ -7,11 +7,14 @@ listed in robots.txt, which anyone can read.
 Teaches: robots.txt recon, that "hidden" != "secret".
 """
 import os
+import sys
 from html import escape
 
-from flask import Flask, Response, request
+from flask import Flask, Response
 
-from shop import shop, layout, html
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling shop.py / intranet.py
+import intranet  # noqa: E402
+from shop import shop, layout, html  # noqa: E402
 
 app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
@@ -25,56 +28,38 @@ SHARE_PORT = 8020
 SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")
 SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 
-HEAD = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>"""
-
-STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
-<div class="strip"><div class="in"><span>INTERNE · Réseau staff DécaFlop</span>
-<span>Ne partagez pas les liens de cet espace</span></div></div>
-<header class="top"><div class="in">
- <a class="mark" href="/">DÉCA<i>FLOP</i><small>Portail staff</small></a>
- <nav class="acct"><span class="mute">Équipe événement</span></nav>
-</div></header>
-<main class="page">
- <div class="crumb"><a href="/">decaflop</a> / staff-portal (interne)</div>
- <div class="panel">
-  <h1 class="h">Portail staff</h1>
-  <p>Vous avez trouvé l'espace « caché ». Il était dans <code>/robots.txt</code> depuis le début.</p>
-  <div class="flag"><span>Flag</span><code id="flag">{flag}</code>
-   <button type="button" onclick="copyFlag(this)">Copier</button></div>
- </div>
- <div class="panel grey">
-  <h2 class="h">Outils de l'équipe</h2>
-  <p style="margin:0 0 12px">Les pièces de l'enquête sont déposées sur le partage
-   documentaire interne <b>Partage DFlop</b>. Connectez-vous avec le compte de
-   l'équipe&#160;:</p>
-  <dl class="facts">
+# The portal page, in the shared intranet look. {share_url}, {share_user},
+# {share_pass} and {flag} are filled in by staff() below (all escaped).
+STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
+<p class="status">Espace réservé au réseau staff. Ne transférez pas l'adresse de cette page en dehors de l'équipe.</p>
+<div class="cols"><div>
+ <section class="wp"><h2>Jeton d'accès de l'équipe événement</h2>
+  <p>Jeton attribué à l'équipe pour la finale. Communiquez-le uniquement à l'astreinte IT lors de la vérification de votre accès.</p>
+  {codebox}
+ </section>
+ <section class="wp"><h2>Partage DFlop</h2>
+  <p>Les pièces de l'enquête sont déposées sur le partage documentaire interne Partage DFlop. Compte de l'équipe&#160;:</p>
+  <dl class="kv">
    <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
    <dt>Identifiant</dt><dd><code>{share_user}</code></dd>
    <dt>Mot de passe</dt><dd><code>{share_pass}</code></dd>
   </dl>
- </div>
- <div class="panel grey">
-  <h2 class="h">Note de l'équipe</h2>
-  <p style="margin:0">Tous les comptes staff suivent la convention
-   <code>initiale du prénom + nom</code> et sont répliqués dans notre système
-   <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant. Retenez-le —
-   c'est important pour le système de résultats.</p>
- </div>
-</main>{copyjs}</body></html>"""
-
-# Copy button: falls back to execCommand because the Pi is served over plain
-# HTTP on a LAN IP, where navigator.clipboard is unavailable.
-COPY_JS = """<script>
-function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
- function ok(){b.textContent='Copié \u2713';setTimeout(function(){b.textContent='Copier'},1500)}
- function legacy(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';
-  a.style.opacity='0';document.body.appendChild(a);a.select();
-  try{document.execCommand('copy');ok()}catch(e){}a.remove()}
- if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,legacy)}
- else{legacy()}}
-</script>"""
+ </section>
+ <section class="wp"><h2>Comptes et identifiants</h2>
+  <p>Tous les comptes staff suivent la convention <code>initiale du prénom + nom</code> et sont répliqués
+   dans notre système <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant (exemple&#160;: Marie Durand,
+   compte <code>m.durand</code>, utilisateur SAP <code>MDURAND</code>). Le système de résultats utilise le même identifiant.</p>
+ </section>
+</div><div>
+ <section class="wp"><h2>Contacts</h2><dl class="kv">
+  <dt>Astreinte IT</dt><dd>Poste 300</dd><dt>Bureau de course</dt><dd>Poste 214</dd><dt>Logistique</dt><dd>Poste 118</dd></dl>
+ </section>
+ <section class="wp"><h2>Rappels</h2><ul class="links">
+  <li>Briefing général samedi à 18 h 00, salle B.</li>
+  <li>Badge obligatoire sur le parking staff P3.</li>
+  <li>Résultats figés à 16 h 00 le jour de la finale.</li></ul>
+ </section>
+</div></div>"""
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
@@ -97,13 +82,16 @@ def robots():
 @app.get("/staff-portal-7f3a9")
 def staff():
     # The share runs on the same host the player reached us on, port 8020.
-    host = request.host.rsplit(":", 1)[0] if not request.host.endswith("]") else request.host
-    share_url = f"http://{host}:{SHARE_PORT}"
-    page = (STAFF.replace("{copyjs}", COPY_JS)
-                 .replace("{share_url}", escape(share_url))
-                 .replace("{share_user}", escape(SHARE_USER))
-                 .replace("{share_pass}", escape(SHARE_PASSWORD))
-                 .replace("{flag}", FLAG))
+    share_url = f"http://{intranet.host()}:{SHARE_PORT}"
+    body = (STAFF_BODY.replace("{share_url}", escape(share_url))
+                      .replace("{share_user}", escape(SHARE_USER))
+                      .replace("{share_pass}", escape(SHARE_PASSWORD))
+                      .replace("{codebox}", intranet.codebox(FLAG)))
+    page = intranet.page("Portail staff - DécaFlop", body, app="staff",
+                         site_title="Portail staff", site_href="/staff-portal-7f3a9", logo="PS",
+                         topnav=[("/staff-portal-7f3a9", "Accueil", True)],
+                         product="Portail staff 3.2", foot_extra="Équipe événement · Finale 2026",
+                         scripts=intranet.COPY_JS)
     return Response(page, mimetype="text/html")
 
 if __name__ == "__main__":

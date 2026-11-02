@@ -13,38 +13,34 @@ Self-contained training app — intentionally vulnerable. The flag sits in
 app.config; the container is the sandbox.
 """
 import os
+import sys
 
 from flask import Flask, Response, render_template_string, request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import intranet  # noqa: E402
 
 app = Flask(__name__)
 app.config["FLAG"] = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-CSS = """body{font-family:system-ui,sans-serif;background:#f4f6f8;color:#1b2733;margin:0;line-height:1.6}
-header{background:#143d2b;color:#eafff3;padding:20px 24px;border-bottom:4px solid #19c37d}
-main{max-width:640px;margin:32px auto;padding:0 18px}
-.card{background:#fff;border:1px solid #d7dde3;border-radius:10px;padding:22px;margin:14px 0}
-input{width:100%;padding:10px;border:1px solid #9aa6b2;border-radius:6px;box-sizing:border-box;font:inherit}
-button{margin-top:12px;background:#19c37d;color:#04281c;border:0;padding:10px 18px;border-radius:6px;font-weight:700;cursor:pointer}
-.cert{border:3px double #143d2b;border-radius:8px;padding:28px;text-align:center;margin-top:8px;background:#fbfdfb}
-.cert h2{margin:0 0 6px;color:#143d2b}.cert .big{font-size:26px;font-weight:800;margin:10px 0;color:#0b6e4f}
-code{font-family:ui-monospace,Menlo,Consolas,monospace}h1{margin:0;font-size:22px}"""
-
-FORM = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DécaFlop · Certificat de finaliste</title><style>{css}</style></head><body>
-<header><h1>🏅 DécaFlop · Certificat de finaliste</h1></header>
-<main><div class="card">
-<p>Générez votre certificat de finaliste de la finale 2026. Entrez votre nom
-tel qu'il doit apparaître sur le certificat.</p>
-<form method="post" action="/generate">
- <label for="n">Nom du finaliste</label>
- <input id="n" name="name" value="Astrid Bjornsen" autofocus>
- <button>Générer le certificat</button>
-</form></div>{result}</main></body></html>"""
+FORM = """<h1 class="h1">Certificat de finaliste</h1>
+<p class="lead">Générez le certificat d'un finaliste de la finale 2026. Saisissez le nom tel qu'il doit
+ apparaître sur le certificat (prénom puis nom).</p>
+<form class="form noprint" method="post" action="/generate">
+ <div class="field"><label for="n">Nom du finaliste</label>
+  <input class="in" id="n" name="name" value="Astrid Bjornsen" autofocus>
+  <span class="hint">Les certificats sont imprimés au village partenaires (imprimante PRN-VIL-02).</span></div>
+ <div class="btns"><button class="btn" type="submit">Générer le certificat</button></div>
+</form>"""
 
 
 def page(result=""):
-    return FORM.replace("{css}", CSS).replace("{result}", result)
+    # `result` is already-rendered HTML; it is concatenated, never re-templated.
+    body = FORM + result
+    return intranet.page("Certificat de finaliste - DécaFlop", body, app="certificats",
+                         site_title="Certificats de finaliste", site_href="/", logo="CF",
+                         topnav=[("/", "Nouveau certificat", True)],
+                         product="Certificats 1.3.0", foot_extra="Finale 2026 · village partenaires")
 
 
 @app.get("/")
@@ -58,10 +54,15 @@ def generate():
     # VULN: user input becomes part of the template source (SSTI), instead of
     # being passed as a value to a fixed template.
     cert = render_template_string(
-        '<div class="cert"><h2>Certificat de finaliste</h2>'
-        '<div class="big">' + name + '</div>'
-        '<p>a terminé le Championnat régional de triathlon · DécaFlop 2026</p></div>')
-    return Response(page(f'<div class="card">{cert}</div>'), mimetype="text/html")
+        '<div class="cert"><div class="in-cert"><div class="org">DÉCA<i>FLOP</i></div>'
+        '<h3>Certificat de finaliste</h3><p>Le Championnat régional de triathlon certifie que</p>'
+        '<div class="name">' + name + '</div>'
+        '<p>a terminé la finale régionale 2026.</p>'
+        '<div class="sig"><span>Direction de course</span><span>Partenaire titre DécaFlop</span></div>'
+        '</div></div>')
+    return Response(page('<h2 class="h2">Aperçu</h2>' + cert +
+                         '<div class="btns noprint"><button class="btn sec" type="button" '
+                         'onclick="window.print()">Imprimer</button></div>'), mimetype="text/html")
 
 
 if __name__ == "__main__":

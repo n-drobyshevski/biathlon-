@@ -1,5 +1,5 @@
-/* DécaFlop house style. Identical copies live in 01, 04 and 06
-   (each Docker build only sees its own app/ folder) — edit all three. */
+/* DécaFlop house style for the public storefront (challenge 01 only).
+   The internal tools use static/intranet.css instead. */
 :root{
   --blue:#3643ba; --blue-dark:#262f8a; --blue-ink:#1b2266;
   --mint:#7affa6; --ink:#101010; --grey:#f5f4f5; --line:#dcdbe0;
