@@ -8,6 +8,10 @@
 
 Download the shortcut: it has a saved password. Recover it.
 
+The shortcut points at system **DFL**, client **001** — DécaFlop's production
+ERP. That's the same system behind the USR02 export in challenge 09 and the SAP
+gateway in challenge 14.
+
 **Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−10)</summary>A <code>.sap</code> shortcut is a plain text file. Open it and look at the <code>Password</code> field.</details>

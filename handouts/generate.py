@@ -453,6 +453,9 @@ def gen_sap_shortcut():
     # base64 of the flag (the writeup is explicit about the simplification).
     pw = base64.b64encode(f.encode()).decode()
     content = (
+        "; Raccourci SAP GUI - DFlop ERP (production)\r\n"
+        "; Systeme DFL, mandant 001 : le systeme de production DecaFlop ERP.\r\n"
+        "; Meme systeme que l'export de la table USR02 et que le gateway SAP DFlop.\r\n"
         "[System]\r\n"
         "Name=DFL\r\n"
         "Client=001\r\n"
@@ -462,7 +465,7 @@ def gen_sap_shortcut():
         f"Password={pw}\r\n"
         "[Function]\r\n"
         "Command=SU01\r\n"
-        "Title=DFlop ERP - Maintenance des utilisateurs\r\n"
+        "Title=DFlop ERP (production, mandant 001) - Maintenance des utilisateurs\r\n"
         "[Configuration]\r\n"
         "GuiSize=Normal window\r\n"
         "[Options]\r\n"

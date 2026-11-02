@@ -73,19 +73,26 @@ services:
     restart: unless-stopped
 
   # ---- 10 · Web · hard (JWT weak secret) --------------------------------
+  # JWT_SECRET is the HS256 signing secret players crack. The SAME value is
+  # leaked in 11's git history (see gitleak below), so dumping that repo is an
+  # alternate route into this challenge. Both default to 10's own default.
   jwt:
     build: ./challenges/10-web-jwt
     environment:
       FLAG: "${FLAG_10_JWT}"
+      JWT_SECRET: "${JWT_SECRET:-DecaFlop2026}"
     ports: ["8010:5000"]
     mem_limit: 128m
     restart: unless-stopped
 
   # ---- 11 · Web · hard (exposed .git) -----------------------------------
+  # API_JWT_SECRET must match 10's JWT_SECRET: the entrypoint writes it into the
+  # first commit's config, so the git leak also exposes 10's signing secret.
   gitleak:
     build: ./challenges/11-web-gitleak
     environment:
       FLAG: "${FLAG_11_GIT}"
+      API_JWT_SECRET: "${JWT_SECRET:-DecaFlop2026}"
     ports: ["8011:5000"]
     mem_limit: 128m
     restart: unless-stopped

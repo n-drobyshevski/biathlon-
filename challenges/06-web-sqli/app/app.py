@@ -88,7 +88,10 @@ def ok_page():
 ---------------------------
 Les résultats officiels sont stockés dans le SAP DFlop ERP (table ZRACE_RESULT).
 Cette admin web n'est qu'une interface. Pour savoir QUI a modifié le classement
-final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.</pre></div>
+final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.
+
+Migration en cours : cette admin web est remplacée par une nouvelle API de
+résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div>
 </div>
 <div class="panel">
  <h2 class="h">Finale · classement provisoire</h2>
