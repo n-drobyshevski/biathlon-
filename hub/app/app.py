@@ -39,13 +39,41 @@ SCRIPT = """<script>
    val.textContent=td.dataset.f||td.innerText.trim().replace(/\\s+/g,' ');
   });
  });
- var store=null;try{store=window.localStorage}catch(e){}
+ // localStorage must be usable AND writable, or we treat it as absent and lock
+ // nothing (never trap a player behind missing storage).
+ var store=null;
+ try{store=window.localStorage;var probe='__crise';store.setItem(probe,'1');store.removeItem(probe);}catch(e){store=null;}
+ function solvedSet(){
+  var done={};
+  document.querySelectorAll('select[data-k]').forEach(function(sel){
+   if(sel.value==='Résolu')done[sel.dataset.k]=true;
+  });
+  return done;
+ }
+ // Guidance-only lock: a mission with an unmet prerequisite is dimmed, its
+ // access link is swapped for a note, and its own Statut control is disabled.
+ function applyLocks(){
+  if(!store)return;                                   // no storage -> all unlocked
+  var done=solvedSet();
+  document.querySelectorAll('tr[data-requires]').forEach(function(tr){
+   var reqs=tr.dataset.requires.split(' ');
+   var locked=reqs.some(function(r){return !done[r];});
+   tr.classList.toggle('locked',locked);
+   if(locked){tr.setAttribute('aria-disabled','true');}else{tr.removeAttribute('aria-disabled');}
+   var open=tr.querySelector('.acc .open'),note=tr.querySelector('.acc .lock');
+   if(open)open.hidden=locked;
+   if(note)note.hidden=!locked;
+   var sel=tr.querySelector('select[data-k]');
+   if(sel)sel.disabled=locked;
+  });
+ }
  document.querySelectorAll('select[data-k]').forEach(function(sel){
   var k='statut-'+sel.dataset.k;
   try{var v=store&&store.getItem(k);if(v)sel.value=v}catch(e){}
   var paint=function(){sel.closest('tr').dataset.statut=sel.value};paint();
-  sel.addEventListener('change',function(){try{store&&store.setItem(k,sel.value)}catch(e){}paint()});
+  sel.addEventListener('change',function(){try{store&&store.setItem(k,sel.value)}catch(e){}paint();applyLocks();});
  });
+ applyLocks();
 })();
 </script>"""
 
@@ -176,6 +204,13 @@ PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
          "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
          "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
 
+# Guidance-only prerequisites (a client-side signpost, NOT enforcement). These
+# are the share-gated missions: their files live on Partage DFlop, whose login
+# you only get by solving mission 01 (the staff portal). The hub renders them
+# "locked" until 01 is marked Résolu in the browser. Soft feeders (03/04/06)
+# are deliberately NOT locked. Keep in sync with the live=="share" missions.
+REQUIRES = {"05": ["01"], "07": ["01"], "09": ["01"], "13": ["01"], "15": ["01"]}
+
 
 def service_url(key):
     """URL of a live challenge, on the same host the player used to reach us."""
@@ -222,6 +257,34 @@ def access(live):
     return f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>'
 
 
+LOCK_SVG = ('<svg class="lk" width="13" height="13" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+            'aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/>'
+            '<path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>')
+
+
+def requires_phrase(reqs):
+    if len(reqs) == 1:
+        return "la mission " + reqs[0]
+    return "les missions " + ", ".join(reqs[:-1]) + " et " + reqs[-1]
+
+
+def access_cell(num, live):
+    """Access link, plus a hidden "locked" note for share-gated missions.
+
+    The note is shown (and the link hidden) client-side when the prerequisite
+    isn't marked Résolu. With no JS or no storage the note stays hidden, so the
+    mission renders unlocked — the lock is only a signpost, nothing is enforced.
+    """
+    link = access(live)
+    reqs = REQUIRES.get(num)
+    if not reqs:
+        return link
+    note = ('<span class="lock" hidden>' + LOCK_SVG +
+            '<span>Déverrouillé en résolvant ' + requires_phrase(reqs) + '</span></span>')
+    return '<span class="open">' + link + '</span>' + note
+
+
 @app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
@@ -238,10 +301,12 @@ def crisis_cell():
         status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
                   '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
                   + submit)
-        rows.append((f' class="mission" id="mission-{num}"', [
+        reqs = REQUIRES.get(num)
+        req_attr = (' data-requires="' + " ".join(reqs) + '"') if reqs else ""
+        rows.append((f' class="mission" id="mission-{num}"' + req_attr, [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
-            (access(live), ' class="acc"'), (status, "")]))
+            (access_cell(num, live), ' class="acc"'), (status, "")]))
     n = len(rows) + 2
     total_row = (f'<tr class="tot"><th class="r">{n}</th><td data-ref="A{n}"></td><td data-ref="B{n}">Total</td>'
                  f'<td data-ref="C{n}"></td><td data-ref="D{n}"></td><td data-ref="E{n}"></td>'
@@ -254,7 +319,9 @@ def crisis_cell():
             f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · {len(MISSIONS)} missions, {total} points'
             + (f' · à soumettre sur le <a href="{escape(board)}">tableau des scores</a>' if board else "")
             + ' · '
-            f'détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
+            f'détails dans l\'onglet <a href="/contexte">Contexte</a>. '
+            'Les missions grisées attendent un prérequis : c\'est un repère, '
+            'le vrai accès reste la connexion au partage (mission 01) — rien n\'est bloqué ici.</p>')
     return html(layout("Missions · suivi_incident_finale_2026", fr(body), "/", f"F{n}",
                        f"=SOMME(F2:F{n-1})", fr(note)))
 

@@ -65,6 +65,66 @@ def test_hub_contexte_links_share_without_creds(hub):
     assert "equipe-it" not in ctx
 
 
+# ---------------------------------------------------------------- locked missions
+def _row(home, num):
+    i = home.find(f'id="mission-{num}"')
+    j = home.find("mission-", i + 10)
+    return home[i:j if j != -1 else None]
+
+
+def test_requires_matches_the_share_gated_set(hub_module):
+    # the lock prerequisites are exactly the share-gated missions
+    share_gated = {m[0] for m in hub_module.MISSIONS if m[6] == "share"}
+    assert set(hub_module.REQUIRES) == share_gated == {"05", "07", "09", "13", "15"}
+    assert all(reqs == ["01"] for reqs in hub_module.REQUIRES.values())
+    # soft feeders are deliberately NOT locked
+    for soft in ("03", "04", "06"):
+        assert soft not in hub_module.REQUIRES
+
+
+def test_gated_rows_render_locked_affordances(hub):
+    home = hub.get("/").data.decode()
+    for num in ("05", "07", "09", "13", "15"):
+        row = _row(home, num)
+        assert 'data-requires="01"' in row                      # JS targets this
+        assert 'class="lock" hidden' in row                     # note hidden by default
+        assert "Déverrouillé en résolvant la mission 01" in row  # real text reason
+        assert 'class="open"' in row                            # link wrapper to toggle
+
+
+def test_non_gated_rows_have_no_lock(hub):
+    home = hub.get("/").data.decode()
+    for num in ("01", "02", "03", "04", "06", "10", "11", "12", "14"):
+        row = _row(home, num)
+        assert "data-requires" not in row
+        assert 'class="lock"' not in row
+
+
+def test_lock_rule_locks_until_prereq_solved(hub_module):
+    # mirror the client rule: locked iff not every prerequisite is solved
+    def locked(solved):
+        return {num for num, reqs in hub_module.REQUIRES.items()
+                if any(r not in solved for r in reqs)}
+    assert locked(set()) == {"05", "07", "09", "13", "15"}       # fresh browser
+    assert locked({"01"}) == set()                               # 01 solved -> all unlock
+    assert locked({"01", "05"}) == set()                         # staying unlocked
+    assert locked({"02", "03"}) == {"05", "07", "09", "13", "15"}  # wrong prereq solved
+
+
+def test_lock_script_guards_and_wiring(hub):
+    home = hub.get("/").data.decode()
+    assert "if(!store)return" in home                            # no storage -> unlocked
+    assert "store.setItem(probe" in home                         # probes storage is writable
+    assert "applyLocks" in home and "tr[data-requires]" in home  # the lock pass is wired
+    assert "sel.value==='Résolu'" in home                        # reads the same Statut state
+
+
+def test_page_notes_the_lock_is_only_a_guide(hub):
+    home = hub.get("/").data.decode()
+    assert "repère" in home
+    assert "rien n'est bloqué" in home
+
+
 def _load_ctfd_setup():
     spec = importlib.util.spec_from_file_location("ctfd_setup", ROOT / "scripts" / "ctfd-setup.py")
     mod = importlib.util.module_from_spec(spec)

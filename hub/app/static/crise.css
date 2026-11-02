@@ -56,6 +56,13 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 .grid tr[data-statut="En cours"] td{background:#fffbea}
 .grid tr[data-statut="Résolu"] td{background:#f1f8f3;color:var(--mute)}
 .grid tr[data-statut="Résolu"] td b{text-decoration:line-through}
+/* locked missions: a guidance signpost, not enforcement (see page note) */
+[hidden]{display:none!important}
+.grid tr.locked td{background:#f7f7f8;color:var(--mute)}
+.grid tr.locked .desc{color:var(--mute)}
+.grid .acc .lock{display:inline-flex;align-items:flex-start;gap:5px;color:var(--mute);font-size:12.5px}
+.grid .acc .lock .lk{flex:none;margin-top:1px}
+.grid select:disabled{opacity:.55;cursor:not-allowed}
 .grid tr.tot td{font-weight:700;border-top:2px solid #9aa0a6}
 .submit{display:block;margin-top:6px;font-size:12.5px;white-space:nowrap}
 .grid tr:target td,.grid tr:target td:nth-child(3){background:#e8f0fe}  /* row opened from a CTFd link */
