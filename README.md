@@ -35,7 +35,7 @@ enough for 6 people to split up and work in parallel.
 
 | # | Title | Category | Difficulty | Pts | Type |
 |---|-------|----------|-----------|-----|------|
-| 01 | The Sponsor's Secret | Web | Easy | 50 | live (`:8001`) |
+| 01 | The Sponsor's Secret | Web | Easy | 75 | live (`:8001`) |
 | 02 | Share Everywhere | Forensics/Stego | Easy | 50 | live (`:8001`) |
 | 03 | In Transition | Forensics | Easy | 75 | live (`:8001`) |
 | 04 | Not Your Profile | Web (IDOR) | Medium | 100 | live (`:8004`) |
@@ -57,7 +57,7 @@ are independent of the main trail.
 | 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
 | 15 | Hardcoded | **SAP** | Medium | 150 | handout |
 
-**14 challenges** · 4 easy · 6 medium · 4 hard. Total **1750 pts**.
+**14 challenges** · 4 easy · 6 medium · 4 hard. Total **1775 pts**.
 Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed

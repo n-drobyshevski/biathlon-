@@ -68,7 +68,7 @@ extra RAM.
 
 | # | Challenge | Pts |
 |---|-----------|-----|
-| 01 | The Sponsor's Secret | 50 |
+| 01 | The Sponsor's Secret | 75 |
 | 02 | Share Everywhere | 50 |
 | 03 | In Transition | 75 |
 | 04 | Not Your Profile | 100 |

@@ -1,10 +1,13 @@
 """Challenge 01's staff portal hands out the Intranet DFlop login (soft gate).
 
 The intranet's own authentication is unchanged; only the source of the
-credentials moves (hub -> staff portal). docker-compose feeds the SAME env to
-both the staff (01) and intranet containers, so the login shown on the portal is
-exactly the one the intranet accepts.
+credentials moves (hub -> staff portal). The portal no longer prints the login:
+it links the intranet and ships the credentials in its client-side script
+(/static/tools.js), username in clear and password Base64-encoded. docker-compose
+feeds the SAME env to both the staff (01) and intranet containers, so what the
+script carries is exactly what the intranet accepts.
 """
+import base64
 import importlib.util
 import pathlib
 import re
@@ -23,7 +26,7 @@ def _load(name, path):
     return mod
 
 
-def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
+def test_staff_portal_hides_password_and_ships_it_base64_in_script(dist, monkeypatch):
     user, pw = "crew-test-07", "gate-pw-test-4821"
     monkeypatch.setenv("SHARE_USER", user)
     monkeypatch.setenv("SHARE_PASSWORD", pw)
@@ -33,25 +36,42 @@ def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
     if str(STAFF_APP) not in sys.path:
         sys.path.insert(0, str(STAFF_APP))
 
-    # 01 staff portal (reached via robots.txt): shows the share URL + login
     staff = _load("staff_gate", STAFF_APP / "app.py")
-    page = staff.app.test_client().get("/staff-portal-7f3a9",
-                                       base_url="http://10.0.0.5:8001").data.decode()
-    assert "http://10.0.0.5:8020" in page                       # host-relative share URL
-    assert "TRIATHLON{staff_gate}" in page                      # 01's own flag kept
-    assert "SAP DFlop ERP" in page                              # SAP-user note kept
-    shown_user = re.search(r"<dt>Identifiant</dt><dd><code>([^<]+)</code>", page).group(1)
-    shown_pass = re.search(r"<dt>Mot de passe</dt><dd><code>([^<]+)</code>", page).group(1)
-    assert (shown_user, shown_pass) == (user, pw)
+    client = staff.app.test_client()
 
-    # the share, from the SAME env, accepts exactly those creds and rejects others
+    # robots.txt lists only the staff portal (the dead /sap/ line is gone)
+    robots = client.get("/robots.txt").data.decode()
+    assert "staff-portal-7f3a9" in robots
+    assert "/sap/" not in robots
+
+    # the portal links the intranet + a button, keeps the flag and SAP note,
+    # loads the tools script — and does NOT print the password anywhere in HTML
+    page = client.get("/staff-portal-7f3a9", base_url="http://10.0.0.5:8001").data.decode()
+    assert "http://10.0.0.5:8020" in page
+    assert "TRIATHLON{staff_gate}" in page
+    assert "SAP DFlop ERP" in page
+    assert 'src="/static/tools.js"' in page
+    assert pw not in page                                        # no plaintext password
+    assert base64.b64encode(pw.encode()).decode() not in page   # nor its base64, in the HTML
+
+    # the script carries the username in clear and the password Base64-encoded
+    js = client.get("/static/tools.js")
+    assert js.status_code == 200 and "javascript" in js.mimetype
+    body = js.data.decode()
+    assert '"' + user + '"' in body                             # username in clear
+    assert pw not in body                                       # password is NOT in clear
+    pass_b64 = re.search(r'pass_b64:\s*"([^"]+)"', body).group(1)
+    recovered = base64.b64decode(pass_b64).decode()
+    assert recovered == pw
+
+    # and the intranet, from the same env, accepts exactly those recovered creds
     share = _load("share_gate", SHARE_APP / "app.py")
     share._FAILS.clear()
     assert share.app.test_client().post(
-        "/login", data={"identifiant": shown_user, "motdepasse": shown_pass}).status_code == 302
+        "/login", data={"identifiant": user, "motdepasse": recovered}).status_code == 302
     share._FAILS.clear()
     assert share.app.test_client().post(
-        "/login", data={"identifiant": shown_user, "motdepasse": "not-the-password"}).status_code == 401
+        "/login", data={"identifiant": user, "motdepasse": "not-the-password"}).status_code == 401
 
     # both containers read the same env var, so they cannot drift
     assert staff.SHARE_USER == share.SHARE_USER == user

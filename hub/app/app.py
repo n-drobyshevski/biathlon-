@@ -134,7 +134,7 @@ def scoreboard_url():
 # 'files' is kept empty for every mission (no hub downloads); it stays in the
 # tuple only so the row layout is unchanged.
 MISSIONS = [
-    ("01", "Le secret du sponsor", "Web", "Facile", 50,
+    ("01", "Le secret du sponsor", "Web", "Facile", 75,
      "DécaFlop jure que son site n'a rien à cacher. L'équipe parle pourtant d'un "
      "« espace interne » — et pour un truc interne, ils l'ont drôlement bien "
      "signalé aux moteurs de recherche.", "site", []),

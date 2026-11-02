@@ -6,6 +6,8 @@ listed in robots.txt, which anyone can read.
 
 Teaches: robots.txt recon, that "hidden" != "secret".
 """
+import base64
+import json
 import os
 from html import escape
 
@@ -17,10 +19,12 @@ app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-# Crew login for the internal wiki "Intranet DFlop" (:8020). The staff
-# portal hands it out, so solving 01 is how players learn how to log in. Read
-# from the SAME env the share reads, with the share's defaults, so the two stay
-# in sync (docker-compose feeds both services from one value).
+# Crew login for the internal wiki "Intranet DFlop" (:8020). The staff portal
+# links the intranet with a "saved" login, but doesn't print the credentials:
+# they live in the page's own script (/static/tools.js), username in clear and
+# password Base64-encoded, so players recover them from the client-side code.
+# Read from the SAME env the share reads, with the share's defaults, so the two
+# stay in sync (docker-compose feeds both services from one value).
 SHARE_PORT = 8020
 SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")
 SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
@@ -47,13 +51,11 @@ STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
  <div class="panel grey">
   <h2 class="h">Outils de l'équipe</h2>
   <p style="margin:0 0 12px">Les pièces de l'enquête sont publiées sur l'intranet
-   de l'événement, <b>Intranet DFlop</b>. Connectez-vous avec le compte de
-   l'équipe&#160;:</p>
-  <dl class="facts">
-   <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
-   <dt>Identifiant</dt><dd><code>{share_user}</code></dd>
-   <dt>Mot de passe</dt><dd><code>{share_pass}</code></dd>
-  </dl>
+   de l'événement, <b>Intranet DFlop</b>, à l'adresse
+   <a href="{share_url}">{share_url}</a>. Le compte de l'équipe est déjà
+   enregistré dans nos outils&#160;:</p>
+  <button type="button" class="btn blue" onclick="openShare(this)">Ouvrir le partage (connexion enregistrée)</button>
+  <p class="small mute" id="share-hint" style="margin:10px 0 0">Ouvre l'intranet dans un nouvel onglet avec la connexion de l'équipe.</p>
  </div>
  <div class="panel grey">
   <h2 class="h">Note de l'équipe</h2>
@@ -62,7 +64,7 @@ STAFF = HEAD.replace("{title}", "DécaFlop — Portail staff") + """
    <b>SAP DFlop ERP</b> sous l'utilisateur SAP correspondant. Retenez-le —
    c'est important pour le système de résultats.</p>
  </div>
-</main>{copyjs}</body></html>"""
+</main><script src="/static/tools.js"></script>{copyjs}</body></html>"""
 
 # Copy button: falls back to execCommand because the Pi is served over plain
 # HTTP on a LAN IP, where navigator.clipboard is unavailable.
@@ -78,9 +80,29 @@ function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
 
 ROBOTS = """User-agent: *
 Disallow: /staff-portal-7f3a9
-# interne uniquement — ne pas indexer les outils de résultats
-Disallow: /sap/
 """
+
+# The team's "saved connection" for the intranet, served as a client-side
+# script: username in clear, password Base64-encoded (a dev who "encoded" it).
+# Rendered from SHARE_USER / SHARE_PASSWORD so it matches the share service.
+def tools_js():
+    host = request.host.rsplit(":", 1)[0] if not request.host.endswith("]") else request.host
+    share_url = f"http://{host}:{SHARE_PORT}"
+    pass_b64 = base64.b64encode(SHARE_PASSWORD.encode()).decode()
+    return (
+        "// DecaFlop - outils de l'equipe evenement (usage interne).\n"
+        "// Connexion enregistree pour l'intranet DFlop. Ne pas diffuser.\n"
+        "var DFLOP_SHARE = {\n"
+        "  url: " + json.dumps(share_url) + ",\n"
+        "  user: " + json.dumps(SHARE_USER) + ",\n"
+        "  // mot de passe encode en base64 par l'outil de provisioning\n"
+        "  pass_b64: " + json.dumps(pass_b64) + "\n"
+        "};\n"
+        "function openShare(btn){\n"
+        "  // ouvre l'intranet; la connexion de l'equipe est deja enregistree.\n"
+        "  try { window.open(DFLOP_SHARE.url, '_blank', 'noopener'); } catch (e) {}\n"
+        "  if (btn) { btn.textContent = 'Ouverture\\u2026'; }\n"
+        "}\n")
 
 @app.errorhandler(404)
 def not_found(_e):
@@ -94,6 +116,10 @@ def not_found(_e):
 def robots():
     return Response(ROBOTS, mimetype="text/plain")
 
+@app.get("/static/tools.js")
+def tools_js_route():
+    return Response(tools_js(), mimetype="application/javascript")
+
 @app.get("/staff-portal-7f3a9")
 def staff():
     # The share runs on the same host the player reached us on, port 8020.
@@ -101,8 +127,6 @@ def staff():
     share_url = f"http://{host}:{SHARE_PORT}"
     page = (STAFF.replace("{copyjs}", COPY_JS)
                  .replace("{share_url}", escape(share_url))
-                 .replace("{share_user}", escape(SHARE_USER))
-                 .replace("{share_pass}", escape(SHARE_PASSWORD))
                  .replace("{flag}", FLAG))
     return Response(page, mimetype="text/html")
 

@@ -82,7 +82,7 @@ USB stick.
 The intranet login is **no longer printed by the hub**. Players learn it by
 solving challenge 01: `/robots.txt` on the DécaFlop site points to the hidden
 staff portal, and that portal shows the intranet address (`:8020`) and the login.
-So 01 (easy, 50 pts) is now a soft prerequisite for the five wiki-hosted
+So 01 (easy, 75 pts) is now a soft prerequisite for the five wiki-hosted
 challenges — **05, 07, 09, 13, 15, ~700 pts in all, including the 250-pt finale
 (09)**. It's a reference, not a hard gate: the intranet's own login is unchanged,
 so a teammate who already has the credentials can log in directly.
