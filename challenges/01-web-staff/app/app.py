@@ -12,63 +12,114 @@ from flask import Flask, Response
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "BIATHLON{placeholder}")
 
-PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DécaFlop · Official Sponsor of the Regional Biathlon Championship</title>
-<style>
- body{font-family:system-ui,sans-serif;margin:0;background:#0b3d2e;color:#eafff5}
- header{background:#07291f;padding:24px 20px;border-bottom:4px solid #19c37d}
- header h1{max-width:720px;margin:0 auto}
- h1{margin:0;font-size:28px;letter-spacing:1px}
- .tag{color:#8fe9c4}
- main{max-width:720px;margin:40px auto;padding:0 20px;line-height:1.6}
- .card{background:#0f4a39;border:1px solid #19704f;border-radius:10px;padding:20px;margin:16px 0}
- footer{color:#5fae8f;padding:30px 20px;font-size:13px;max-width:720px;margin:0 auto}
- a{color:#19c37d}
- @media(max-width:520px){h1{font-size:22px}.tag{display:block;font-size:15px}}
-</style></head><body>
-<header><h1>DÉCAFLOP <span class="tag">// sport pour (presque) tous</span></h1></header>
-<main>
- <p>Welcome to the official site of <b>DécaFlop</b>, proud title sponsor of the
-    Regional Biathlon Championship. Skis, rifles, questionable returns policy.</p>
- <div class="card">
-   <h3>🎿 The Final Race is tomorrow!</h3>
-   <p>Start lists, timing and results are managed by our event crew.
-      Public visitors can view the schedule soon.</p>
- </div>
- <div class="card">
-   <h3>Careers</h3>
-   <p>DécaFlop is always hiring. We definitely do not have an internal-only
-      area on this very website. Please do not look for it.</p>
- </div>
-</main>
-<footer>© DécaFlop. All flops reserved. Crawlers welcome — see <a href="/robots.txt">/robots.txt</a></footer>
-</body></html>"""
+HEAD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>"""
 
-STAFF = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DécaFlop — Staff Portal</title>
-<style>body{font-family:ui-monospace,Menlo,Consolas,monospace;background:#071f17;color:#b9ffe0;padding:40px 20px;margin:0;line-height:1.6}
-h2,.box{max-width:680px;margin-left:auto;margin-right:auto}
-.box{border:1px dashed #19c37d;padding:20px;border-radius:8px}
-hr{border:0;border-top:1px dashed #19704f;margin:18px 0}
-.flag{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#0b2e22;
- border:1px solid #19c37d;border-radius:6px;padding:10px 12px}
-.flag code{flex:1;min-width:0;overflow-wrap:anywhere;user-select:all;color:#fff}
-.flag button{font:inherit;font-size:13px;background:#19c37d;color:#04281c;border:0;
- border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:700}
-.flag button:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}</style>
-</head><body>
-<h2>🔒 DÉCAFLOP STAFF PORTAL (internal)</h2>
-<div class="box">
-<p>You found the "hidden" area. It was in <code>/robots.txt</code> the whole time.</p>
-<p><b>Flag:</b></p>
-<div class="flag"><code id="flag">{flag}</code>
- <button type="button" onclick="copyFlag(this)">Copy</button></div>
-<hr>
-<p>📎 <b>Crew note:</b> All staff accounts follow the convention
+# Simple line pictograms for the product grid (no external assets: the Pi
+# has no internet).
+ICON = {
+    "ski": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="M18 80 74 14M30 84 84 22M70 12c6-4 10 0 8 4M80 20c6-4 10 0 8 4"/></svg>',
+    "goggle": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><path d="M14 38h68v18c0 8-6 12-14 12-6 0-10-6-20-6s-14 6-20 6c-8 0-14-4-14-12z"/><path d="M8 46h6M82 46h6"/></svg>',
+    "flask": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><rect x="34" y="12" width="28" height="10" rx="2"/><path d="M36 22h24v62H36z"/><path d="M36 44h24"/></svg>',
+    "bib": '<svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"><path d="M26 16h44l6 66H20z"/><circle cx="36" cy="26" r="2"/><circle cx="60" cy="26" r="2"/><path d="M38 52h20M38 62h12"/></svg>',
+}
+
+PRODUCTS = [
+    ("ski", "Skiflop", "Skate skis Race 900, carbon-ish", "349", "399", "4.1 · 212 reviews"),
+    ("goggle", "Nordik'O", "Anti-fog goggles (fog sold separately)", "24", "", "3.2 · 1 048 reviews"),
+    ("flask", "Bofbof", "Insulated bottle 0.5 L, keeps tea warm-ish", "9", "12", "3.9 · 87 reviews"),
+    ("bib", "DécaFlop", "Official 2026 race bib, replica", "15", "", "4.6 · 33 reviews"),
+]
+
+def product(icon, brand, title, price, was, rate):
+    old = f"<s>{was} €</s>" if was else ""
+    return f"""<a class="prod" href="#shop"><div class="ph">{ICON[icon]}</div>
+<div class="b"><div class="brand">{brand}</div><div class="t">{title}</div>
+<span class="price">{price} €{old}</span><div class="rate">★ {rate}</div></div></a>"""
+
+PAGE = HEAD.replace("{title}", "DécaFlop · Official Sponsor of the Regional Biathlon Championship") + """
+<div class="strip"><div class="in"><span>Free click &amp; collect in all 3 stores</span>
+<span>30-day returns*  ·  *conditions apply, mostly</span></div></div>
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>sport pour (presque) tous</small></a>
+ <form class="search" action="/" role="search"><input name="q" aria-label="Search"
+   placeholder="Search 40 000 products and 3 sports"><button>Search</button></form>
+ <nav class="acct"><a class="opt" href="#help">Help</a><a href="#help">Stores</a></nav>
+</div></header>
+<nav class="cats" aria-label="Departments"><ul>
+ <li><a href="#race" aria-current="page">Biathlon</a></li>
+ <li><a href="#shop">Cross-country ski</a></li><li><a href="#shop">Shooting</a></li>
+ <li><a href="#shop">Clothing</a></li><li><a href="#shop">Outlet</a></li>
+ <li><a href="#careers">Careers</a></li></ul></nav>
+
+<section class="banner" id="race"><div class="in">
+ <div>
+  <span class="tagline">Title sponsor · Regional Biathlon Championship</span>
+  <h1 class="h">The Final Race<br>is <em>tomorrow</em></h1>
+  <p>Welcome to the official site of <b>DécaFlop</b>, proud title sponsor of the
+     Regional Biathlon Championship. Skis, rifles, questionable returns policy.</p>
+  <a class="btn" href="#shop">Shop the race kit</a><a class="btn line" href="#race">Race info</a>
+ </div>
+ <div class="sched">
+  <h2 class="h">Race day schedule</h2>
+  <table><tr><td>08:30</td><td>Zeroing</td><td>Range</td></tr>
+   <tr><td>10:00</td><td>Women's final</td><td>Stadium</td></tr>
+   <tr><td>12:30</td><td>Men's final</td><td>Stadium</td></tr>
+   <tr><td>15:00</td><td>Podium</td><td>Big tent</td></tr></table>
+  <p class="small mute" style="margin:10px 0 0">Start lists, timing and results are
+   managed by our event crew. Public visitors can view the schedule soon.</p>
+ </div>
+</div></section>
+
+<section class="sec" id="shop"><div class="in">
+ <div class="row"><h2 class="h">Race-week deals</h2><a href="#shop">See all</a></div>
+ <div class="grid">""" + "".join(product(*p) for p in PRODUCTS) + """</div>
+</div></section>
+
+<section class="sec grey"><div class="in two">
+ <div class="tile"><h3 class="h">Ski rental</h3>
+  <p>Race-tuned skate skis for the weekend. Wax included, dignity not.</p>
+  <a class="btn blue" href="#help">Find a store</a></div>
+ <div class="tile dark" id="careers"><h3 class="h">Careers</h3>
+  <p>DécaFlop is always hiring. We definitely do not have an internal-only
+     area on this very website. Please do not look for it.</p>
+  <a href="#careers">Open positions (0)</a></div>
+</div></section>
+
+<footer class="foot" id="help"><div class="in">
+ <div><b>Help</b><ul><li><a href="#help">Order tracking</a></li><li><a href="#help">Returns</a></li><li><a href="#help">Warranty</a></li></ul></div>
+ <div><b>Stores</b><ul><li>DécaFlop Stadium</li><li>DécaFlop Centre-ville</li><li>DécaFlop Outlet (parking lot)</li></ul></div>
+ <div><b>Company</b><ul><li><a href="#careers">Careers</a></li><li><a href="#race">Sponsoring</a></li></ul></div>
+ <div><b>Hotline</b>0 800 FLOP FLOP<br><span class="small">Mon–Fri, when someone answers</span></div>
+</div>
+<div class="legal"><div class="in"><span>© DécaFlop. All flops reserved.</span>
+<span>Crawlers welcome — see <a href="/robots.txt">/robots.txt</a></span></div></div>
+</footer></body></html>"""
+
+STAFF = HEAD.replace("{title}", "DécaFlop — Staff Portal") + """
+<div class="strip"><div class="in"><span>INTERNAL · DécaFlop staff network</span>
+<span>Do not share links from this area</span></div></div>
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Staff portal</small></a>
+ <nav class="acct"><span class="mute">Event crew</span></nav>
+</div></header>
+<main class="page">
+ <div class="crumb"><a href="/">decaflop</a> / staff-portal (internal)</div>
+ <div class="panel">
+  <h1 class="h">Staff portal</h1>
+  <p>You found the "hidden" area. It was in <code>/robots.txt</code> the whole time.</p>
+  <div class="flag"><span>Flag</span><code id="flag">{flag}</code>
+   <button type="button" onclick="copyFlag(this)">Copy</button></div>
+ </div>
+ <div class="panel grey">
+  <h2 class="h">Crew note</h2>
+  <p style="margin:0">All staff accounts follow the convention
    <code>first-initial + lastname</code> and are mirrored into our
    <b>SAP DFlop ERP</b> system as the matching SAP user. Remember this —
    it matters for the results system.</p>
-</div>{copyjs}</body></html>"""
+ </div>
+</main>{copyjs}</body></html>"""
 
 # Copy button: falls back to execCommand because the Pi is served over plain
 # HTTP on a LAN IP, where navigator.clipboard is unavailable.

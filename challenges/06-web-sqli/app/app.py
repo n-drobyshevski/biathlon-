@@ -25,34 +25,6 @@ def db():
     con.commit()
     return con
 
-CSS = """body{font-family:system-ui,sans-serif;background:#1a1420;color:#f3e9ff;margin:0}
-header{background:#120d18;padding:22px 36px;border-bottom:3px solid #c77dff}
-main{max-width:520px;margin:48px auto;padding:0 18px}
-.card{background:#2a2033;border:1px solid #5a3f73;border-radius:10px;padding:22px}
-input{width:100%;padding:10px;margin:6px 0 14px;border-radius:6px;border:1px solid #5a3f73;
- background:#17121d;color:#f3e9ff;box-sizing:border-box}
-button{background:#c77dff;color:#120d18;border:0;padding:10px 18px;border-radius:6px;
- font-weight:700;cursor:pointer}pre{white-space:pre-wrap;color:#e9d7ff}
-*{box-sizing:border-box}body{line-height:1.55}
-header{padding:18px 20px}header .in{max-width:520px;margin:0 auto;display:flex;
- flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
-header h1{margin:0;font-size:22px}header a{color:#e9d7ff;font-size:14px}
-label{display:block;font-weight:600;font-size:14px}
-input:focus{outline:none;border-color:#c77dff;box-shadow:0 0 0 3px rgba(199,125,255,.35)}
-button{width:100%;font-size:15px}button:hover{filter:brightness(1.1)}
-a:focus-visible,button:focus-visible{outline:3px solid #ffd166;outline-offset:2px}
-.alert{margin-top:16px;border-radius:6px;padding:10px 12px;font-size:14px}
-.alert pre{margin:6px 0 0;font-size:13px;overflow-wrap:anywhere}
-.alert.err{background:#3d1622;border:1px solid #a33a55;color:#ffc9d6}
-.alert.db{background:#3a2c10;border:1px solid #a07a22;color:#ffe2a3}
-.flag{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0;
- background:#17121d;border:1px solid #c77dff;border-radius:8px;padding:10px 12px}
-.flag code{flex:1;min-width:0;overflow-wrap:anywhere;user-select:all;color:#fff}
-.flag button{width:auto;font-size:13px;padding:6px 12px}
-.ok{color:#9ff0c0;margin-top:0}"""
-
-VP = '<meta name="viewport" content="width=device-width,initial-scale=1">'
-
 COPY_JS = """<script>
 function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
  function ok(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent='Copy'},1500)}
@@ -63,41 +35,65 @@ function copyFlag(b){var t=document.getElementById('flag').textContent.trim();
  else{legacy()}}
 </script>"""
 
+def shell(title, body, right=""):
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
+<div class="strip"><div class="in"><span>Results Admin · authorized crew only</span>
+<span>Final race — results lock at 16:00</span></div></div>
+<header class="top"><div class="in">
+ <a class="mark" href="/">DÉCA<i>FLOP</i><small>Results admin</small></a>
+ <nav class="acct">{right}</nav>
+</div></header>
+{body}</body></html>"""
+
 def FORM(msg="", username=""):
     # The typed username is kept (HTML-escaped) so players can tweak a payload
     # instead of retyping it. The SQL itself is still built from raw input.
-    return f"""<!doctype html><html lang="en"><meta charset="utf-8">{VP}
-<title>DécaFlop Results Admin</title>
-<style>{CSS}</style>
-<header><div class="in"><h1>🎯 DécaFlop · Results Admin</h1></div></header>
-<main><div class="card">
-<p style="margin-top:0">Official results management. Authorized crew only.</p>
-<form method="post" action="/login">
- <label for="u">Username</label>
- <input id="u" name="username" value="{escape(username)}" autofocus
-  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
- <label for="p">Password</label>
- <input id="p" name="password" type="password" autocomplete="off">
- <button>Sign in</button>
-</form>
-{msg}
-</div></main>"""
+    return shell("DécaFlop Results Admin", f"""<main class="page" style="max-width:460px">
+<div class="panel">
+ <h1 class="h">Sign in</h1>
+ <p class="mute small" style="margin:0 0 18px">Official results management. Authorized crew only.</p>
+ {msg}
+ <form method="post" action="/login">
+  <div class="field"><label for="u">Username</label>
+   <input id="u" name="username" value="{escape(username)}" autofocus
+    autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+  <div class="field"><label for="p">Password</label>
+   <input id="p" name="password" type="password" autocomplete="off"></div>
+  <button class="btn blue wide">Sign in</button>
+ </form>
+</div>
+<p class="small mute">Lost access? Ask the race office. Do not share crew accounts.</p>
+</main>""")
+
+STANDINGS = [("1", "Astrid Bjornsen", "0", "38:12.4"),
+             ("2", "Mikkel Haugen", "2", "38:40.9"),
+             ("3", "—", "—", "pending")]
 
 def ok_page():
-    return f"""<!doctype html><html lang="en"><meta charset="utf-8">{VP}
-<title>Results Admin</title>
-<style>{CSS}</style><header><div class="in"><h1>🎯 Results Admin — signed in</h1>
-<a href="/">Sign out</a></div></header>
-<main><div class="card">
-<h2 class="ok">✅ Authenticated</h2>
-<div class="flag"><b>FLAG</b> <code id="flag">{FLAG}</code>
- <button type="button" onclick="copyFlag(this)">Copy</button></div>
-<pre>RESULTS SYSTEM NOTICE
+    rows = "".join(f"<tr><td>{r}</td><td>{n}</td><td>{m}</td><td>{t}</td></tr>"
+                   for r, n, m, t in STANDINGS)
+    return shell("Results Admin", f"""<main class="page">
+<div class="crumb">results / dashboard</div>
+<div class="panel">
+ <h1 class="h">Signed in</h1>
+ <p class="mute" style="margin:0">Results Admin dashboard.</p>
+ <div class="flag"><span>Flag</span><code id="flag">{FLAG}</code>
+  <button type="button" onclick="copyFlag(this)">Copy</button></div>
+ <div class="log"><pre>RESULTS SYSTEM NOTICE
 ---------------------
 The authoritative results live in the SAP DFlop ERP (table ZRACE_RESULT).
 The web admin is only a front-end. To find WHO altered the final standings,
-pull the SAP user table (USR02) from the ERP host.</pre>
-</div></main>{COPY_JS}"""
+pull the SAP user table (USR02) from the ERP host.</pre></div>
+</div>
+<div class="panel">
+ <h2 class="h">Final race · provisional</h2>
+ <p class="small mute" style="margin:0 0 10px">Read-only mirror of SAP table ZRACE_RESULT.</p>
+ <table class="std"><thead><tr><th>Rank</th><th>Athlete</th><th>Misses</th><th>Time</th></tr></thead>
+ <tbody>{rows}</tbody></table>
+</div>
+</main>{COPY_JS}""", right='<a href="/">Sign out</a>')
 
 @app.get("/")
 def home():
@@ -112,13 +108,13 @@ def login():
     try:
         row = db().execute(q).fetchone()
     except sqlite3.Error as e:
-        return Response(FORM(msg=f'<div class="alert db" role="alert"><b>Database error</b>'
+        return Response(FORM(msg=f'<div class="note db" role="alert"><b>Database error</b>'
                              f'<pre>SQL error: {escape(str(e))}</pre></div>',
                              username=u),
                         mimetype="text/html")
     if row:
         return Response(ok_page(), mimetype="text/html")
-    return Response(FORM(msg='<div class="alert err" role="alert">Invalid credentials.</div>',
+    return Response(FORM(msg='<div class="note err" role="alert">Invalid credentials.</div>',
                          username=u),
                     mimetype="text/html")
 
