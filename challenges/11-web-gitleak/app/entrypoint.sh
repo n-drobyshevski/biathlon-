@@ -37,8 +37,8 @@ cat > index.html <<'HTML'
 <div><div class="site-title"><a href="/">Chronométrage</a></div>
 <nav class="topnav" aria-label="Site"><a href="/" aria-current="page">Temps intermédiaires</a></nav></div></header>
 <div class="body wide"><main class="main" id="main">
-<h1 class="h1">Finale 2026 · temps intermédiaires</h1>
-<p class="status">Publication suspendue&#160;: vérification de la liste de départ en cours (direction de course).</p>
+<h1 class="h1">Temps intermédiaires de la finale 2026</h1>
+<p class="status">Publication suspendue pendant la vérification de la liste de départ par la direction de course.</p>
 <div class="cols"><div>
 <section class="wp"><h2>Points de chronométrage</h2>
 <table class="list data"><thead><tr><th style="width:50px">Point</th><th>Emplacement</th><th style="width:80px">km</th><th style="width:90px">État</th></tr></thead><tbody>
@@ -56,7 +56,7 @@ cat > index.html <<'HTML'
 <dt>Cabine</dt><dd>Wi-Fi staff DECAFLOP-TIMING</dd><dt>Contact</dt><dd>Lars Eriksen, poste 230</dd></dl></section>
 </div></div>
 </main></div>
-<footer class="foot"><span>Direction des Systèmes d'Information</span><span>Assistance&#160;: poste 300</span><span>Chronométrage · finale 2026</span><span class="ver">DFlop Timing 1.4</span></footer>
+<footer class="foot"><span>Direction des Systèmes d'Information</span><span>Assistance au poste 300</span><span>Chronométrage de la finale 2026</span><span class="ver">DFlop Timing 1.4</span></footer>
 <script>
 document.querySelectorAll('a[data-port]').forEach(function(a){
  a.href=location.protocol+'//'+location.hostname+':'+a.dataset.port+(a.dataset.path||'/');});

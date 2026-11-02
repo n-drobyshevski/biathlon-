@@ -31,7 +31,7 @@ def db():
     con.commit()
     return con
 
-PRODUCT = "ChronoRésultats 2.8.1 · module admin"
+PRODUCT = "ChronoRésultats 2.8.1, module admin"
 
 
 def shell(title, body, user=None):
@@ -39,7 +39,7 @@ def shell(title, body, user=None):
                          site_title="Admin résultats", site_href="/", logo="AR",
                          topnav=[("/", "Tableau de bord", True)], user=user,
                          logout="/" if user else None, product=PRODUCT,
-                         foot_extra="Finale\u00a0: résultats figés à 16 h 00",
+                         foot_extra="Résultats de la finale figés à 16 h 00",
                          scripts=intranet.COPY_JS)
 
 
@@ -62,7 +62,7 @@ def FORM(msg="", username=""):
 
 STANDINGS = [("1", "Astrid Bjornsen", "0", "1:02:14"),
              ("2", "Mikkel Haugen", "1", "1:02:51"),
-             ("3", "—", "—", "en attente")]
+             ("3", "En attente de validation", "", "")]
 
 def ok_page():
     rows = "".join(f'<tr><td class="num">{r}</td><td>{n}</td><td class="num">{m}</td><td class="num">{t}</td></tr>'
@@ -70,19 +70,19 @@ def ok_page():
     return shell("Tableau de bord", f"""<h1 class="h1">Tableau de bord</h1>
 <p class="status">Session administrateur ouverte. Toute modification du classement est journalisée.</p>
 <div class="cols"><div>
- <section class="wp"><h2>Finale · classement provisoire</h2>
+ <section class="wp"><h2>Classement provisoire de la finale</h2>
   <p class="mute" style="font-size:12px">Copie en lecture seule de la table SAP ZRACE_RESULT.</p>
   <table class="list data"><thead><tr><th style="width:60px">Rang</th><th>Athlète</th>
    <th style="width:90px">Pénalités</th><th style="width:100px">Temps</th></tr></thead>
   <tbody>{rows}</tbody></table>
  </section>
- <section class="wp"><h2>Avis</h2><div class="log"><pre>AVIS — SYSTÈME DE RÉSULTATS
----------------------------
+ <section class="wp"><h2>Avis</h2><div class="log"><pre>AVIS SYSTÈME DE RÉSULTATS
+-------------------------
 Les résultats officiels sont stockés dans le SAP DFlop ERP (table ZRACE_RESULT).
 Cette admin web n'est qu'une interface. Pour savoir QUI a modifié le classement
 final, récupérez la table des utilisateurs SAP (USR02) sur le serveur ERP.
 
-Migration en cours : cette admin web est remplacée par une nouvelle API de
+Migration en cours. Cette admin web est remplacée par une nouvelle API de
 résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div></section>
 </div><div>
  <section class="wp"><h2>Code de validation du classement</h2>
@@ -90,7 +90,7 @@ résultats en JSON (jetons JWT). Merci de basculer vos intégrations.</pre></div
   {intranet.codebox(FLAG)}
  </section>
  <section class="wp"><h2>Système</h2><dl class="kv">
-  <dt>Base</dt><dd>resultats_finale (lecture seule)</dd><dt>Source</dt><dd>SAP DFL · mandant 001</dd>
+  <dt>Base</dt><dd>resultats_finale (lecture seule)</dd><dt>Source</dt><dd>SAP DFL, mandant 001</dd>
   <dt>Gel</dt><dd>16 h 00</dd></dl></section>
 </div></div>""", user="Administrateur")
 

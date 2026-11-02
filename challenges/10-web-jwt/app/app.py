@@ -66,7 +66,7 @@ def verify(token):
 
 def home_page(base):
     base = escape(base)
-    body = f"""<h1 class="h1">Results API · documentation</h1>
+    body = f"""<h1 class="h1">Documentation de la Results API</h1>
 <p class="lead">API interne des résultats de la finale. Elle remplace l'ancienne admin résultats web
  (ChronoRésultats). Les intégrations doivent basculer avant la saison 2027.</p>
 <div class="cols"><div>
@@ -95,11 +95,11 @@ curl -H "Authorization: Bearer &lt;token&gt;" {base}api/results</pre>
   <dt><code>admin</code></dt><dd>Données officielles (équipe résultats)</dd></dl></section>
  <section class="wp"><h2>Version</h2><dl class="kv">
   <dt>API</dt><dd>v2.0.3</dd><dt>Format</dt><dd>JSON (UTF-8)</dd><dt>Statut</dt><dd>Production</dd></dl></section>
- <section class="wp"><h2>Support</h2><p>Équipe résultats · astreinte IT (poste 300).</p></section>
+ <section class="wp"><h2>Support</h2><p>Équipe résultats et astreinte IT au poste 300.</p></section>
 </div></div>"""
     return intranet.page("Results API - documentation", body, app="api", site_title="Results API",
                          site_href="/", logo="API", topnav=[("/", "Documentation", True)],
-                         product="Results API v2.0.3", foot_extra="Base URL\u00a0: " + base + "api/")
+                         product="Results API v2.0.3", foot_extra="URL de base " + base + "api/")
 
 
 @app.get("/")

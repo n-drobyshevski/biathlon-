@@ -146,7 +146,7 @@ def search_box(action, placeholder, value="", name="q", cls="sitesearch"):
 
 
 def footer(product, extra=""):
-    bits = ["Direction des Systèmes d'Information", "Assistance : poste 300"]
+    bits = ["Direction des Systèmes d'Information", "Assistance au poste 300"]
     if extra:
         bits.append(extra)
     return ('<footer class="foot">' + "".join(f"<span>{b}</span>" for b in bits) +

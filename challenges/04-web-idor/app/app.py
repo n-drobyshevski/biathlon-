@@ -22,24 +22,24 @@ FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 # id -> (name, role, note)
 ATHLETES = {
     1000: ("Administration événement DécaFlop", "admin",
-           "JOURNAL D'AUDIT — liste de départ officielle 'FINAL_RACE' :\n"
+           "JOURNAL D'AUDIT, liste de départ officielle 'FINAL_RACE'\n"
            "  last modified_by = compte staff 'v.lindqvist' "
            "(utilisateur SAP miroir : VLINDQVIST)\n"
            "  modification : puces de chronométrage échangées entre 3 athlètes.\n"
-           "À remonter à l'équipe résultats SAP — voir le système DFlop ERP."),
+           "À remonter à l'équipe résultats SAP, voir le système DFlop ERP."),
     1001: ("Chef chronométreur", "crew",
            "La cabine de chronométrage est sur le Wi-Fi staff 'DECAFLOP-TIMING'. "
            "Arrêtez d'envoyer l'identifiant de la cabine en HTTP en clair !"),
-    1042: ("Invité — Équipe IT d'urgence", "athlete", ""),
+    1042: ("Compte invité de l'équipe IT", "athlete", ""),
     1055: ("Astrid Bjornsen", "athlete", "Favorite pour le sprint."),
     1071: ("Mikkel Haugen", "athlete", "Excellent nageur, coureur moyen."),
 }
 
 # Race record shown on athlete profiles: (category, start wave, bike rack, licence)
 RACE = {
-    1042: ("Invité (hors classement)", "Vague 3 · 8 h 40", "Rack C · emplacement 12", "Pass compétition"),
-    1055: ("Senior F", "Vague 1 · 8 h 00", "Rack A · emplacement 03", "Licence FFTRI"),
-    1071: ("Senior H", "Vague 2 · 8 h 20", "Rack B · emplacement 07", "Licence FFTRI"),
+    1042: ("Invité (hors classement)", "Vague 3, départ à 8 h 40", "Rack C, emplacement 12", "Pass compétition"),
+    1055: ("Senior F", "Vague 1, départ à 8 h 00", "Rack A, emplacement 03", "Licence FFTRI"),
+    1071: ("Senior H", "Vague 2, départ à 8 h 20", "Rack B, emplacement 07", "Licence FFTRI"),
 }
 
 ROLE_FR = {"admin": "admin", "crew": "staff", "athlete": "athlète"}
@@ -56,7 +56,7 @@ def shell(title, body, section="home"):
     return intranet.page(f"{title} - Espace athlètes", body, app="athletes",
                          site_title="Espace athlètes", site_href="/", logo="EA", topnav=topnav,
                          user=user, logout="/logout" if signed_in else None,
-                         product=PRODUCT, foot_extra="Championnat régional de triathlon · Finale 2026",
+                         product=PRODUCT, foot_extra="Championnat régional de triathlon, finale 2026",
                          scripts=intranet.COPY_JS)
 
 
@@ -77,8 +77,8 @@ LOGIN = """<h1 class="h1">Connexion à l'espace athlètes</h1>
 
 INFOS = """<h1 class="h1">Infos pratiques</h1>
 <table class="list data"><tbody>
-<tr><td style="width:220px">Bureau de course</td><td class="wrap">Ouvert dès 7 h 30, mairie, salle B (poste 214)</td></tr>
-<tr><td>Retrait des dossards</td><td class="wrap">Samedi 14 h – 19 h, dimanche 6 h 30 – 7 h 30</td></tr>
+<tr><td style="width:220px">Bureau de course</td><td class="wrap">Ouvert dès 7 h 30 en mairie, salle B, poste 214</td></tr>
+<tr><td>Retrait des dossards</td><td class="wrap">Samedi de 14 h à 19 h, dimanche de 6 h 30 à 7 h 30</td></tr>
 <tr><td>Parc à vélos</td><td class="wrap">Ouverture 6 h 30, fermeture 7 h 50. Casque attaché pour entrer.</td></tr>
 <tr><td>Briefing</td><td class="wrap">Dimanche 7 h 45, ponton du port</td></tr>
 <tr><td>Résultats</td><td class="wrap">Figés à 16 h 00, publiés sur le site de chronométrage</td></tr>
@@ -107,8 +107,8 @@ def page(aid):
                 f'<section class="wp"><h2>Dossier de course</h2><table class="list data"><tbody>{trs}</tbody></table></section>'
                 + extra +
                 '</div><div><section class="wp"><h2>Documents</h2><ul class="links">'
-                '<li>Certificat médical : reçu</li><li>Autorisation parentale : non requise</li>'
-                '<li>Décharge de responsabilité : signée</li></ul></section></div></div>')
+                '<li>Certificat médical reçu</li><li>Autorisation parentale non requise</li>'
+                '<li>Décharge de responsabilité signée</li></ul></section></div></div>')
         return shell(f"Dossier n° {aid}", body, "profile"), 200
     flag = ""
     if aid == 1000:

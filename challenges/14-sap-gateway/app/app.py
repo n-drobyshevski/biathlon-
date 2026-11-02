@@ -27,12 +27,12 @@ import intranet  # noqa: E402
 app = Flask(__name__)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-PRODUCT = "SAP DFlop ERP · DFL · noyau 753"
+PRODUCT = "SAP DFlop ERP, système DFL, noyau 753"
 
 
 def shell(title, body):
     return intranet.page(f"{title} - Gateway SAP DFL", body, app="sapgw",
-                         site_title="Gateway SAP · DFL", site_href="/", logo="GW",
+                         site_title="Gateway SAP DFL", site_href="/", logo="GW",
                          topnav=[("/", "Moniteur (SMGW)", True), ("/sap/gw/reginfo", "reginfo", False)],
                          product=PRODUCT, foot_extra="Production DFL. Accès non autorisé interdit.",
                          scripts=intranet.COPY_JS)
@@ -53,11 +53,11 @@ MONITOR_BODY = """<h1 class="h1">Moniteur du gateway (SMGW)</h1>
 <section class="wp"><h2>Sécurité</h2>
 <table class="list data"><tbody>
 <tr><td style="width:240px"><code>reg_info</code> / <code>sec_info</code></td>
- <td><span class="pill warn">valeurs par défaut — aucune ACL</span></td></tr>
+ <td><span class="pill warn">valeurs par défaut, aucune ACL</span></td></tr>
 <tr><td><code>gw/acl_mode</code></td><td>0</td></tr>
 </tbody></table>
 <p style="margin-top:8px">Les programmes externes peuvent s'enregistrer sans restriction.
- Configuration&#160;: <a href="/sap/gw/reginfo">/sap/gw/reginfo</a></p></section>
+ Voir la configuration dans <a href="/sap/gw/reginfo">/sap/gw/reginfo</a>.</p></section>
 </div><div>
 <section class="wp"><h2>Enregistrer un programme (TP)</h2>
 <form class="form" method="post" action="/sap/gw/register">
@@ -71,7 +71,7 @@ MONITOR_BODY = """<h1 class="h1">Moniteur du gateway (SMGW)</h1>
 def monitor_page():
     return shell("Moniteur", MONITOR_BODY)
 
-REGINFO = """# reginfo — Gateway registration ACL (DFL / sapgw00)
+REGINFO = """# reginfo, Gateway registration ACL (DFL / sapgw00)
 #
 # Format: P TP=<program> HOST=<host> ACCESS=<host> CANCEL=<host>
 #
@@ -108,7 +108,7 @@ def register():
            f"{stamp}  reg_info: aucune règle (gw/acl_mode=0) -> accepté\n"
            f"{stamp}  TP={tp}  STATE=REGISTERED  SNC=off")
     page = shell("Programme enregistré", f"""<h1 class="h1">Moniteur du gateway (SMGW)</h1>
-<p class="status ok">Programme enregistré&#160;: <b>{escape(tp)}</b></p>
+<p class="status ok">Le programme <b>{escape(tp)}</b> est enregistré.</p>
 <div class="cols"><div>
 <section class="wp"><h2>Programmes externes enregistrés</h2>
 <table class="list data"><thead><tr><th>TP_NAME</th><th style="width:130px">Hôte</th>

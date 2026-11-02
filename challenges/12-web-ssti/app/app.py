@@ -40,7 +40,7 @@ def page(result=""):
     return intranet.page("Certificat de finaliste - DécaFlop", body, app="certificats",
                          site_title="Certificats de finaliste", site_href="/", logo="CF",
                          topnav=[("/", "Nouveau certificat", True)],
-                         product="Certificats 1.3.0", foot_extra="Finale 2026 · village partenaires")
+                         product="Certificats 1.3.0", foot_extra="Finale 2026, village partenaires")
 
 
 @app.get("/")

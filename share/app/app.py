@@ -363,7 +363,7 @@ def page(title, section, body, current_path=(), q=""):
         tabs=("Parcourir", "Page"), tabs_right=("Partager", "Suivre"),
         search=intranet.search_box("/recherche", "Rechercher sur ce site", q),
         user=display_user(), logout="/logout", suite_on=suite_on, product=PRODUCT,
-        foot_extra="Dernière connexion : " + LAST_LOGIN)
+        foot_extra="Dernière connexion le " + LAST_LOGIN)
 
 
 # --------------------------------------------------------------------------
@@ -408,7 +408,7 @@ def login_page(error="", status=200, user=""):
     err = f'<p class="status err" role="alert">{esc(error)}</p>' if error else ""
     body = (intranet.head("Connexion - Intranet DécaFlop") +
             '<div class="signin"><div class="art" aria-hidden="true"><b>DÉCA<i>FLOP</i></b>'
-            '<span>Intranet · Réseau staff</span></div>'
+            '<span>Intranet du réseau staff</span></div>'
             '<div class="pane"><div class="wordmark">DÉCA<i>FLOP</i></div>'
             '<h1>Connexion</h1><p>Connectez-vous avec votre compte DécaFlop.</p>'
             '<form method="post" action="/login">' + err +
@@ -420,8 +420,8 @@ def login_page(error="", status=200, user=""):
             '<button class="btn" type="submit">Connexion</button></form>'
             '<small>Accès réservé au personnel DécaFlop et aux prestataires autorisés. Les connexions '
             'sont journalisées conformément à la charte informatique.</small>'
-            '<small>Mot de passe oublié ? Assistance : poste 300</small>'
-            '<div class="ft">© 2026 DécaFlop · Direction des Systèmes d\'Information</div>'
+            '<small>Mot de passe oublié ? Appelez l\'assistance au poste 300.</small>'
+            '<div class="ft">© 2026 DécaFlop, Direction des Systèmes d\'Information</div>'
             '</div></div></body></html>')
     return html(body, status)
 
@@ -458,19 +458,19 @@ def logout():
 # Home, activity, help
 # --------------------------------------------------------------------------
 NEWS = [
-    ("Incident sur la liste de départ : cellule de crise activée", "Direction de course",
+    ("Cellule de crise activée après un incident sur la liste de départ", "Direction de course",
      "2026-11-02 07:40",
      "Une anomalie a été détectée sur la liste de départ de la finale. L'équipe IT d'urgence a accès "
      "au partage pour l'enquête. Merci de ne rien supprimer ni déplacer dans "
      "<a href=\"/d/Direction%20de%20course/Dossier%20incident\">Direction de course / Dossier incident</a>."),
-    ("Maintenance SAP DFL : samedi 7 novembre, 22 h – 2 h", "Basis SAP", "2026-10-29 15:30",
+    ("Maintenance du système SAP DFL samedi 7 novembre de 22 h à 2 h", "Basis SAP", "2026-10-29 15:30",
      "Le système DFL (mandant 001) sera indisponible pendant l'application du support package de "
      "novembre. Les saisies de résultats doivent être terminées avant 21 h 30."),
-    ("Finale régionale : plan de circulation et navettes", "Logistique", "2026-10-28 12:10",
+    ("Plan de circulation et navettes pour la finale", "Logistique", "2026-10-28 12:10",
      "Navettes depuis le centre-ville toutes les 15 minutes à partir de 6 h. Parking staff P3, badge "
      "obligatoire. Le planning des bénévoles est dans "
      "<a href=\"/d/Logistique/B%C3%A9n%C3%A9voles\">Logistique / Bénévoles</a>."),
-    ("Rappel : politique de mots de passe", "Direction des Systèmes d'Information", "2026-10-20 10:05",
+    ("Rappel sur la politique de mots de passe", "Direction des Systèmes d'Information", "2026-10-20 10:05",
      "Les comptes d'équipe créés pour l'événement seront désactivés le lundi suivant la finale. "
      "Le rappel complet est dans <a href=\"/d/IT/Proc%C3%A9dures\">IT / Procédures</a>."),
 ]
@@ -485,15 +485,15 @@ def activity_items(limit=None):
         verb = "a ajouté" if f["ver"] in ("1.0", "0.1") else "a modifié"
         folder = f["path"][:-1]
         out.append(f'<li>{icon(f["kind"])}<div><a href="{folder_href(folder)}?f={quote(f["name"])}">'
-                   f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} · {fr_dt(f["when"])} · '
-                   f'{esc(" / ".join(folder))}</small></div></li>')
+                   f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} ce fichier le {fr_dt(f["when"], " à ")}, '
+                   f'dans {esc(" / ".join(folder))}</small></div></li>')
     return '<ul class="feed">' + "".join(out) + '</ul>'
 
 
 @app.get("/")
 def root():
     news = "".join(
-        f'<li><h3>{esc(t)}</h3><p class="by">{esc(who)} · {fr_dt(when, " à ")}</p><p>{text}</p></li>'
+        f'<li><h3>{esc(t)}</h3><p class="by">{esc(who)}, le {fr_dt(when, " à ")}</p><p>{text}</p></li>'
         for t, who, when, text in NEWS)
     apps = "".join(
         f'<li><a href="{esc(intranet.app_url(k))}">{esc(intranet.APPS[k][1])}</a></li>'
@@ -534,8 +534,8 @@ def help_page():
             '<li>Les accès sont journalisés et peuvent être contrôlés par la DSI.</li>'
             '<li>Signalez toute anomalie à l\'astreinte IT.</li></ul></section>'
             '<section class="wp"><h2>Navigateurs pris en charge</h2>'
-            '<p>Microsoft Edge, Firefox ESR et Chrome (versions maintenues). Résolution conseillée : 1280 × 1024 '
-            'ou plus.</p></section>'
+            '<p>Microsoft Edge, Firefox ESR et Chrome (versions maintenues). Une résolution de 1280 x 1024 '
+            'ou plus est conseillée.</p></section>'
             '</div><div>'
             '<section class="wp"><h2>Contacts</h2><dl class="kv">'
             '<dt>Astreinte IT</dt><dd>Poste 300 (24 h/24 pendant l\'événement)</dd>'
@@ -582,7 +582,7 @@ def directory():
         f'<option{" selected" if s == svc else ""}>{esc(s)}</option>' for s in SERVICES)
     trs = "".join(
         f'<tr><td class="ty">{icon("user")}</td><td><b style="font-weight:600">{esc(n)}</b>'
-        f'<span class="meta">{esc(fn)} · {esc(s)} · poste {esc(ph)}</span></td>'
+        f'<span class="meta">{esc(fn)}, {esc(s)}, poste {esc(ph)}</span></td>'
         f'<td class="hide-sm">{esc(fn)}</td><td class="hide-sm">{esc(s)}</td>'
         f'<td class="num">{esc(ph)}</td><td class="hide-sm">{esc(b)}</td></tr>'
         for n, fn, s, ph, b in rows)
@@ -595,8 +595,8 @@ def directory():
             '<table class="list"><thead><tr><th class="ty"></th><th>Nom</th><th class="hide-sm">Fonction</th>'
             '<th class="hide-sm">Service</th><th style="width:70px">Poste</th><th class="hide-sm">Bureau</th></tr>'
             '</thead><tbody>' + trs + '</tbody></table>'
-            '<p class="mute" style="margin-top:10px;font-size:12px">Postes internes : composez le numéro à '
-            '3 chiffres depuis un téléphone du réseau staff.</p>')
+            '<p class="mute" style="margin-top:10px;font-size:12px">Pour joindre un poste interne, composez le '
+            'numéro à 3 chiffres depuis un téléphone du réseau staff.</p>')
     return html(page("Annuaire", "dir", body))
 
 
@@ -639,7 +639,7 @@ def folder_row(sub):
     who = esc(last["who"]) if last else ""
     return (f'<tr><td class="ck"></td><td class="ty">{icon("folder")}</td>'
             f'<td><a href="{folder_href(sub["path"])}">{esc(sub["name"])}</a>'
-            f'<span class="meta">{elements_label(cnt)}{" · " + when if when else ""}</span></td>'
+            f'<span class="meta">{elements_label(cnt)}{", modifié le " + when if when else ""}</span></td>'
             f'<td class="c-date num">{when}</td><td class="c-who">{who}</td>'
             f'<td class="c-size">{elements_label(cnt)}</td><td class="c-ver"></td></tr>')
 
@@ -652,12 +652,12 @@ def file_row(f, selected, tri, ordre):
     size = file_size(f)
     sizecell = (f'<td class="c-size num">{size}</td>' if size is not None
                 else '<td class="c-size na">pas encore disponible</td>')
-    meta = (f'{size} · {esc(f["who"])} · {fr_dt(f["when"])}' if size is not None
-            else f'pas encore disponible · {esc(f["who"])}')
+    meta = (f'{size}, {esc(f["who"])}, le {fr_dt(f["when"], " à ")}' if size is not None
+            else f'pas encore disponible, {esc(f["who"])}')
     href = qs(f=f["name"], tri=tri if tri != "nom" else None, ordre=ordre if ordre != "asc" else None)
     return (f'<tr{SEL if sel else ""}><td class="ck">{"✓" if sel else "○"}</td>'
             f'<td class="ty">{icon(f["kind"], f["type"])}</td>'
-            f'<td><a href="{href}">{esc(f["name"])}</a><span class="dots" aria-hidden="true">···</span>'
+            f'<td><a href="{href}">{esc(f["name"])}</a>'
             f'<span class="meta">{meta}</span></td>'
             f'<td class="c-date num">{fr_dt(f["when"])}</td><td class="c-who">{esc(f["who"])}</td>'
             f'{sizecell}<td class="c-ver num">{esc(f["ver"])}</td></tr>')
@@ -665,7 +665,7 @@ def file_row(f, selected, tri, ordre):
 
 def callout(f, row):
     avail = is_available(f)
-    size = file_size(f) or "—"
+    size = file_size(f) or "Non disponible"
     link = request.host_url.rstrip("/") + download_href(f)
     acts = (f'<a href="{download_href(f)}">Télécharger</a>' if avail
             else '<span class="off">Pas encore disponible</span>')
@@ -695,7 +695,7 @@ def documents():
             '<table class="list"><thead><tr><th class="ty"></th><th>Nom</th><th class="hide-sm">Description</th>'
             '<th class="c-date">Modifié</th><th class="c-items">Contenu</th></tr></thead>'
             f'<tbody>{rows}</tbody></table>'
-            f'<div class="pager">1 – {len(child_folders(TREE))}</div>')
+            f'<div class="pager">Éléments 1 à {len(child_folders(TREE))}</div>')
     return html(page("Documents", "docs", body))
 
 
@@ -727,7 +727,7 @@ def folder(subpath):
     if not rows:
         table = '<p class="empty">Ce dossier est vide.</p>'
     else:
-        table += f'<div class="pager">1 – {len(rows)}</div>'
+        table += f'<div class="pager">Éléments 1 à {len(rows)}</div>'
     sel = next((f for f in files if f["name"] == selected), None)
     if sel is not None:
         work = ('<div class="work"><div style="min-width:0">' + table + '</div>' +
@@ -760,11 +760,11 @@ def search():
         trs = "".join(
             f'<tr><td class="ty">{icon(f["kind"], f["type"])}</td>'
             f'<td><a href="{folder_href(f["path"][:-1])}?f={quote(f["name"])}">{esc(f["name"])}</a>'
-            f'<span class="meta">{esc(" / ".join(f["path"][:-1]))} · {fr_dt(f["when"])}</span></td>'
+            f'<span class="meta">{esc(" / ".join(f["path"][:-1]))}, le {fr_dt(f["when"], " à ")}</span></td>'
             f'<td class="hide-sm"><a href="{folder_href(f["path"][:-1])}">'
             f'{esc(" / ".join(f["path"][:-1]))}</a></td>'
             f'<td class="c-date num">{fr_dt(f["when"])}</td>'
-            f'<td class="c-size num">{file_size(f) or "—"}</td></tr>'
+            f'<td class="c-size num">{file_size(f) or ""}</td></tr>'
             for f in hits)
         result = ('<table class="list"><thead><tr><th class="ty"></th><th>Nom</th>'
                   '<th class="hide-sm">Emplacement</th><th class="c-date">Modifié</th>'
