@@ -63,7 +63,7 @@ Flag format: `TRIATHLON{...}`.
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
 hints). The live web/SAP apps are Flask containers; the forensics/stego/SAP
 files are generated as handouts and published on two internal services (the
-DécaFlop site for the poster/photo, the `Partage DFlop` file share for the rest)
+DécaFlop site for the poster/photo, the `Intranet DFlop` wiki for the rest)
 so players find them in context instead of downloading them from the hub.
 
 ---
@@ -91,10 +91,11 @@ python3 scripts/ctfd-setup.py
 That's the "cellule de crise" (`hub/`, its own container, not a challenge):
 the in-story briefing page for the emergency IT crew. It lists every mission and
 links the live service each one is reached through. The hub serves **no files**
-itself: evidence files live on the internal share **Partage DFlop** (`:8020`),
-and the poster/photo on the DécaFlop site (`:8001`). The hub gives out the
-share's crew login in its Contexte sheet. It never links the hidden staff
-portal, so challenge 01 stays a puzzle, and no mission is locked behind another.
+itself: evidence files are attached to pages on the internal wiki **Intranet
+DFlop** (`:8020`), and the poster/photo on the DécaFlop site (`:8001`). The
+wiki login is handed out by the challenge-01 staff portal (the hub's Contexte
+sheet points there). The hub never links the hidden staff portal, so challenge
+01 stays a puzzle, and no mission is locked behind another.
 
 Live services after step 2:
 
@@ -102,7 +103,7 @@ Live services after step 2:
 |------|-----------|
 | 8080 | Cellule de crise (players' entry point, not a challenge) |
 | 8001 | 01 DécaFlop site + staff portal (also the poster/photo for 02/03) |
-| 8020 | Partage DFlop — internal file share (02 evidence for 05/07/09/13/15; not a challenge) |
+| 8020 | Intranet DFlop — internal wiki (evidence for 05/07/09/13/15; not a challenge) |
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
 | 8010 | 10 Results API (JWT) |
@@ -114,17 +115,18 @@ Live services after step 2:
 Where players find each file (all built into `handouts/dist/` by step 3, then
 mounted read-only into the service that publishes them):
 
-On the **internal share** `Partage DFlop` (`:8020`, log in `equipe-it` /
-`transition2026`):
+On the **internal wiki** `Intranet DFlop` (`:8020`; login from the challenge-01
+staff portal, default `equipe-it` / `transition2026`), attached to the page of
+each team's space:
 
 ```
-Chronométrage / Captures / timing_booth.pcap                     -> 05
-Arbitrage / Pièces / referee_usb.img                             -> 07
-Basis SAP / Exports / SAP_USR02_export.csv, sap_hint.txt         -> 09
-IT / Outils / wordlist.txt                                       -> 09
-Direction de course / Dossier incident / case_file.zip           -> 09
-IT / Sauvegardes postes / portable-equipe-03 / dflop_erp.sap     -> 13
-Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap           -> 15
+Chronométrage → « Capture Wi-Fi de la cabine »  timing_booth.pcap             -> 05
+Arbitrage → « Clé USB retrouvée »               referee_usb.img               -> 07
+Basis SAP → « Export USR02 »                    SAP_USR02_export.csv, sap_hint.txt  -> 09
+IT → « Outils »                                 wordlist.txt                  -> 09
+Direction de course → « Dossier incident »      case_file.zip                 -> 09
+IT → « Sauvegardes postes »                     dflop_erp.sap                 -> 13
+Basis SAP → « Développements »                  ZDFLOP_RESULT_EXPORT.abap     -> 15
 ```
 
 On the **DécaFlop site** (`:8001`): the poster (02) in its press area
@@ -157,7 +159,7 @@ them too, use `docker compose down -v` and redo CTFd's setup wizard.
 ```
 challenges/            one folder per challenge (player README + web app code)
 hub/                   "cellule de crise": players' entry point (port 8080)
-share/                 "Partage DFlop": internal file share (port 8020, not a challenge)
+share/                 "Intranet DFlop": internal wiki (port 8020, not a challenge)
 handouts/              generator for all forensics/SAP evidence files
   generate.py          builds every handout from .env flags
   assets/              base photo for 03 (AI-generated, metadata stripped)
