@@ -6,12 +6,12 @@ cd "$ws" 2>/dev/null || cd /work
 
 cat <<'BANNER'
 ────────────────────────────────────────────────────────────
- DÉCAFLOP — boîte à outils de l'équipe  (navigateur → shell)
+ DÉCAFLOP, boîte à outils de l'équipe (shell navigateur)
 ────────────────────────────────────────────────────────────
  Outils : git, git-dumper, binwalk, foremost, exiftool, john,
           unzip, xxd, jq, curl, wget, python3.
  Les fichiers de preuve sont sur le Partage DFlop (:8020) et
- les services tournent sur l'IP du Pi — récupérez-les au besoin
+ les services tournent sur l'IP du Pi. Récupérez-les au besoin
  (ex. : git-dumper http://<IP-du-Pi>:8011/.git/ dump && cd dump).
 BANNER
 echo " Espace de travail : $ws"
