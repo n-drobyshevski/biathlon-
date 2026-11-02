@@ -31,8 +31,17 @@ Pull the images once while you still have internet.
    costs. It also sets CTFd's default language to French (`--locale` to change).
    Add `--dry-run` to see what it would do without touching CTFd.
 
-The cellule de crise (`:8080`) links to CTFd automatically: a "Tableau des
-scores" button and a "Soumettre le flag" link on every mission.
+**Cross links (set up by the script):**
+
+- **CTFd → hub:** a "Cellule de crise" item in CTFd's top menu (opens the hub
+  in a new tab), and each challenge description links to its own row in the
+  hub (`:8080/#mission-04`, highlighted on arrival).
+- **Hub → CTFd:** a "Tableau des scores" button, and on every mission a
+  "Soumettre le flag" link that opens **that challenge** in CTFd. The script
+  writes the CTFd challenge ids to `handouts/dist/ctfd_ids.json` for this;
+  without it, the links open the challenge list instead.
+
+The menu link uses `CTF_HOST`: if the Pi's address changes, re-run the script.
 
 **After rotating flags** (`./scripts/gen-flags.sh`), just re-run
 `python3 scripts/ctfd-setup.py`: it replaces the flags and updates the texts in

@@ -9,6 +9,11 @@ cd "$(dirname "$0")/.."
 
 ENV_FILE=".env"
 
+# Create handouts/dist as you now: if docker compose creates it first (it is
+# mounted into the hub), it would belong to root and the scripts couldn't
+# write there.
+mkdir -p handouts/dist
+
 if [[ -f "$ENV_FILE" ]]; then
   read -r -p ".env already exists. Overwrite with NEW flags? [y/N] " ans
   [[ "${ans:-N}" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }

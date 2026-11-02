@@ -7,6 +7,12 @@ with its category, points, description, connection info, flag (from .env) and
 point-costed hints. Safe to re-run, e.g. after ./scripts/gen-flags.sh: flags are
 replaced, hints and texts are updated in place.
 
+Cross links with the cellule de crise (hub, port 8080):
+- each challenge description links to its row in the hub (/#mission-NN);
+- a "Cellule de crise" item is added to CTFd's top menu (needs --host);
+- the CTFd id of each challenge is written to handouts/dist/ctfd_ids.json,
+  which the hub reads to open the exact challenge from "Soumettre le flag".
+
 Usage (on the Pi, after finishing the CTFd setup wizard in a browser):
     python3 scripts/ctfd-setup.py --host 192.168.8.2
 
@@ -67,7 +73,8 @@ def parse_readme(path, host):
     if files and host:
         links = "\n".join(f"- [{f}](http://{host}:{HUB_PORT}/fichiers/{f})" for f in files)
         body += f"\n\n**Download:**\n{links}"
-    body += f"\n\nAll missions, links and files: http://{host_s}:{HUB_PORT} (cellule de crise)."
+    body += (f"\n\n**Cellule de crise :** [fiche de la mission {num}](http://{host_s}:{HUB_PORT}/#mission-{num})"
+             f" · toutes les missions, liens et fichiers : http://{host_s}:{HUB_PORT}")
 
     cm = CONNECT_RE.search(body)
     connection = cm.group(1) if cm else ""
@@ -104,6 +111,8 @@ def main():
     ap.add_argument("--host", help="address players use to reach the Pi (e.g. 192.168.8.2)")
     ap.add_argument("--env", default=os.path.join(ROOT, ".env"))
     ap.add_argument("--locale", default="fr", help="CTFd default interface language (default: fr)")
+    ap.add_argument("--ids-file", default=os.path.join(ROOT, "handouts", "dist", "ctfd_ids.json"),
+                    help="where to write the challenge ids for the hub's deep links")
     ap.add_argument("--dry-run", action="store_true", help="parse and print, change nothing")
     args = ap.parse_args()
 
@@ -135,6 +144,7 @@ def main():
 
     api = CTFd(env.get("CTFD_URL", "http://localhost:8000"), token)
     existing = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}
+    ids = {}
 
     for ch in challenges:
         fields = {k: ch[k] for k in ("name", "category", "value", "description", "connection_info")}
@@ -160,7 +170,32 @@ def main():
         for extra in old[len(ch["hints"]):]:
             api.call("DELETE", f"/hints/{extra['id']}")
 
+        ids[ch["num"]] = {"id": cid, "name": ch["name"]}
         print(f"[{action}] {ch['num']} {ch['name']} — {ch['value']} pts, {len(ch['hints'])} hints, flag set")
+
+    # CTFd top menu: a page whose route is a URL becomes an external link
+    if host:
+        menu = {"title": "Cellule de crise", "route": f"http://{host}:{HUB_PORT}/", "content": "",
+                "format": "markdown", "draft": False, "hidden": False, "auth_required": False,
+                "link_target": "_blank"}
+        page = next((p for p in api.call("GET", "/pages") if p.get("title") == menu["title"]), None)
+        if page:
+            api.call("PATCH", f"/pages/{page['id']}", menu)
+        else:
+            api.call("POST", "/pages", menu)
+        print(f"CTFd menu: 'Cellule de crise' -> {menu['route']}")
+    else:
+        print("Note: no --host given; skipped the 'Cellule de crise' item in CTFd's menu.")
+
+    # challenge ids for the hub's "Soumettre le flag" deep links
+    try:
+        os.makedirs(os.path.dirname(args.ids_file), exist_ok=True)
+        with open(args.ids_file, "w", encoding="utf-8") as fh:
+            json.dump(ids, fh, ensure_ascii=False, indent=1)
+        print(f"Challenge ids for the hub written to {os.path.relpath(args.ids_file, ROOT)}")
+    except OSError as e:
+        print(f"Warning: could not write {args.ids_file} ({e.strerror}). The hub will link to the "
+              f"challenge list instead. Fix with: sudo chown -R $USER {os.path.dirname(args.ids_file)}")
 
     if args.locale:
         api.call("PATCH", "/configs", {"default_locale": args.locale})

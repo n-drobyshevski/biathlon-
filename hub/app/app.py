@@ -11,8 +11,10 @@ live challenge and downloads for every handout.
   overrides the address. Teams submit flags there.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
 """
+import json
 import os
 from html import escape
+from urllib.parse import quote
 
 from flask import Flask, Response, abort, redirect, request, send_from_directory
 
@@ -69,6 +71,17 @@ def html(page, status=200):
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()
 CTFD_PORT = os.environ.get("CTFD_PORT", "").strip()
+
+
+def ctfd_ids():
+    """{mission: {"id", "name"}} written by scripts/ctfd-setup.py next to the handouts."""
+    try:
+        with open(os.path.join(HANDOUT_DIR, "ctfd_ids.json"), encoding="utf-8") as fh:
+            data = json.load(fh)
+        return {k: v for k, v in data.items()
+                if isinstance(v, dict) and str(v.get("id", "")).isdigit() and isinstance(v.get("name"), str)}
+    except (OSError, ValueError, AttributeError):
+        return {}
 
 
 def scoreboard_url():
@@ -209,9 +222,15 @@ def access(live, files):
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
     board = scoreboard_url()
-    submit = (f'<a class="submit" href="{escape(board)}challenges">Soumettre le flag ↗</a>' if board else "")
+    ids = ctfd_ids()
     rows = []
     for num, title, cat, level, pts, brief, live, files in MISSIONS:
+        submit = ""
+        if board:
+            target = f"{board}challenges"
+            if num in ids:            # opens that challenge's popup in CTFd
+                target += "#" + quote(f"{ids[num]['name']}-{ids[num]['id']}", safe="")
+            submit = f'<a class="submit" href="{escape(target)}">Soumettre le flag ↗</a>'
         status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
                   '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
                   + submit)
