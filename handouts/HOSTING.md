@@ -15,7 +15,7 @@ public internet:
   `wordlist.txt` instead so the event stays fully offline.)
 - Give the Pi a static lease, e.g. `192.168.8.2`. Players start at
   `http://192.168.8.2:8080` (the cellule de crise), which links every challenge
-  (`:8001` … `:8008`) and serves the handouts. Replace `<CTF-HOST>` in the
+  (`:8001` … `:8014`) and serves the handouts. Replace `<CTF-HOST>` in the
   challenge READMEs / scoreboard with that IP.
 
 ## Setup
@@ -40,18 +40,18 @@ docker compose up -d --build
 > `python:3.12-slim` and `pip`/`apt` packages download then). After that the
 > whole thing runs offline.
 
-## Resource budget (4 GB is plenty)
+## Resource budget (4 GB)
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 4 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.3–0.5 GB actual |
+| 8 challenge containers + the hub (`mem_limit` 96–160 MB each) | ~0.5–0.8 GB actual |
 | CTFd (in docker-compose, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | OS + Docker | ~0.5 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
-challenge is fine for 6 players — these apps are stateless (SQLi uses an
-in-memory DB rebuilt per request), so there's nothing for players to corrupt
-for each other.
+challenge is fine for 6 players — these apps are stateless, so there's nothing
+for players to corrupt for each other. With CTFd, the full stack is ~1.5–2 GB
+in practice: comfortable on 4 GB, but test it before the event.
 
 ## Serving the handout files
 
@@ -67,9 +67,12 @@ You can still attach them as files in CTFd, or drop them on a USB stick.
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] `docker compose up -d --build` → all 5 containers `Up` (4 challenges + hub)
+- [ ] `docker compose up -d --build` → all containers `Up` (8 live challenges
+      + hub + CTFd)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path
 - [ ] `curl -s localhost:8008/sap/public/info` returns the SAP note
+- [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
+      `:8012` and `:8014` load
 - [ ] `./scripts/build-handouts.sh` → 8 files in `handouts/dist/`
 - [ ] Solve each handout once using the steps in `WRITEUPS/` (confirm the
       flags match your `.env`)

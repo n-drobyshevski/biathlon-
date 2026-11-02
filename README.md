@@ -45,8 +45,21 @@ enough for 6 people to split up and work in parallel.
 | 08 | SAP DFlop ERP | **SAP** | **Hard** | 200 | live (`:8008`) |
 | 09 | Who Rigged the Race? 🏁 | **SAP** | **Hard** | 250 | handout (finale) |
 
-3 easy · 4 medium · 2 hard. The two hard challenges are the SAP ones.
-Total 1075 pts. Flag format: `TRIATHLON{...}`.
+The finale (09) closes the sabotage story. Missions **10–15** are an optional
+**audit complémentaire** — a deeper security sweep of DécaFlop's systems; they
+are independent of the main trail.
+
+| # | Title | Category | Difficulty | Pts | Type |
+|---|-------|----------|-----------|-----|------|
+| 10 | Forged Credentials | Web (JWT) | **Hard** | 175 | live (`:8010`) |
+| 11 | Deleted, Not Gone | Web (.git) | **Hard** | 150 | live (`:8011`) |
+| 12 | Print Your Own | Web (SSTI) | **Hard** | 175 | live (`:8012`) |
+| 13 | Saved for Convenience | **SAP** | Easy | 75 | handout |
+| 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
+| 15 | Hardcoded | **SAP** | Medium | 150 | handout |
+
+**15 challenges** · 4 easy · 4 medium · 7 hard. Total **1950 pts**.
+Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
 hints). The live web/SAP apps are Flask containers; the forensics/stego/SAP
@@ -89,6 +102,10 @@ Live services after step 2:
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
 | 8008 | 08 SAP DFlop ERP |
+| 8010 | 10 Results API (JWT) |
+| 8011 | 11 Timing site (exposed .git) |
+| 8012 | 12 Certificate generator (SSTI) |
+| 8014 | 14 SAP gateway (reginfo) |
 | 8000 | CTFd scoreboard: teams, flags, hints, ranking |
 
 Handout files after step 3 (downloadable from the cellule de crise as soon as they
@@ -100,6 +117,8 @@ transition_shot.jpg     -> 03
 timing_booth.pcap       -> 05
 referee_usb.img         -> 07
 SAP_USR02_export.csv + sap_hint.txt + wordlist.txt + case_file.zip  -> 09
+dflop_erp.sap           -> 13
+ZDFLOP_RESULT_EXPORT.abap -> 15
 ```
 
 See [`scoreboard/README.md`](scoreboard/README.md) for the scoreboard options

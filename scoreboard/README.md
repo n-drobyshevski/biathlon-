@@ -77,5 +77,12 @@ extra RAM.
 | 07 | The Referee's USB | 125 |
 | 08 | SAP DFlop ERP | 200 |
 | 09 | Who Rigged the Race? | 250 |
+| 10 | Forged Credentials | 175 |
+| 11 | Deleted, Not Gone | 150 |
+| 12 | Print Your Own | 175 |
+| 13 | Saved for Convenience | 75 |
+| 14 | The Open Gateway | 150 |
+| 15 | Hardcoded | 150 |
 
 Hints and their point costs are listed in each challenge's `README.md`.
+(`scripts/ctfd-setup.py` loads all of this automatically.)

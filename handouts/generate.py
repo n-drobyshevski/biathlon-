@@ -12,6 +12,8 @@ Challenges produced:
   07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
+  13 sap     -> dflop_erp.sap           (SAP GUI shortcut with a saved password)
+  15 sap     -> ZDFLOP_RESULT_EXPORT.abap (hardcoded credential in ABAP source)
 """
 import io, os, sys, zipfile, struct, socket, hashlib, base64, subprocess, tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
@@ -441,6 +443,93 @@ He swapped the timing-chip assignments to rig the final race.
                        check=True, stdout=subprocess.DEVNULL)
     print("[09] SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip")
 
+# ---------------------------------------------------------------------------
+# 13 · SAP GUI shortcut (EASY) — a saved password inside a .sap shortcut
+# ---------------------------------------------------------------------------
+def gen_sap_shortcut():
+    f = flag("FLAG_13_SAP_SHORTCUT", "TRIATHLON{shortcut_placeholder}")
+    # SAP GUI shortcut (.sap) files can store a logon password. Real SAP GUI
+    # obfuscates it; for this training file the Password field is simply the
+    # base64 of the flag (the writeup is explicit about the simplification).
+    pw = base64.b64encode(f.encode()).decode()
+    content = (
+        "[System]\r\n"
+        "Name=DFL\r\n"
+        "Client=001\r\n"
+        "[User]\r\n"
+        "Name=MSORENSEN\r\n"
+        "Language=FR\r\n"
+        f"Password={pw}\r\n"
+        "[Function]\r\n"
+        "Command=SU01\r\n"
+        "Title=DFlop ERP - Maintenance des utilisateurs\r\n"
+        "[Configuration]\r\n"
+        "GuiSize=Normal window\r\n"
+        "[Options]\r\n"
+        "Reuse=1\r\n")
+    with open(os.path.join(OUT, "dflop_erp.sap"), "w", newline="") as fh:
+        fh.write(content)
+    print("[13] dflop_erp.sap")
+
+
+# ---------------------------------------------------------------------------
+# 15 · ABAP hardcoded credential (MEDIUM) — read the source, assemble the secret
+# ---------------------------------------------------------------------------
+def gen_sap_abap():
+    f = flag("FLAG_15_SAP_ABAP", "TRIATHLON{abap_placeholder}")
+    # Split the flag into three pieces, assembled by CONCATENATE in the report
+    # in a non-obvious order, among decoy variables. grep for the whole flag
+    # won't find it; you have to read the logic.
+    n = len(f); a, b = n // 3, 2 * n // 3
+    p1, p2, p3 = f[:a], f[a:b], f[b:]
+    abap = f"""*&---------------------------------------------------------------------*
+*& Report ZDFLOP_RESULT_EXPORT
+*& Exporte la table ZRACE_RESULT vers le systeme de resultats via RFC.
+*& Auteur: equipe Basis DFlop   Mandant: 001
+*&---------------------------------------------------------------------*
+REPORT zdflop_result_export.
+
+CONSTANTS: gc_dest  TYPE rfcdest VALUE 'DFLOP_RESULT',
+           gc_user  TYPE string  VALUE 'RESULTS_SVC'.
+
+DATA: lv_token TYPE string,
+      lv_a     TYPE string,
+      lv_b     TYPE string,
+      lv_c     TYPE string,
+      lv_decoy TYPE string.
+
+START-OF-SELECTION.
+
+* Jeton d'export (ne pas committer, ne pas tracer). Assemble a l'execution.
+  lv_a = '{p1}'.
+  lv_decoy = 'TRIATHLON{{not_the_flag}}'.      " piege: valeur factice
+  lv_c = '{p3}'.
+  lv_b = '{p2}'.
+
+* Ordre d'assemblage: a + b + c
+  CONCATENATE lv_a lv_b lv_c INTO lv_token.
+
+  CALL FUNCTION 'Z_RESULT_PUSH'
+    DESTINATION gc_dest
+    EXPORTING
+      iv_user  = gc_user
+      iv_token = lv_token
+    EXCEPTIONS
+      system_failure        = 1
+      communication_failure = 2.
+
+  IF sy-subrc = 0.
+    WRITE: / 'Export ZRACE_RESULT: OK'.
+  ELSE.
+    WRITE: / 'Export ZRACE_RESULT: echec', sy-subrc.
+  ENDIF.
+"""
+    with open(os.path.join(OUT, "ZDFLOP_RESULT_EXPORT.abap"), "w") as fh:
+        fh.write(abap)
+    print("[15] ZDFLOP_RESULT_EXPORT.abap")
+
+
 if __name__ == "__main__":
     gen_stego(); gen_exif(); gen_pcap(); gen_usb(); gen_sap()
+    gen_sap_shortcut(); gen_sap_abap()
     print("\nAll handouts written to", OUT)

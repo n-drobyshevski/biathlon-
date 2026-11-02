@@ -48,6 +48,14 @@ FLAG_07_USB=TRIATHLON{spare_tube_$(tok 10)}
 FLAG_08_SAP_ICF=TRIATHLON{anchor_leg_$(tok 10)}
 FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
+# --- Audit complémentaire (missions 10-15) ---
+FLAG_10_JWT=TRIATHLON{negative_split_$(tok 10)}
+FLAG_11_GIT=TRIATHLON{ghost_runner_$(tok 10)}
+FLAG_12_SSTI=TRIATHLON{finisher_medal_$(tok 10)}
+FLAG_13_SAP_SHORTCUT=TRIATHLON{race_belt_$(tok 10)}
+FLAG_14_SAP_GW=TRIATHLON{open_water_$(tok 10)}
+FLAG_15_SAP_ABAP=TRIATHLON{the_wall_$(tok 10)}
+
 SABOTEUR_NAME=viktor_lindqvist
 
 # CTFd session key (kept across rotations)

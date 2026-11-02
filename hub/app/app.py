@@ -103,6 +103,8 @@ FILES = {
     "sap_hint.txt": "Note SAP (TXT)",
     "wordlist.txt": "Liste de mots (TXT)",
     "case_file.zip": "Dossier chiffré (ZIP)",
+    "dflop_erp.sap": "Raccourci SAP GUI (.sap)",
+    "ZDFLOP_RESULT_EXPORT.abap": "Source ABAP (.abap)",
 }
 
 # (number, title, category, level, points, brief, live service key or None, files)
@@ -146,9 +148,36 @@ MISSIONS = [
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
      "connexions et anciens hachages de mots de passe. Prouvez qui a fait le coup.",
      None, ["SAP_USR02_export.csv", "sap_hint.txt", "wordlist.txt", "case_file.zip"]),
+    # --- Audit complémentaire : failles trouvées après l'enquête ---
+    ("10", "Identifiants forgés", "Web", "Difficile", 175,
+     "L'API des résultats délivre un jeton de session (JWT) et réserve les "
+     "données officielles au rôle admin. Le jeton est signé avec un secret "
+     "devinable : forgez un jeton admin.", "jwt", []),
+    ("11", "Supprimé, pas effacé", "Web", "Difficile", 150,
+     "Le site de chronométrage est déployé avec son dossier .git exposé. "
+     "Quelqu'un a retiré le jeton d'export « par sécurité » — mais git garde "
+     "tout. Récupérez le secret dans l'historique.", "git", []),
+    ("12", "Imprimez le vôtre", "Web", "Difficile", 175,
+     "Le générateur de certificats de finaliste insère votre nom directement "
+     "dans un gabarit côté serveur. Faites-lui afficher ce qu'il ne devrait "
+     "pas (injection de gabarit).", "ssti", []),
+    ("13", "Enregistré par confort", "SAP", "Facile", 75,
+     "Un raccourci SAP GUI (.sap) trouvé sur un portable de l'équipe a "
+     "« enregistré le mot de passe » du DFlop ERP. Récupérez-le.",
+     None, ["dflop_erp.sap"]),
+    ("14", "Le gateway ouvert", "SAP", "Moyen", 150,
+     "Le moniteur du gateway SAP DFlop est exposé et ses ACL reginfo/secinfo "
+     "sont par défaut. Lisez l'état de sécurité, puis faites ce qu'une ACL "
+     "absente permet.", "sapgw", []),
+    ("15", "En dur", "SAP", "Moyen", 150,
+     "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
+     "Son jeton d'export « non committé » est pourtant dans le code, assemblé "
+     "morceau par morceau. Relisez la source.",
+     None, ["ZDFLOP_RESULT_EXPORT.abap"]),
 ]
 
-PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006), "sap": ("SAP_URL", 8008)}
+PORTS = {"site": ("SITE_URL", 8001), "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006), "sap": ("SAP_URL", 8008),
+         "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
 
 
 def service_url(key):
@@ -180,7 +209,9 @@ def download(name):
 
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "idor": ("Espace athlètes", ":8004"),
-              "sqli": ("Admin résultats", ":8006"), "sap": ("SAP DFlop ERP", ":8008")}
+              "sqli": ("Admin résultats", ":8006"), "sap": ("SAP DFlop ERP", ":8008"),
+              "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
+              "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
 COLS = "ABCDEFGH"
 
 
@@ -247,7 +278,7 @@ def crisis_cell():
                 rows, total_row, "frozen")
     note = (f'<p class="note"><b>Contexte :</b> la veille de la finale, la liste de départ a été truquée '
             f'en échangeant les puces de chronométrage. Suivez la piste jusqu\'au coupable. '
-            f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · 9 missions, {total} points'
+            f'<b>Flags :</b> <code>TRIATHLON{{...}}</code> · {len(MISSIONS)} missions, {total} points'
             + (f' · à soumettre sur le <a href="{escape(board)}">tableau des scores</a>' if board else "")
             + ' · '
             f'détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
@@ -268,7 +299,7 @@ def context():
                      "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière "
                      "mission désigne le coupable."),
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
-        ("Missions", f"9 missions, {sum(m[4] for m in MISSIONS)} points"),
+        ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Périmètre", "Uniquement les services et fichiers listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Tableau des scores", score),
