@@ -4,7 +4,7 @@
 > everything sensitive." Deleting a file doesn't erase its bytes, though — it
 > just forgets where they are. We imaged the stick. Recover what was removed.
 
-**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `Arbitrage / Pièces` (`referee_usb.img`). Credentials are on the DécaFlop staff portal — see challenge 01.
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `Arbitrage / Pièces` (`referee_usb.img`). Credentials are on the DécaFlop staff portal — see challenge 01.
 
 Download the disk image. A file was deleted from it. Carve it back out and read the flag.
 (Grepping for the flag won't work — the bytes you need aren't text.)

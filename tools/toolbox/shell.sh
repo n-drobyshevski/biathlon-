@@ -10,7 +10,7 @@ cat <<'BANNER'
 ────────────────────────────────────────────────────────────
  Outils : git, git-dumper, binwalk, foremost, exiftool, john,
           unzip, xxd, jq, curl, wget, python3.
- Les fichiers de preuve sont sur le Partage DFlop (:8020) et
+ Les fichiers de preuve sont sur l'Intranet DécaFlop (:8020) et
  les services tournent sur l'IP du Pi — récupérez-les au besoin
  (ex. : git-dumper http://<IP-du-Pi>:8011/.git/ dump && cd dump).
 BANNER

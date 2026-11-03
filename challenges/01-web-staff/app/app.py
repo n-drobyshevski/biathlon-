@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-# Crew login for the internal file share "Partage DFlop" (:8020). The staff
+# Crew login for the internal file share "Intranet DécaFlop" (:8020). The staff
 # portal hands it out, so solving 01 is how players learn how to log in. Read
 # from the SAME env the share reads, with the share's defaults, so the two stay
 # in sync (docker-compose feeds both services from one value).
@@ -37,8 +37,8 @@ STAFF_BODY = """<h1 class="h1">Équipe événement · finale 2026</h1>
   <p>Jeton attribué à l'équipe pour la finale. Communiquez-le uniquement à l'astreinte IT lors de la vérification de votre accès.</p>
   {codebox}
  </section>
- <section class="wp"><h2>Partage DFlop</h2>
-  <p>Les pièces de l'enquête sont déposées sur le partage documentaire interne Partage DFlop. Compte de l'équipe&#160;:</p>
+ <section class="wp"><h2>Intranet DécaFlop</h2>
+  <p>Les pièces de l'enquête sont déposées sur le partage documentaire interne Intranet DécaFlop. Compte de l'équipe&#160;:</p>
   <dl class="kv">
    <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
    <dt>Identifiant</dt><dd><code>{share_user}</code></dd>

@@ -110,7 +110,7 @@ The hub serves **no files**. Everything is built into `handouts/dist/` by
 `./scripts/build-handouts.sh` and mounted read-only into the two services that
 publish it, so players *find* each file in context:
 
-- **Partage DFlop** — the internal file share (`share/`, `:8020`). The crew logs
+- **Intranet DécaFlop** — the internal file share (`share/`, `:8020`). The crew logs
   in (default `equipe-it` / `transition2026`; override with `SHARE_USER` /
   `SHARE_PASSWORD`) and browses department folders for the evidence: the pcap
   (05), the USB image (07), the SAP export + note + wordlist + encrypted zip
@@ -156,12 +156,12 @@ Run through this once, ideally the day before:
       `:8001/actualites` and the `:8020` share show "pas encore disponible" and
       the files 404. (No restart needed afterwards — the mount is read-only.)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path; opening that
-      staff portal shows the Partage DFlop address (`:8020`) and the share login
+      staff portal shows the Intranet DécaFlop address (`:8020`) and the share login
       (the same one the share accepts)
 - [ ] `curl -s localhost:8001/presse` and `:8001/actualites` load; the poster
       downloads at `:8001/medias/decaflop_poster.png` and the race photo at
       `:8001/medias/transition_shot.jpg` (both byte-identical to `handouts/dist/`)
-- [ ] `Partage DFlop` at `:8020`: logged out redirects to the login; `equipe-it`
+- [ ] `Intranet DécaFlop` at `:8020`: logged out redirects to the login; `equipe-it`
       / `transition2026` logs in; folders browse; a listed file downloads
       byte-identical to `handouts/dist/`; a bad login is rejected
 - [ ] `curl -s localhost:8010/api/token` returns a JWT; `:8011/.git/` lists;
