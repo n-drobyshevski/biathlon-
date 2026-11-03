@@ -52,7 +52,12 @@ services:
   # ---- The only container with internet access: the outbound tunnel ------
   cloudflared:
     image: cloudflare/cloudflared:2026.10.1@sha256:a15a3b50b8dabd57ac2090e9484c0247dba9dfa1f0df4d298d4317f9d69eb2d5
-    command: tunnel --no-autoupdate run
+    # --metrics on loopback: in a container cloudflared otherwise listens on
+    # 0.0.0.0:20241, and it shares `internal` with the challenges. That port
+    # serves /metrics, /config (every hostname + origin) and /debug/pprof (heap
+    # dumps of the process that holds the tunnel token): verified reachable
+    # from a popped challenge without this flag.
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
     environment:
       TUNNEL_TOKEN: "${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env (see CLOUDFLARE.md)}"
     networks: [internal, scoreboard, front, chef, edge]
@@ -186,4 +191,6 @@ networks:
     internal: true        # hub + cloudflared only
   chef:
     internal: true        # CyberChef + cloudflared only
-  edge: {}                # normal bridge, used by cloudflared only
+  edge:                   # normal bridge, used by cloudflared only
+    driver_opts:          # fixed interface name for scripts/cloudflare-egress.sh
+      com.docker.network.bridge.name: ctf-edge

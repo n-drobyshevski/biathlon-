@@ -230,7 +230,10 @@ def test_online_overlay_isolates_every_service():
     tb = cfg["services"]["toolbox"]["command"]
     assert tb[0] == "ttyd" and "-O" in tb and "-W" in tb                # websocket origin check
     assert any(t.startswith("/work:") for t in cfg["services"]["toolbox"]["tmpfs"])
-    assert cf["command"] == ["tunnel", "--no-autoupdate", "run"]
+    # metrics/config/pprof on loopback only: never reachable from the challenges
+    assert cf["command"] == ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:20241", "run"]
+    # fixed bridge name, matched by scripts/cloudflare-egress.sh
+    assert cfg["networks"]["edge"]["driver_opts"]["com.docker.network.bridge.name"] == "ctf-edge"
     assert cf["environment"]["TUNNEL_TOKEN"] == "dummy" and "ports" not in cf
     env = cfg["services"]["hub"]["environment"]
     for key, sub in (("SITE_URL", "site"), ("IDOR_URL", "idor"), ("SQLI_URL", "sqli"),

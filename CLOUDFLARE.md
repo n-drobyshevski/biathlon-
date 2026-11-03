@@ -40,7 +40,7 @@ It assumes **a challenge container will be popped**, and contains the damage:
 | --- | --- |
 | Every service is **only** on `internal: true` networks | No internet egress, no route to your LAN. A shell in `ssti` cannot download tools, call out to a C2 or scan your network. Verified: `connect 1.1.1.1` gives `Network is unreachable`, and DNS for external names fails. |
 | Segmented networks: `internal` (challenges, share, toolbox), `scoreboard` (CTFd), `front` (hub), `chef` (CyberChef) | A popped challenge cannot reach CTFd or the hub at all: their names don't resolve and their IPs are unreachable (verified). So nobody can brute-force CTFd's login or API from inside, past Access. The terminal still reaches every challenge by name. |
-| Only `cloudflared` joins all of them plus `edge` (normal bridge) | It is the one container that can reach the internet, and it only dials **out** to Cloudflare. |
+| Only `cloudflared` joins all of them plus `edge` (normal bridge, interface `ctf-edge`) | It is the one container that can reach the internet, and it only dials **out** to Cloudflare. |
 | No host ports on the public interface | Docker does not publish ports for containers that are only on an internal network. The overlay pins the port lists to `127.0.0.1` anyway as a fail-safe, and `BIND_ADDR=127.0.0.1` does the same for the base file. |
 | No repo, `.env`, flags or docker socket mounted | Each challenge still gets only its own `FLAG` env, as offline. `hub`, `staff` and `share` keep their read-only `handouts/dist` mount: the evidence files players download anyway. |
 | Non-root, `cap_drop: ALL`, `no-new-privileges` | The Flask apps (incl. `gitleak`) run as `nobody`. CTFd runs as its own user. nginx (`cyberchef`) keeps only the 4 capabilities it needs. `toolbox` is the non-root `player`. |
@@ -49,6 +49,8 @@ It assumes **a challenge container will be popped**, and contains the damage:
 | Terminal: ttyd `-O` (`--check-origin`), `-m 20` | ttyd refuses WebSockets opened from another origin. A script a player plants on another lab subdomain cannot open a shell with someone else's Access cookie (verified: same-origin gets 101, `ssti.<domain>` as Origin is dropped). At most 20 concurrent terminals. |
 | Images pinned by tag **and digest** (`cloudflared:2026.10.1@sha256:a15a…`, `ctfd:3.8.8@sha256:07cc…`), `--no-autoupdate` | A re-tagged or tampered upstream image cannot slip in, and nothing changes under you mid-event. To bump: `docker buildx imagetools inspect <image>:<tag>`, then copy the top-level digest (multi-arch, includes arm64). |
 | Hub links → subdomains | The overlay sets `SITE_URL=https://site.${CTF_DOMAIN}/` etc., so the cellule de crise links to `https://<svc>.<domain>/` instead of `host:port`. The intranet "Applications" menus of the challenges switch to subdomains by themselves when they are reached on one. |
+| cloudflared metrics on loopback (`--metrics 127.0.0.1:20241`) | In a container cloudflared otherwise listens on `0.0.0.0:20241`, on the same network as the challenges. Verified: from a popped `ssti`, that port served `/metrics`, `/config` (every hostname and origin) and `/debug/pprof` (heap dumps of the process holding the tunnel token). Now closed. |
+| Tunnel egress allowlist (optional script, step 4b) | `scripts/cloudflare-egress.sh` limits the `ctf-edge` bridge to DNS, tcp/udp 7844 and tcp 443 on public addresses. Without it the tunnel container could reach your LAN, your router, the metadata address and the Pi itself (verified); with it, all of those are rejected. |
 | CTFd `REVERSE_PROXY=true` | CTFd trusts cloudflared's `X-Forwarded-Proto/Host` and builds its own `https://ctfd.<domain>` URLs. |
 
 ## Operator runbook (Cloudflare dashboard side)
@@ -167,6 +169,36 @@ later and missed by a non-wildcard app, or a policy changed to Bypass.
   countries your players are in, so a leaked PIN email is useless from
   elsewhere.
 - After the event, review **Logs → Access** for who logged in, and when.
+- **Cookie settings** (application → Settings → Cookie settings). The lab
+  pages are deliberately vulnerable, so assume a player can plant a script on
+  one of them:
+  - **HTTP Only**: keep it **on** (the default). Scripts on a lab page cannot
+    read the `CF_Authorization` cookie.
+  - **Enable Binding Cookie**: **on**. Access issues a second cookie at login
+    and rejects `CF_Authorization` without it, so a stolen session cookie
+    cannot be replayed from another browser. It is browser-only, which is fine
+    here: every lab hostname is used from a browser, the terminal included.
+  - **SameSite**: optional. *Lax* is safe, since all lab hostnames are
+    subdomains of one site.
+
+### 3e. Lock the CTFd admin pages to the organizers (recommended)
+
+The wildcard application lets every invited player reach `ctfd.<domain>`,
+including `/admin`. Put the admin pages behind their own, stricter
+application:
+
+1. Access → Applications → **Add an application → Self-hosted**. Domain
+   `ctfd.<domain>`, **path** `admin`.
+2. Policy **Allow**, *Emails* = the organizers only.
+3. Access applies the most specific path, so this app wins over the wildcard
+   app for `/admin`, and `/admin/...` inherits it.
+4. Test from a private window: a player address must be refused at
+   `https://ctfd.<domain>/admin`, while the scoreboard still works for them.
+   An organizer address must get in.
+
+This guards the admin UI. Still give the CTFd admin account a strong, unique
+password. `ctfd-setup.py` talks to CTFd's container IP from the Pi, so it is
+not affected.
 
 ### 3d. Optional: rate-limit the scoreboard
 
@@ -182,6 +214,57 @@ slows down a player scripting flag guesses.
 docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml logs -f cloudflared   # "Registered tunnel connection"
 ```
+
+#### 4b. Restrict the tunnel's own egress (recommended)
+
+The lab containers have no egress at all. `cloudflared` must reach the
+internet, but it only needs DNS, Cloudflare's edge on port **7844** (TCP for
+HTTP/2, UDP for QUIC), and **443** (Cloudflare API, Access signing keys,
+update checks). That matches Cloudflare's "Tunnel with firewall" requirements.
+Lock its bridge (`ctf-edge`) down to exactly that:
+
+```bash
+sudo scripts/cloudflare-egress.sh apply     # idempotent; re-run any time
+sudo scripts/cloudflare-egress.sh status    # rules + packet counters
+sudo journalctl -k | grep ctf-edge-drop     # what got rejected (rate-limited log)
+sudo scripts/cloudflare-egress.sh remove    # undo
+```
+
+It also rejects every private, CGNAT, link-local and reserved destination,
+so no LAN hosts, no router admin page and no metadata service, even on ports
+53, 443 and 7844. It also rejects any connection from the container to the
+Pi itself (SSH etc.). It needs Docker's default iptables firewall backend, and
+it only touches its own chains (`CTF-EDGE`, `CTF-EDGE-IN`).
+
+The rules do not survive a reboot. Either re-run `apply` after boot, or
+install a oneshot unit (adjust the path):
+
+```ini
+# /etc/systemd/system/ctf-egress.service
+[Unit]
+Description=DecaFlop CTF: restrict the Cloudflare tunnel's egress
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/pi/biathlon-/scripts/cloudflare-egress.sh apply
+ExecStop=/home/pi/biathlon-/scripts/cloudflare-egress.sh remove
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now ctf-egress
+```
+
+If the tunnel stops connecting after `apply`, look at the counters and the
+`ctf-edge-drop` log. Something other than DNS, 7844 or 443 is needed, e.g. the
+venue network forces an outbound HTTP proxy on a private address (a
+locked-down network like that usually blocks 7844 anyway; see Cloudflare's
+"Tunnel with firewall" page). Then `remove`, investigate, and re-apply.
 
 The overlay refuses to start if `TUNNEL_TOKEN` or `CTF_DOMAIN` is missing from
 `.env`.
