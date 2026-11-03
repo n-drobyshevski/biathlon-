@@ -18,6 +18,13 @@ cat <<'BANNER'
  Récupérez-les avec curl ou wget, par exemple
    wget http://<IP-du-Pi>:<port>/<chemin>
 
+ En ligne (via Cloudflare), ce terminal n'a
+ ni internet ni IP du Pi : visez le service
+ par son nom interne, port 5000, le même
+ que son sous-domaine (site, share, idor,
+ sqli, jwt, git, ssti, sapgw), par exemple
+   wget http://share:5000/<chemin>
+
 BANNER
 echo " Espace de travail : $ws"
 echo

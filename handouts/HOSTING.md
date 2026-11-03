@@ -19,6 +19,11 @@ public internet:
   (`:8001` … `:8014`) and serves the handouts. Replace `<CTF-HOST>` in the
   challenge READMEs / scoreboard with that IP.
 
+> Players who can't join a local LAN (corporate laptops with always-on
+> Zscaler, etc.): see [`../CLOUDFLARE.md`](../CLOUDFLARE.md) for the
+> **optional** online mode. The vulnerable services stay off the open internet
+> behind a Cloudflare Tunnel and a Cloudflare Access login, with no egress.
+
 ## Setup
 
 ```bash

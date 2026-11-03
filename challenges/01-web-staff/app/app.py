@@ -24,7 +24,6 @@ FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 # portal hands it out, so solving 01 is how players learn how to log in. Read
 # from the SAME env the share reads, with the share's defaults, so the two stay
 # in sync (docker-compose feeds both services from one value).
-SHARE_PORT = 8020
 SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")
 SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 
@@ -77,8 +76,9 @@ def robots():
 
 @app.get("/staff-portal-7f3a9")
 def staff():
-    # The share runs on the same host the player reached us on, port 8020.
-    share_url = f"http://{intranet.host()}:{SHARE_PORT}"
+    # The share runs on the same host the player reached us on, port 8020
+    # (or its own share.<domain> subdomain when hosted online).
+    share_url = intranet.app_url("intranet", "")      # http://host:8020 offline, share.<domain> online
     body = (STAFF_BODY.replace("{share_url}", escape(share_url))
                       .replace("{share_user}", escape(SHARE_USER))
                       .replace("{share_pass}", escape(SHARE_PASSWORD))

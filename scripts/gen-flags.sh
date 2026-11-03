@@ -27,6 +27,8 @@ tok() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | cut -c1-"${1:-12}"
 keep() { [[ -f "$ENV_FILE" ]] && grep -E "^$1=" "$ENV_FILE" | tail -1 || true; }
 KEEP_TOKEN=$(keep CTFD_TOKEN); KEEP_HOST=$(keep CTF_HOST); KEEP_URL=$(keep SCOREBOARD_URL)
 KEEP_SECRET=$(keep CTFD_SECRET_KEY)
+# Optional online hosting (CLOUDFLARE.md): survive a rotation too.
+KEEP_TUNNEL=$(keep TUNNEL_TOKEN); KEEP_DOMAIN=$(keep CTF_DOMAIN); KEEP_BIND=$(keep BIND_ADDR)
 
 # Triathlon-themed flag bodies + a random suffix. The bodies are intentionally
 # NON-spoiling (they don't reveal any challenge's technique), so even though
@@ -66,6 +68,11 @@ ${KEEP_TOKEN:-# CTFD_TOKEN=ctfd_...}
 ${KEEP_HOST:-# CTF_HOST=192.168.8.2}
 # Optional: override the scoreboard link shown in the cellule de crise
 ${KEEP_URL:-# SCOREBOARD_URL=http://192.168.8.2:8000}
+
+# Optional online hosting via Cloudflare Tunnel + Access (see CLOUDFLARE.md)
+${KEEP_TUNNEL:-# TUNNEL_TOKEN=}
+${KEEP_DOMAIN:-# CTF_DOMAIN=ctf.example.com}
+${KEEP_BIND:-# BIND_ADDR=127.0.0.1}
 EOF
 
 chmod 600 "$ENV_FILE"

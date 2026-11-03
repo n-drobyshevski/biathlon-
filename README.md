@@ -148,6 +148,11 @@ See [`scoreboard/README.md`](scoreboard/README.md) for the scoreboard options
 and [`handouts/HOSTING.md`](handouts/HOSTING.md) for the Pi 5 + travel-router
 setup, resource notes, reset, and the pre-event test checklist.
 
+**Optional online hosting** (players on locked-down corporate laptops that
+can't reach a local LAN): [`CLOUDFLARE.md`](CLOUDFLARE.md) publishes the lab
+through an outbound-only Cloudflare Tunnel behind a Cloudflare Access login,
+using the `docker-compose.cloudflare.yml` overlay. Offline stays the default.
+
 ---
 
 ## Resetting between runs
@@ -181,6 +186,8 @@ scripts/
   ctfd-setup.py        load the challenges (flags, hints) into CTFd
   build-handouts.sh    build the handout files in handouts/dist/
 docker-compose.yml     the live web + SAP challenges
+docker-compose.cloudflare.yml  optional online overlay (Cloudflare Tunnel, see CLOUDFLARE.md)
+CLOUDFLARE.md          optional online hosting runbook (Tunnel + Access)
 .env.example           flag template (the real .env is git-ignored)
 WRITEUPS/              organizer solutions (git-ignored, shared privately)
 ```
