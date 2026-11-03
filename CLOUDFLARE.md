@@ -13,7 +13,7 @@ firewall.
 
 ```
 player browser ──HTTPS──▶ Cloudflare edge ──Access login──▶ tunnel ◀──outbound── cloudflared (Pi)
-                                                                                   │ internal network
+                                                                                   │ internal-only networks
                                                          hub · ctfd · staff · share · idor · sqli · jwt
                                                          gitleak · ssti · sapgw · cyberchef · toolbox
 ```
@@ -38,12 +38,16 @@ It assumes **a challenge container will be popped**, and contains the damage:
 
 | Measure | Effect |
 | --- | --- |
-| Every app, challenge, `ctfd`, `cyberchef` and `toolbox` is **only** on the `internal` network (`internal: true`) | No internet egress, no route to your LAN. A shell in `ssti` cannot download tools, call out to a C2 or scan your network. Verified: `connect 1.1.1.1` gives `Network is unreachable`, and DNS for external names fails. |
-| Only `cloudflared` is also on `edge` (normal bridge) | It is the one container that can reach the internet, and it only dials **out** to Cloudflare. |
+| Every service is **only** on `internal: true` networks | No internet egress, no route to your LAN. A shell in `ssti` cannot download tools, call out to a C2 or scan your network. Verified: `connect 1.1.1.1` gives `Network is unreachable`, and DNS for external names fails. |
+| Segmented networks: `internal` (challenges, share, toolbox), `scoreboard` (CTFd), `front` (hub), `chef` (CyberChef) | A popped challenge cannot reach CTFd or the hub at all: their names don't resolve and their IPs are unreachable (verified). So nobody can brute-force CTFd's login or API from inside, past Access. The terminal still reaches every challenge by name. |
+| Only `cloudflared` joins all of them plus `edge` (normal bridge) | It is the one container that can reach the internet, and it only dials **out** to Cloudflare. |
 | No host ports on the public interface | Docker does not publish ports for containers that are only on an internal network. The overlay pins the port lists to `127.0.0.1` anyway as a fail-safe, and `BIND_ADDR=127.0.0.1` does the same for the base file. |
 | No repo, `.env`, flags or docker socket mounted | Each challenge still gets only its own `FLAG` env, as offline. `hub`, `staff` and `share` keep their read-only `handouts/dist` mount: the evidence files players download anyway. |
 | Non-root, `cap_drop: ALL`, `no-new-privileges` | The Flask apps (incl. `gitleak`) run as `nobody`. CTFd runs as its own user. nginx (`cyberchef`) keeps only the 4 capabilities it needs. `toolbox` is the non-root `player`. |
-| `cloudflared` image pinned (`cloudflare/cloudflared:2026.10.1`), `--no-autoupdate` | Nothing changes under you mid-event. Bump the tag deliberately. |
+| Read-only root filesystem everywhere, scratch on small `tmpfs` | A popped app cannot rewrite its own code or pages to deface them for everyone; `restart <service>` brings it back pristine. CTFd's state stays in its `ctfd-data` volume. The terminal's `/work` is a 256 MB tmpfs that is wiped on restart. |
+| `pids_limit` + `cpus` caps | A fork bomb in a challenge stops at 128 processes (verified: the app keeps serving) and cannot starve the Pi. |
+| Terminal: ttyd `-O` (`--check-origin`), `-m 20` | ttyd refuses WebSockets opened from another origin. A script a player plants on another lab subdomain cannot open a shell with someone else's Access cookie (verified: same-origin gets 101, `ssti.<domain>` as Origin is dropped). At most 20 concurrent terminals. |
+| Images pinned by tag **and digest** (`cloudflared:2026.10.1@sha256:a15a…`, `ctfd:3.8.8@sha256:07cc…`), `--no-autoupdate` | A re-tagged or tampered upstream image cannot slip in, and nothing changes under you mid-event. To bump: `docker buildx imagetools inspect <image>:<tag>`, then copy the top-level digest (multi-arch, includes arm64). |
 | Hub links → subdomains | The overlay sets `SITE_URL=https://site.${CTF_DOMAIN}/` etc., so the cellule de crise links to `https://<svc>.<domain>/` instead of `host:port`. The intranet "Applications" menus of the challenges switch to subdomains by themselves when they are reached on one. |
 | CTFd `REVERSE_PROXY=true` | CTFd trusts cloudflared's `X-Forwarded-Proto/Host` and builds its own `https://ctfd.<domain>` URLs. |
 
@@ -100,6 +104,11 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
 
 - `terminal` (ttyd) needs **WebSockets**. They are on by default for tunnels.
   Check that zone → **Network → WebSockets** is enabled.
+- `terminal` only: set **Additional application settings → HTTP Settings →
+  HTTP Host Header** = `terminal.<domain>`. ttyd's origin check (`-O`) compares
+  the browser's `Origin` with the `Host` it receives, and pinning it here makes
+  them match whatever cloudflared's default is. Symptom if they don't match:
+  the terminal page loads, then says the connection was closed.
 - Recommended: zone → **SSL/TLS → Edge Certificates → Always Use HTTPS** = on.
   Some challenge pages print their own address back, and the apps only see
   plain HTTP from cloudflared.
@@ -128,6 +137,44 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
 6. Test from a private browser window: `https://hub.<domain>` must show the
    Cloudflare Access login page **before** any lab content. Check one challenge
    host too, e.g. `https://ssti.<domain>`.
+
+### 3b. Make the tunnel itself refuse unauthenticated requests (fail-closed)
+
+Access at the edge is the gate. This step adds a second lock **in cloudflared**,
+so a mistake in step 3 fails closed: a deleted Access app, a hostname added
+later and missed by a non-wildcard app, or a policy changed to Bypass.
+
+1. Access → Applications → your app → **Overview**: copy the **Application
+   Audience (AUD) tag**. Note your **team name**: the `<team>` in your team
+   domain `<team>.cloudflareaccess.com`, shown in Zero Trust settings.
+2. For **each** Public Hostname of the tunnel: **Additional application
+   settings → Access**, turn on JWT enforcement (labelled "Protect with Access"
+   or "Enforce Access JSON Web Token (JWT) validation", depending on the
+   dashboard version) with that team name and AUD tag.
+
+   This is `originRequest.access: {required: true, teamName, audTag}` in the
+   tunnel config. cloudflared then checks the `Cf-Access-Jwt-Assertion` header
+   that Access adds, and drops any request without a valid token for that
+   application, before it reaches the lab.
+3. Re-test step 3.6. Logged-in players see no difference.
+
+### 3c. Tighten the Access application (recommended)
+
+- **Session duration** = the event window (e.g. 12 h), not the 24 h+ default.
+- **Login methods**: one-time PIN or your IdP only. **Never** Bypass, Service
+  Auth or Everyone on lab hostnames.
+- Optional extra **Require** rule in the Allow policy, e.g. *Country* = the
+  countries your players are in, so a leaked PIN email is useless from
+  elsewhere.
+- After the event, review **Logs → Access** for who logged in, and when.
+
+### 3d. Optional: rate-limit the scoreboard
+
+The free plan includes one rate-limiting rule (Security → WAF → Rate limiting
+rules). If you want it, point it at `ctfd.<domain>` with path `/login` or
+`/api/v1/challenges/attempt`, counted per IP, action Block. Players are
+already authenticated, and CTFd has its own submission throttle, so this only
+slows down a player scripting flag guesses.
 
 ### 4. Start the lab in online mode
 
@@ -193,8 +240,10 @@ Files players download in the browser come straight from
 ## Containment and incident notes
 
 - **Assume compromise.** A popped challenge has no egress and no LAN access.
-  It can reach the other lab services on the internal network, exactly like a
-  player can, and nothing else.
+  It can reach the other challenges, the share and the terminal on the
+  `internal` network, exactly like a player can, and nothing else: not CTFd,
+  not the hub, not CyberChef. It cannot rewrite its own files either, and a
+  restart wipes whatever it left in `/tmp`.
 - **Rotate flags** if they leak (e.g. someone posts one):
   `./scripts/gen-flags.sh`, then
   `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d --force-recreate`,
@@ -209,8 +258,9 @@ Files players download in the browser come straight from
   or delete the Public Hostnames, or disable the tunnel in the dashboard.
   Revoke the token (Tunnels → *your tunnel* → Refresh token) if `.env` might
   have leaked.
-- **After the event**: delete the Public Hostnames and the Access application,
-  or the whole tunnel. Then go back to offline mode with a plain
+- **After the event**: **Refresh the tunnel token** (Tunnels → *your tunnel*),
+  then delete the Public Hostnames and the Access application, or the whole
+  tunnel. Then go back to offline mode with a plain
   `docker compose up -d`. Unset `BIND_ADDR` in `.env` first, or the base file
   stays loopback-only.
 

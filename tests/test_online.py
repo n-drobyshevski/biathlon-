@@ -20,6 +20,9 @@ DOMAIN = "ctf.example.com"
 SUB = {"01": "site", "02": "site", "03": "site", "04": "idor", "05": "share", "06": "sqli",
        "07": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
        "14": "sapgw", "15": "share"}
+# online: these each get their own internal network (shared with cloudflared
+# only); everything else (challenges, share, toolbox) sits on `internal`
+ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef"}
 SERVICES = ["hub", "staff", "share", "idor", "sqli", "jwt", "gitleak", "ssti", "sapgw",
             "ctfd", "cyberchef", "toolbox"]
 
@@ -200,15 +203,18 @@ def test_online_overlay_isolates_every_service():
     r = _compose_config(*files, TUNNEL_TOKEN="dummy", CTF_DOMAIN=DOMAIN)
     assert r.returncode == 0, r.stderr
     cfg = json.loads(r.stdout)
-    assert cfg["networks"]["internal"]["internal"] is True
+    for net in ONLINE_NET.values():
+        assert cfg["networks"][net]["internal"] is True, net          # no egress anywhere
     assert not cfg["networks"]["edge"].get("internal")
     assert sorted(cfg["services"]) == sorted(SERVICES + ["cloudflared"])
     for name in SERVICES:
         svc = cfg["services"][name]
-        assert list(svc["networks"]) == ["internal"], name           # no egress
+        assert list(svc["networks"]) == [ONLINE_NET.get(name, "internal")], name   # segmented
         assert all(p["host_ip"] == "127.0.0.1" for p in svc["ports"]), name
         assert "no-new-privileges:true" in svc["security_opt"], name
         assert svc["cap_drop"] == ["ALL"], name
+        assert svc.get("read_only") is True, name                      # app cannot rewrite itself
+        assert 0 < svc.get("pids_limit", 0) <= 256, name               # no fork bomb
         for v in svc.get("volumes", []):
             if v["type"] == "volume":                                # CTFd's own data volume
                 assert (name, v["source"]) == ("ctfd", "ctfd-data"), name
@@ -217,8 +223,13 @@ def test_online_overlay_isolates_every_service():
             assert v["type"] == "bind" and v["target"] == "/handouts" and v.get("read_only"), name
             assert v["source"] == str(ROOT / "handouts" / "dist"), name
     cf = cfg["services"]["cloudflared"]
-    assert sorted(cf["networks"]) == ["edge", "internal"]
-    assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+", cf["image"])
+    assert sorted(cf["networks"]) == sorted({"internal", "edge", *ONLINE_NET.values()})
+    assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+@sha256:[0-9a-f]{64}", cf["image"])
+    assert re.fullmatch(r"ctfd/ctfd:3\.8\.8@sha256:[0-9a-f]{64}", cfg["services"]["ctfd"]["image"])
+    assert cf.get("read_only") is True and cf.get("pids_limit")
+    tb = cfg["services"]["toolbox"]["command"]
+    assert tb[0] == "ttyd" and "-O" in tb and "-W" in tb                # websocket origin check
+    assert any(t.startswith("/work:") for t in cfg["services"]["toolbox"]["tmpfs"])
     assert cf["command"] == ["tunnel", "--no-autoupdate", "run"]
     assert cf["environment"]["TUNNEL_TOKEN"] == "dummy" and "ports" not in cf
     env = cfg["services"]["hub"]["environment"]
