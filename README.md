@@ -96,6 +96,13 @@ and the poster/photo on the DécaFlop site (`:8001`). The hub gives out the
 share's crew login in its Contexte sheet. It never links the hidden staff
 portal, so challenge 01 stays a puzzle, and no mission is locked behind another.
 
+For true first-timers, the hub also has an optional **Mode guidé** tab: a
+step-by-step walkthrough of every mission (what the technique is, where to go,
+then the steps revealed one at a time, always stopping before the flag). It is
+gated by a simple password (`GUIDE_PASSWORD`, default `debutant`) so ordinary
+players don't hit spoilers — hand the word only to teams that want the training
+wheels.
+
 Live services after step 2:
 
 | Port | Service |

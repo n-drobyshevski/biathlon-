@@ -184,7 +184,10 @@ Run through this once, ideally the day before:
 
 - 6 people, 1h–1h30: expect most teams to clear the easy + medium tier and at
   least start the SAP pair. The hint system (point-costed, in each README /
-  your scoreboard) keeps beginners from stalling.
+  your scoreboard) keeps beginners from stalling. For a true first-timer, the
+  hub's **Mode guidé** tab is a full step-by-step walkthrough (stops before the
+  flag), gated by `GUIDE_PASSWORD` (default `debutant`) — give the word only to
+  teams that want it, so others aren't spoiled.
 - If a flag leaks, `./scripts/gen-flags.sh` + `docker compose up -d --build` +
   `./scripts/build-handouts.sh` rotates everything in ~1 minute. Update the
   scoreboard flags afterward.
