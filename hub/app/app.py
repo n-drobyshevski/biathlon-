@@ -289,8 +289,8 @@ def context():
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
-                            "interne (:8020). L'identifiant de connexion est affiché sur le portail "
-                            "staff du site DécaFlop (mission 01)."),
+                            "interne (:8020). L'identifiant de connexion ne s'affiche plus : il se cache "
+                            "dans les ressources du site DécaFlop — commencez par la mission 01."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Poste verrouillé ? Tout est accessible au navigateur — voir l'onglet "
                    "<a href=\"/outils\">Outils</a> (CyberChef et terminal d'équipe, hébergés sur le Pi)."),

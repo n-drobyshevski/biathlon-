@@ -128,18 +128,22 @@ USB stick.
 
 ### Challenge 01 gates the share login
 
-The share login is **no longer printed by the hub**. Players learn it by solving
-challenge 01: `/robots.txt` on the DécaFlop site points to the hidden staff
-portal, and that portal shows the share address (`:8020`) and the login. So 01
-(easy, 50 pts) is now a soft prerequisite for the five share-hosted challenges —
+The share login is **no longer printed by the hub, nor by the staff portal**.
+Players work challenge 01: `/robots.txt` on the DécaFlop site points to the
+hidden staff portal, which shows the share **address** (`:8020`) and hints that
+the team service account is still shipped with the site's front-end. It is —
+every DécaFlop page loads `/assets/site.config.js`, which carries the login
+**base64-encoded**. Players recover it from view-source (open
+`/assets/site.config.js`, base64-decode the `svc` value → `user:pass`). So 01
+(easy, 50 pts) is a soft prerequisite for the five share-hosted challenges —
 **05, 07, 09, 13, 15, ~700 pts in all, including the 250-pt finale (09)**. It's a
 reference, not a hard gate: the share's own login is unchanged, so a teammate who
 already has the credentials can log in directly.
 
-`docker-compose.yml` feeds the SAME `SHARE_USER` / `SHARE_PASSWORD` to both the
-staff portal (01) and the share, so they can never drift. If a team is stuck on
-01, an organizer can just read them the login — it's `equipe-it` /
-`transition2026` unless you overrode it in `.env`.
+`docker-compose.yml` feeds the SAME `SHARE_USER` / `SHARE_PASSWORD` to the staff
+portal (01), the `/assets/site.config.js` asset and the share, so they can never
+drift. If a team is stuck on 01, an organizer can just read them the login — it's
+`equipe-it` / `transition2026` unless you overrode it in `.env`.
 
 ## Pre-event test checklist
 

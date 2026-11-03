@@ -1,7 +1,9 @@
 """
-DécaFlop public storefront for challenge 01 (decor only: nothing here is part
-of the challenge). Every page is static; no user input is echoed back, so the
-storefront offers no rabbit holes. The challenge itself (robots.txt + the
+DécaFlop public storefront for challenge 01. Every page is static and no user
+input is echoed back, so there are no injection rabbit holes. The one deliberate
+recon artifact: every page loads /assets/site.config.js (served by app.py),
+which ships the team service account (base64) — the path to the Intranet DécaFlop
+login that gates the share-hosted challenges. The flag itself (robots.txt + the
 staff portal) lives in app.py.
 """
 import os
@@ -119,7 +121,8 @@ def layout(title, body, current="", notice=""):
         for href, label in NAV)
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css">
+<script src="/assets/site.config.js" defer></script></head><body>
 <a class="skip" href="#main">Aller au contenu</a>
 <div class="strip"><div class="in"><span>Retrait gratuit dans nos 3 magasins</span>
 <span>Retours sous 30 jours*  ·  *voir conditions, en gros</span></div></div>

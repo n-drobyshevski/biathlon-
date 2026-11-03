@@ -4,7 +4,7 @@
 > pushes the results over RFC. Its export token is "not committed" — except it's
 > right there in the source, just not spelled out in one place.
 
-**Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `Basis SAP / Développements` (`ZDFLOP_RESULT_EXPORT.abap`). Credentials are on the DécaFlop staff portal — see challenge 01.
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `Basis SAP / Développements` (`ZDFLOP_RESULT_EXPORT.abap`). Credentials: recover them via challenge 01 (hidden on the DécaFlop site).
 
 Download the report, read it, and recover the export token.
 
