@@ -8,7 +8,7 @@ cat <<'BANNER'
 ────────────────────────────────────────────────────────────
  DÉCAFLOP — boîte à outils de l'équipe  (navigateur → shell)
 ────────────────────────────────────────────────────────────
- Outils : git, git-dumper, binwalk, foremost, exiftool, john,
+ Outils : git, git-dumper, binwalk, foremost, exiftool, john, tshark,
           unzip, xxd, jq, curl, wget, python3.
  Les fichiers de preuve sont sur l'Intranet DécaFlop (:8020) et
  les services tournent sur l'IP du Pi — récupérez-les au besoin

@@ -14,6 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl wget git python3 python3-pip \
         binwalk foremost libimage-exiftool-perl john \
+        tshark binutils \
         unzip xxd jq nano less openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
