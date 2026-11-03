@@ -145,7 +145,8 @@ def test_outils_never_maps_tools_to_missions(hub, hub_module, monkeypatch):
 
 def test_hub_pages_use_plain_punctuation(hub, hub_module, monkeypatch):
     monkeypatch.setattr(hub_module, "CTFD_PORT", "8000")
-    for path, code in (("/", 200), ("/contexte", 200), ("/outils", 200), ("/contacts", 200), ("/nope", 404)):
+    for path, code in (("/", 200), ("/contexte", 200), ("/outils", 200), ("/guide", 200),
+                       ("/contacts", 200), ("/nope", 404)):
         r = hub.get(path)
         assert r.status_code == code, path
         text = unescape(re.sub(r"<[^>]+>", " ", r.data.decode()))
@@ -165,3 +166,63 @@ def test_terminal_banner_gives_no_mission_technique():
     for line in banner.strip("'\n").splitlines():
         assert len(line) <= 46, line
     assert len(" Espace de travail : /work/session-XXXXXX") <= 46
+
+
+# ----------------------------------------------------------- Mode guidé
+GUIDE_PW = "debutant"
+
+
+def _guide_conf(hub_module, monkeypatch, pw=GUIDE_PW):
+    import hashlib
+    monkeypatch.setattr(hub_module, "GUIDE_PASSWORD", pw)
+    monkeypatch.setattr(hub_module, "GUIDE_TOKEN",
+                        hashlib.sha256(("decaflop-guide:" + pw).encode()).hexdigest())
+
+
+def test_guide_locked_without_cookie(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    page = hub.get("/guide").data.decode()
+    assert 'name="motdepasse"' in page and "Déverrouiller" in page
+    # no walkthrough leaks before unlocking
+    assert "gcard" not in page and "Étape suivante" not in page
+
+
+def test_guide_wrong_password_stays_locked(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    r = hub.post("/guide", data={"motdepasse": "nope"})
+    assert r.status_code == 401
+    assert 'name="motdepasse"' in r.data.decode() and "gcard" not in r.data.decode()
+
+
+def test_guide_unlock_sets_cookie_and_shows_all_missions(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    r = hub.post("/guide", data={"motdepasse": GUIDE_PW})
+    assert r.status_code == 302
+    assert "guide=" in r.headers.get("Set-Cookie", "")
+    page = hub.get("/guide").data.decode()        # test client keeps the cookie
+    assert "gcard" in page and "Étape suivante" in page
+    for num, *_ in hub_module.MISSIONS:
+        assert f'id="guide-{num}"' in page, num
+    assert page.count('<article class="gcard"') == len(hub_module.MISSIONS)
+
+
+def test_guide_bogus_cookie_does_not_unlock(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    hub.set_cookie("guide", "1")
+    page = hub.get("/guide").data.decode()
+    assert 'name="motdepasse"' in page and "gcard" not in page
+
+
+def test_guide_never_prints_a_flag_or_the_saboteur(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    hub.post("/guide", data={"motdepasse": GUIDE_PW})
+    page = hub.get("/guide").data.decode()
+    assert "TRIATHLON{" not in page
+    for bad in ("lindqvist", "viktor", "CHIP7", "DecaFlop2026"):
+        assert bad.lower() not in page.lower(), bad
+
+
+def test_guide_covers_every_mission(hub_module):
+    assert set(hub_module.GUIDE) == {m[0] for m in hub_module.MISSIONS}
+    for num, (concept, tool, steps) in hub_module.GUIDE.items():
+        assert concept and tool and 2 <= len(steps) <= 5, num

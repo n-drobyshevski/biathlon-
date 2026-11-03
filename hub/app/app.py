@@ -15,6 +15,8 @@ with a link to each live service.
   the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
 """
+import hashlib
+import hmac
 import json
 import os
 from html import escape
@@ -25,7 +27,8 @@ from flask import Flask, Response, redirect, request
 app = Flask(__name__)
 
 
-TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"), ("/contacts", "Contacts")]
+TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"),
+        ("/guide", "Mode guidé"), ("/contacts", "Contacts")]
 
 # Formula bar follows the clicked cell; "Statut" choices are kept in the
 # player's own browser (localStorage), never sent anywhere.
@@ -90,6 +93,18 @@ CYBERCHEF_PORT = os.environ.get("CYBERCHEF_PORT", "").strip()
 TERMINAL_PORT = os.environ.get("TERMINAL_PORT", "").strip()
 CYBERCHEF_URL = os.environ.get("CYBERCHEF_URL", "").strip()
 TERMINAL_URL = os.environ.get("TERMINAL_URL", "").strip()
+
+# Optional beginner walkthrough ("Mode guidé"), gated by a simple password the
+# organizer hands out. Unlock is remembered by a cookie whose value is a token
+# derived from the password (so a bogus cookie does not unlock it). The repo is
+# public, so this is a spoiler gate for first-timers, not a security boundary.
+GUIDE_PASSWORD = os.environ.get("GUIDE_PASSWORD", "debutant").strip()
+GUIDE_TOKEN = hashlib.sha256(("decaflop-guide:" + GUIDE_PASSWORD).encode()).hexdigest()
+
+
+def guide_unlocked():
+    tok = request.cookies.get("guide", "")
+    return bool(tok) and hmac.compare_digest(tok, GUIDE_TOKEN)
 
 
 def ctfd_ids():
@@ -408,6 +423,178 @@ def outils():
     first = ts[0]
     formula = f'{first["name"]}, {first["url"]}' if first["url"] else f'{first["name"]}, non configuré'
     return html(layout("Outils", fr(body), "/outils", "Objet 1", formula, scripts=TOOLS_JS))
+
+
+# --------------------------------------------------------------- Mode guidé
+# A beginner walkthrough per mission: one plain-language "why", where to go,
+# then 3-5 steps. Steps use only the browser, CyberChef and the team terminal
+# (the Outils tab) plus the share login players get from mission 01. Flags are
+# random per event, so the last step says WHERE the flag appears and never
+# contains a flag or the saboteur's name. Backticks mark inline code.
+GUIDE = {
+    "01": ("Les robots d'indexation lisent un fichier qui liste les pages qu'un site "
+           "préfère garder hors des moteurs de recherche.",
+           "Un navigateur suffit.",
+           ["Ouvrez `/robots.txt` sur le site DécaFlop.",
+            "Repérez la ligne `Disallow:` : elle donne un chemin vers un espace staff.",
+            "Ouvrez ce chemin : le portail staff affiche le flag (et l'identifiant du partage interne, utile plus tard)."]),
+    "02": ("Un fichier peut en cacher un autre : ici une archive ZIP est collée à la fin d'une image PNG.",
+           "Le site, puis CyberChef.",
+           ["Dans l'espace presse (`/presse`), téléchargez l'affiche officielle.",
+            "Dans CyberChef, glissez l'image en entrée et appliquez l'opération `Unzip` (ou `Extract Files`).",
+            "Ouvrez le fichier `flag.txt` extrait : il contient le flag."]),
+    "03": ("Les photos gardent des métadonnées EXIF : date, auteur, parfois coordonnées GPS.",
+           "Le site, puis CyberChef.",
+           ["Dans les actualités (`/actualites`), téléchargez la photo en taille réelle.",
+            "Dans CyberChef, appliquez `Extract EXIF` sur la photo.",
+            "Lisez le champ `Image Description` : il contient le flag. Notez aussi la date et l'auteur, ils reviennent plus tard."]),
+    "04": ("La page affiche un profil à partir d'un numéro dans l'URL, sans vérifier que c'est bien le vôtre "
+           "(faille IDOR).",
+           "Le navigateur.",
+           ["Connectez-vous : vous arrivez sur `/profile/1042`, votre dossard.",
+            "Changez le numéro dans l'URL pour `1000`, le compte admin.",
+            "Le flag est dans l'encadré Jeton d'audit du profil admin."]),
+    "05": ("Une connexion en HTTP non chiffré laisse passer l'identifiant et le mot de passe en clair sur le réseau.",
+           "Le partage interne, puis CyberChef.",
+           ["Dans le partage, dossier Chronométrage puis Captures, téléchargez `timing_booth.pcap`.",
+            "Dans CyberChef, appliquez `Extract Strings` et cherchez la ligne qui commence par `Authorization: Basic` suivie d'un texte.",
+            "Appliquez `From Base64` sur ce texte : vous obtenez `timingop:` suivi du flag. Le flag est la partie après le deux-points."]),
+    "06": ("Le formulaire de connexion insère directement votre saisie dans une requête SQL, "
+           "on peut donc la détourner (injection SQL).",
+           "Le navigateur.",
+           ["Dans le champ identifiant, saisissez `' OR '1'='1' -- ` (gardez l'espace à la fin).",
+            "Mettez n'importe quel mot de passe et validez.",
+            "Vous arrivez sur le tableau de bord : le flag est dans l'encadré Code de validation."]),
+    "07": ("Supprimer un fichier n'efface pas aussitôt ses octets : on peut les récupérer dans une image disque "
+           "(récupération par carving).",
+           "Le partage interne, puis CyberChef.",
+           ["Dans le partage, dossier Arbitrage puis Pièces, téléchargez `referee_usb.img` dans un dossier vide.",
+            "Dans CyberChef, appliquez `Extract Files` : l'image PNG cachée est détectée et extraite.",
+            "Ouvrez l'image PNG extraite : le flag y est écrit."]),
+    "09": ("Un ancien hachage de mot de passe peut se casser avec une liste de mots. Ici le champ BCODE vaut "
+           "le MD5 du mot de passe mis en majuscules.",
+           "Le partage interne, puis CyberChef (ou le terminal).",
+           ["Dans le partage, Basis SAP puis Exports, ouvrez `SAP_USR02_export.csv`.",
+            "Repérez l'utilisateur dont la dernière connexion est le 2026-11-01 vers 18h42 : c'est le suspect.",
+            "Pour chaque mot de `wordlist.txt` (dossier IT puis Outils), dans CyberChef : `To Upper case` puis `MD5`, et comparez au BCODE du suspect. Le mot qui correspond est son mot de passe.",
+            "Avec ce mot de passe, ouvrez `case_file.zip` (Direction de course puis Dossier incident) via `Unzip` avec mot de passe. Le fichier `flag.txt` donne le flag et nomme le coupable."]),
+    "10": ("Un jeton JWT est seulement signé : si la clé de signature est faible, on peut forger soi-même un "
+           "jeton admin.",
+           "La Results API, puis CyberChef.",
+           ["Ouvrez `/api/token` pour obtenir un jeton d'invité.",
+            "Trouvez la clé de signature HS256 : cassez-la avec la liste de mots de l'équipe, ou récupérez-la via la mission 11.",
+            "Dans CyberChef, `JWT Sign` avec la charge `{\"role\":\"admin\"}`, algorithme HS256 et cette clé.",
+            "Appelez `/api/results` avec l'en-tête `Authorization: Bearer` suivi de votre jeton : le flag est dans le champ `signature_officielle`."]),
+    "11": ("Un dossier `.git` laissé en ligne permet de reconstituer tout le code, y compris ce qui a été "
+           "supprimé dans un commit récent.",
+           "Le site chronométrage, puis le terminal d'équipe.",
+           ["Vérifiez l'exposition en ouvrant `/.git/` sur le site de chronométrage.",
+            "Dans le terminal, lancez `git-dumper http://ADRESSE:8011/.git/ ./dump` (ADRESSE est l'adresse du Pi).",
+            "Allez dans le dossier (`cd dump`) et lisez la version précédente : `git show HEAD~1:config.py`. Le jeton d'export qui avait été retiré est le flag (ce fichier révèle aussi la clé JWT de la mission 10)."]),
+    "12": ("Le générateur insère votre nom dans un modèle de page : on peut y glisser du code de modèle "
+           "(faille SSTI).",
+           "Le générateur de certificats.",
+           ["Dans le champ du nom, saisissez `{{7*7}}` : si le certificat affiche `49`, l'injection fonctionne.",
+            "Saisissez ensuite `{{ config['FLAG'] }}` : le certificat imprime le flag à la place du nom."]),
+    "13": ("Un raccourci SAP GUI (`.sap`) peut stocker un mot de passe enregistré, ici simplement encodé en base64.",
+           "Le partage interne, puis CyberChef.",
+           ["Dans le partage, IT puis Sauvegardes postes puis portable-equipe-03, ouvrez `dflop_erp.sap`.",
+            "Repérez la ligne `Password=` suivie d'un texte encodé.",
+            "Dans CyberChef, `From Base64` sur ce texte : vous obtenez le flag."]),
+    "14": ("Un gateway SAP sans liste de contrôle (reginfo vide) laisse n'importe quel programme externe "
+           "s'enregistrer.",
+           "Le gateway SAP.",
+           ["Ouvrez `/sap/gw/reginfo` : la liste d'accès est vide, tout est autorisé.",
+            "Sur la page d'accueil, utilisez le formulaire pour enregistrer un programme (TP) avec un nom quelconque.",
+            "La réponse affiche une Clé d'enregistrement : c'est le flag."]),
+    "15": ("Un secret écrit en dur dans le code peut être découpé en morceaux pour échapper à une simple recherche.",
+           "Le partage interne.",
+           ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`.",
+            "Repérez les variables `lv_a`, `lv_b` et `lv_c` (ignorez `lv_decoy`, un leurre).",
+            "Remettez les morceaux dans l'ordre a puis b puis c : vous obtenez le flag."]),
+}
+
+
+def gcode(text):
+    """Escape a step and turn `backtick` spans into <code> (no other raw HTML)."""
+    parts = escape(text).split("`")
+    return "".join(p if i % 2 == 0 else f"<code>{p}</code>" for i, p in enumerate(parts))
+
+
+# Client-side progressive reveal: the first step shows, the rest wait behind
+# "Étape suivante" (or "Tout afficher"). No server state, no flags on the page.
+GUIDE_JS = """<script>
+(function(){
+ document.querySelectorAll('.gcard').forEach(function(card){
+  var steps=card.querySelectorAll('.step'),
+      next=card.querySelector('.next'),all=card.querySelector('.all');
+  function sync(){var left=card.querySelectorAll('.step.hidden').length;
+   if(!left){if(next)next.style.display='none';if(all)all.style.display='none'}}
+  if(next)next.addEventListener('click',function(){
+   var h=card.querySelector('.step.hidden');if(h)h.classList.remove('hidden');sync()});
+  if(all)all.addEventListener('click',function(){
+   card.querySelectorAll('.step.hidden').forEach(function(s){s.classList.remove('hidden')});sync()});
+  sync();
+ });
+})();
+</script>"""
+
+
+def guide_lock(error="", status=200):
+    err = f'<p class="status err" role="alert">{escape(error)}</p>' if error else ""
+    body = (
+        '<div class="lock"><h1>Mode guidé</h1>'
+        '<p>Un pas-à-pas pour les grands débutants : pour chaque mission, la technique en une phrase, '
+        'où aller, puis les étapes révélées une par une, sans jamais donner le flag.</p>'
+        '<p>C\'est optionnel. Demandez le mot de passe à l\'organisation si vous voulez ces explications.</p>'
+        f'<form method="post" action="/guide">{err}'
+        '<label for="mdp">Mot de passe</label>'
+        '<input class="in" id="mdp" name="motdepasse" type="password" autocomplete="off" '
+        'autocapitalize="none" spellcheck="false" autofocus>'
+        '<button class="go" type="submit">Déverrouiller</button></form></div>')
+    return html(layout("Mode guidé", fr(body), "/guide", "A1", "Mode guidé"), status)
+
+
+def guide_page():
+    cards = []
+    missions = {m[0]: m for m in MISSIONS}
+    for num, (concept, tool, steps) in GUIDE.items():
+        _, title, cat, level, _pts, _brief, live, _files = missions[num]
+        acc = access(live)
+        where = f'{gcode(tool)} {acc}' if acc else gcode(tool)
+        items = "".join(
+            f'<li class="step{"" if i == 0 else " hidden"}">{gcode(s)}</li>'
+            for i, s in enumerate(steps))
+        cards.append(
+            f'<article class="gcard" id="guide-{num}">'
+            f'<div class="gtop"><span class="mn">{num}</span> <b>{fr(escape(title))}</b> '
+            f'<span class="chip {LEVEL_CLASS[level]}">{level}</span> '
+            f'<span class="mute">{escape(cat)}</span></div>'
+            f'<p class="concept">{fr(gcode(concept))}</p>'
+            f'<p class="where"><b>Où :</b> {where}</p>'
+            f'<ol class="steps">{items}</ol>'
+            '<div class="gctl"><button class="next" type="button">Étape suivante</button>'
+            '<button class="all" type="button">Tout afficher</button></div></article>')
+    intro = ('<p class="ghead">Pour chaque mission : la technique en une phrase, où aller, puis les étapes '
+             'une par une. Les flags changent à chaque événement, donc la dernière étape dit où le flag '
+             'apparaît, à vous de le recopier dans le tableau des scores.</p>')
+    body = f'<div class="guide">{intro}{"".join(cards)}</div>'
+    return html(layout("Mode guidé", fr(body), "/guide", "A1", "Mode guidé", scripts=GUIDE_JS))
+
+
+@app.get("/guide")
+def guide():
+    return guide_page() if guide_unlocked() else guide_lock()
+
+
+@app.post("/guide")
+def guide_post():
+    given = request.form.get("motdepasse", "")
+    if hmac.compare_digest(given, GUIDE_PASSWORD):
+        resp = redirect("/guide")
+        resp.set_cookie("guide", GUIDE_TOKEN, max_age=60 * 60 * 24 * 7, samesite="Lax")
+        return resp
+    return guide_lock("Mot de passe incorrect.", 401)
 
 
 @app.get("/contacts")

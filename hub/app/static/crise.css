@@ -102,6 +102,42 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 .know .grid td.k{white-space:nowrap;font-weight:500}
 .know .grid .desc{max-width:none}
 
+/* Mode guidé */
+.guide{padding:22px 24px 28px;max-width:860px}
+.ghead{margin:0 0 18px;color:#3c4043;font-size:13.5px}
+.gcard{background:#fff;border:1px solid #c9ced6;border-radius:8px;box-shadow:0 1px 3px rgba(32,33,36,.12);
+  padding:16px 18px;margin-bottom:16px}
+.gtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gtop b{font-size:15px;font-weight:600}
+.gtop .mn{display:inline;font-variant-numeric:tabular-nums;color:var(--mute);font-weight:600}
+.concept{margin:9px 0 0;color:#3c4043}
+.where{margin:6px 0 0;color:#3c4043}
+.where b{color:var(--text)}
+.steps{margin:12px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+.steps .step{color:#202124}
+.steps .step code,.where code,.concept code{background:#eef0f3;border-radius:3px;padding:0 4px}
+.step.hidden{display:none}
+.gctl{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.gctl button{font:inherit;font-size:12.5px;border-radius:4px;padding:6px 14px;cursor:pointer}
+.gctl .next{background:var(--accent);color:#fff;border:0;font-weight:500}
+.gctl .next:hover{background:#3a475a}
+.gctl .all{background:#fff;color:var(--link);border:1px solid var(--bar)}
+.gctl .all:hover{background:var(--head)}
+
+/* Mode guidé: password lock */
+.lock{max-width:460px;margin:40px auto;padding:24px 26px;background:#fff;border:1px solid #c9ced6;
+  border-radius:8px;box-shadow:0 1px 3px rgba(32,33,36,.12)}
+.lock h1{margin:0 0 10px;font-size:18px;font-weight:600}
+.lock p{margin:0 0 10px;color:#3c4043}
+.lock form{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.lock label{font-weight:500}
+.lock .in{font:inherit;padding:8px 10px;border:1px solid var(--bar);border-radius:4px}
+.lock .in:focus{outline:2px solid var(--sel);outline-offset:1px;border-color:var(--sel)}
+.lock .go{margin-top:8px;align-self:flex-start;background:var(--accent);color:#fff;border:0;border-radius:4px;
+  font:inherit;font-weight:500;padding:8px 18px;cursor:pointer}
+.lock .go:hover{background:#3a475a}
+.lock .status.err{color:#a50e0e;margin:0}
+
 /* sheet tabs */
 .tabs{display:flex;gap:2px;background:var(--head);border-top:1px solid var(--bar);padding:0 12px;position:sticky;bottom:0;z-index:3}
 .tabs a{padding:8px 16px;color:var(--mute);text-decoration:none;font-size:13px}
@@ -124,6 +160,9 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
   .know{margin-top:14px}
   .know .grid .desc{min-width:0}
   .know .grid td.k{white-space:normal}
+  .guide{padding:14px 12px 20px}
+  .gcard{padding:14px}
+  .lock{margin:20px 12px;padding:18px 16px}
 }
 @media (max-width:900px){
   .tiles{grid-template-columns:minmax(0,1fr);max-width:560px}

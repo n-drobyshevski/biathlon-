@@ -21,6 +21,7 @@ services:
       TERMINAL_PORT: "8091"                   # browser terminal (ttyd), linked from the Outils tab
       CYBERCHEF_URL: "${CYBERCHEF_URL:-}"     # optional override if hosted elsewhere
       TERMINAL_URL: "${TERMINAL_URL:-}"       # optional override if hosted elsewhere
+      GUIDE_PASSWORD: "${GUIDE_PASSWORD:-debutant}"  # unlocks the optional "Mode guidé" walkthrough
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
     ports: ["8080:5000"]
