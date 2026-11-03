@@ -226,3 +226,60 @@ def test_guide_covers_every_mission(hub_module):
     assert set(hub_module.GUIDE) == {m[0] for m in hub_module.MISSIONS}
     for num, (concept, tool, steps) in hub_module.GUIDE.items():
         assert concept and tool and 2 <= len(steps) <= 5, num
+
+
+# ------------------------------------------- Missions list, panels, guide inside
+def _step_html(hub_module, num):
+    return hub_module.fr(hub_module.gcode(hub_module.GUIDE[num][2][0], copy=True))
+
+
+def test_missions_list_has_sections_and_a_panel_per_mission(hub, hub_module, monkeypatch):
+    monkeypatch.setattr(hub_module, "CTFD_PORT", "8000")
+    page = hub.get("/").data.decode()
+    assert "Enquête principale" in page and "Audit complémentaire" in page
+    for num, title, *_ in hub_module.MISSIONS:
+        start = page.index(f'id="detail-{num}"')
+        panel = page[start:page.index("</section>", start)]
+        assert 'class="open"' in panel and "Soumettre le flag" in panel, num
+        assert f'select data-k="{num}"' in panel, num
+    assert page.count('class="mpanel"') == len(hub_module.MISSIONS)
+
+
+def test_missions_page_hides_the_guide_until_unlocked(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    locked = hub.get("/").data.decode()
+    assert 'class="gsteps"' not in locked and "gcard" not in locked
+    for num in hub_module.GUIDE:
+        assert _step_html(hub_module, num) not in locked, num
+    hub.post("/guide", data={"motdepasse": GUIDE_PW})
+    unlocked = hub.get("/").data.decode()
+    for num in hub_module.GUIDE:
+        start = unlocked.index(f'id="detail-{num}"')
+        assert _step_html(hub_module, num) in unlocked[start:unlocked.index("</section>", start)], num
+
+
+def test_guide_index_links_tools_and_exact_copy(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    monkeypatch.setattr(hub_module, "CYBERCHEF_PORT", "8090")
+    monkeypatch.setattr(hub_module, "CYBERCHEF_URL", "")
+    hub.post("/guide", data={"motdepasse": GUIDE_PW}, base_url="http://10.0.0.7:8080")
+    page = hub.get("/guide", base_url="http://10.0.0.7:8080").data.decode()
+    for num in hub_module.GUIDE:
+        assert f'href="#guide-{num}"' in page, num
+    assert 'href="http://10.0.0.7:8090/"' in page            # CyberChef is a real link
+    # every Copier button holds exactly the backtick text, trailing spaces included
+    from html import unescape as un
+    for num, (_c, _t, steps) in hub_module.GUIDE.items():
+        for st in steps:
+            for code in st.split("`")[1::2]:
+                assert f'data-copy="{hub_module.escape(code)}"' in page, (num, code)
+                assert un(hub_module.escape(code)) == code
+
+
+def test_unlocked_pages_use_plain_punctuation(hub, hub_module, monkeypatch):
+    _guide_conf(hub_module, monkeypatch)
+    hub.post("/guide", data={"motdepasse": GUIDE_PW})
+    for path in ("/", "/guide"):
+        text = unescape(re.sub(r"<[^>]+>", " ", hub.get(path).data.decode()))
+        for ch in ("—", "–", "…", "·", "↗", "→"):
+            assert ch not in text, (path, repr(ch))

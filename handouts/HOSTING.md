@@ -186,8 +186,9 @@ Run through this once, ideally the day before:
   least start the SAP pair. The hint system (point-costed, in each README /
   your scoreboard) keeps beginners from stalling. For a true first-timer, the
   hub's **Mode guidé** tab is a full step-by-step walkthrough (stops before the
-  flag), gated by `GUIDE_PASSWORD` (default `debutant`) — give the word only to
-  teams that want it, so others aren't spoiled.
+  flag), gated by `GUIDE_PASSWORD` (default `debutant`). Give the word only to
+  teams that want it, so others aren't spoiled. Once unlocked, the steps also show
+  in each mission's panel on the Missions tab.
 - If a flag leaks, `./scripts/gen-flags.sh` + `docker compose up -d --build` +
   `./scripts/build-handouts.sh` rotates everything in ~1 minute. Update the
   scoreboard flags afterward.

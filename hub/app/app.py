@@ -30,26 +30,73 @@ app = Flask(__name__)
 TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"),
         ("/guide", "Mode guidé"), ("/contacts", "Contacts")]
 
-# Formula bar follows the clicked cell; "Statut" choices are kept in the
-# player's own browser (localStorage), never sent anywhere.
-SCRIPT = """<script>
+# Shared page script. The formula bar follows the clicked cell. Mission statuses
+# and the guide steps a player has revealed stay in that player's browser
+# (localStorage), shared between tabs and never sent anywhere. Copier falls back
+# to execCommand because the Pi serves plain HTTP, where navigator.clipboard is off.
+SCRIPT = r"""<script>
 (function(){
  var ref=document.getElementById('ref'),val=document.getElementById('val');
+ window.hubFx=function(r,v){if(ref)ref.textContent=r;if(val)val.textContent=v};
  document.querySelectorAll('.grid td[data-ref],.tile[data-ref]').forEach(function(td){
   td.addEventListener('click',function(e){
-   if(e.target.closest('a,button'))return;
+   if(e.target.closest('a,button,select'))return;
    document.querySelectorAll('.grid .sel,.tile.sel').forEach(function(x){x.classList.remove('sel')});
-   td.classList.add('sel');ref.textContent=td.dataset.ref;
-   val.textContent=td.dataset.f||td.innerText.trim().replace(/\\s+/g,' ');
+   td.classList.add('sel');hubFx(td.dataset.ref,td.dataset.f||td.innerText.trim().replace(/\s+/g,' '));
   });
  });
  var store=null;try{store=window.localStorage}catch(e){}
- document.querySelectorAll('select[data-k]').forEach(function(sel){
-  var k='statut-'+sel.dataset.k;
-  try{var v=store&&store.getItem(k);if(v)sel.value=v}catch(e){}
-  var paint=function(){sel.closest('tr').dataset.statut=sel.value};paint();
-  sel.addEventListener('change',function(){try{store&&store.setItem(k,sel.value)}catch(e){}paint()});
+ function get(k){try{return store?store.getItem(k):null}catch(e){return null}}
+ function put(k,v){try{if(store)store.setItem(k,v)}catch(e){}}
+ function paint(k){
+  var v=get('statut-'+k)||'À faire';
+  document.querySelectorAll('select[data-k="'+k+'"]').forEach(function(s){s.value=v});
+  document.querySelectorAll('[data-m="'+k+'"]').forEach(function(el){el.dataset.statut=v});
+  document.querySelectorAll('[data-m="'+k+'"] .stl').forEach(function(el){el.textContent=v});
+ }
+ function progress(){
+  var p=document.querySelector('.prog');if(!p)return;
+  var n=0,pts=0;
+  document.querySelectorAll('tr[data-pts]').forEach(function(tr){
+   if(tr.dataset.statut==='Résolu'){n++;pts+=+tr.dataset.pts}});
+  p.querySelector('.pn').textContent=n;p.querySelector('.pp').textContent=pts;
+  p.querySelector('.bar i').style.width=Math.round(pts/(+p.dataset.total||1)*100)+'%';
+ }
+ var keys={};document.querySelectorAll('select[data-k]').forEach(function(s){keys[s.dataset.k]=1});
+ Object.keys(keys).forEach(paint);progress();
+ document.addEventListener('change',function(e){var s=e.target.closest('select[data-k]');if(!s)return;
+  put('statut-'+s.dataset.k,s.value);paint(s.dataset.k);progress()});
+ function steps(box){
+  var k=box.dataset.g,li=box.querySelectorAll('.step'),n=li.length;
+  var shown=Math.min(Math.max(parseInt(get('guide-'+k),10)||1,1),n);
+  li.forEach(function(x,i){x.classList.toggle('hidden',i>=shown)});
+  var c=box.querySelector('.gcount');if(c)c.textContent='Étape '+shown+' sur '+n;
+  box.querySelectorAll('[data-go="next"],[data-go="all"]').forEach(function(b){b.hidden=shown>=n});
+  var r=box.querySelector('[data-go="reset"]');if(r)r.hidden=shown<2;
+  document.querySelectorAll('[data-gp="'+k+'"]').forEach(function(x){x.textContent=shown+'/'+n});
+  return {k:k,shown:shown,n:n};
+ }
+ function allSteps(){document.querySelectorAll('[data-g]').forEach(steps)}
+ allSteps();
+ function copy(b){var v=b.dataset.copy,icon=b.classList.contains('cpy');
+  function ok(){if(icon){b.classList.add('done');setTimeout(function(){b.classList.remove('done')},1500)}
+   else{b.textContent='Copié';setTimeout(function(){b.textContent='Copier'},1500)}}
+  function legacy(){var a=document.createElement('textarea');a.value=v;a.style.position='fixed';
+   a.style.opacity='0';document.body.appendChild(a);a.select();
+   try{document.execCommand('copy');ok()}catch(e){}a.remove()}
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(v).then(ok,legacy)}
+  else{legacy()}}
+ document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-g] [data-go]');
+  if(b){var s=steps(b.closest('[data-g]'));
+   var next=b.dataset.go==='next'?s.shown+1:b.dataset.go==='all'?s.n:1;
+   put('guide-'+s.k,String(next));
+   document.querySelectorAll('[data-g="'+s.k+'"]').forEach(steps);return}
+  var c=e.target.closest('button[data-copy]');if(c)copy(c);
  });
+ window.addEventListener('storage',function(e){if(!e.key)return;
+  if(e.key.indexOf('statut-')===0){paint(e.key.slice(7));progress()}
+  if(e.key.indexOf('guide-')===0)allSteps()});
 })();
 </script>"""
 
@@ -70,7 +117,7 @@ def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
              if board else "")
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{DOC} - {title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
+<title>{DOC} - {title}</title><link rel="stylesheet" href="/static/crise.css"></head><body><script>document.documentElement.className+=' js'</script>
 <header class="title"><span class="doc" aria-hidden="true"></span>
  <div><b>{DOC}</b> <span class="share">partagé avec l'équipe IT d'urgence</span></div>
  {score}</header>
@@ -261,41 +308,153 @@ def access(live):
     return f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>'
 
 
+SECTIONS = [("Enquête principale", "missions 01 à 09", lambda num: int(num) < 10),
+            ("Audit complémentaire", "missions 10 à 15", lambda num: int(num) >= 10)]
+STATUSES = ("À faire", "En cours", "Résolu")
+
+
+def section_of(num):
+    return next(sec for sec in SECTIONS if sec[2](num))
+
+
+def submit_link(num, board, ids):
+    """CTFd link that opens this mission's challenge (or the challenge list)."""
+    if not board:
+        return ""
+    target = f"{board}challenges"
+    if num in ids:
+        target += "#" + quote(f"{ids[num]['name']}-{ids[num]['id']}", safe="")
+    return f'<a class="submit" href="{escape(target)}"{NEW_TAB}>Soumettre le flag {EXT}</a>'
+
+
+def status_select(num):
+    opts = "".join(f"<option>{st}</option>" for st in STATUSES)
+    return f'<select data-k="{num}" aria-label="Statut de la mission {num}">{opts}</select>'
+
+
+def open_button(live):
+    name, port = LIVE_LABEL[live]
+    return (f'<a class="open" href="{escape(service_url(live))}"{NEW_TAB}>Ouvrir {EXT}</a>'
+            f'<span class="svc">{name} <span class="mute">({port})</span></span>')
+
+
+def mission_panel(m, board, ids, unlocked):
+    """Details of one mission (brief, access, status). The guide steps are added only
+    when the player unlocked the Mode guidé, so the page never spoils by default."""
+    num, title, cat, level, pts, brief, live, _files = m
+    if unlocked and num in GUIDE:
+        extra = f'<div class="mp-guide"><h3>Mode guidé</h3>{guide_block(num)}</div>'
+    else:
+        extra = ('<p class="mp-lock">Besoin d\'un coup de pouce ? Le <a href="/guide">Mode guidé</a> '
+                 'explique chaque mission pas à pas. Demandez son mot de passe à l\'organisation.</p>')
+    return (f'<section class="mpanel" id="detail-{num}" data-m="{num}" aria-label="Mission {num}">'
+            f'<div class="mp-hd"><span class="mp-no">Mission {num}, {section_of(num)[0].lower()}</span>'
+            f'<h2>{escape(title)}</h2><div class="mp-tags"><span class="chip cat">{escape(cat)}</span>'
+            f'<span class="chip {LEVEL_CLASS[level]}">{level}</span><span class="pts">{pts} points</span></div></div>'
+            f'<div class="mp-bd"><p class="brief">{brief}</p>'
+            f'<div class="mp-sec"><h3>Accès</h3><div class="mp-row">{open_button(live)}</div></div>'
+            f'<div class="mp-sec"><h3>Statut</h3><div class="mp-row">{status_select(num)}'
+            f'{submit_link(num, board, ids)}</div></div>{extra}</div></section>')
+
+
+# Missions sheet: one mission is selected at a time and its panel shows beside the
+# list (under its row on narrow screens). The hash keeps the #mission-NN form that
+# CTFd links to.
+MISSIONS_JS = r"""<script>
+(function(){
+ var split=document.querySelector('.split');if(!split)return;
+ var side=split.querySelector('.mpanels'),narrow=window.matchMedia('(max-width:900px)');
+ var rows=[].slice.call(split.querySelectorAll('tr[data-m]')),cur=null;
+ function place(){
+  var old=split.querySelector('tr.exp');
+  if(old){[].slice.call(old.querySelectorAll('.mpanel')).forEach(function(x){side.appendChild(x)});old.remove()}
+  if(!narrow.matches||!cur)return;
+  var tr=document.getElementById('mission-'+cur),row=document.createElement('tr'),td=document.createElement('td');
+  row.className='exp';td.colSpan=8;row.appendChild(td);td.appendChild(document.getElementById('detail-'+cur));
+  tr.parentNode.insertBefore(row,tr.nextSibling);
+ }
+ function select(k,push){
+  var tr=document.getElementById('mission-'+k);if(!tr)return;
+  cur=k;
+  rows.forEach(function(r){r.classList.toggle('pick',r===tr)});
+  split.querySelectorAll('.mpanel').forEach(function(x){x.classList.toggle('on',x.id==='detail-'+k)});
+  if(window.hubFx)hubFx('B'+tr.dataset.r,tr.dataset.t);
+  if(push&&history.replaceState)history.replaceState(null,'','#mission-'+k);
+  place();
+ }
+ function fromHash(){var m=/^#(?:mission|detail)-(\d\d)$/.exec(location.hash);return m&&m[1]}
+ var first=fromHash();
+ if(!first){var open=rows.filter(function(r){return r.dataset.statut!=='Résolu'})[0]||rows[0];first=open&&open.dataset.m}
+ if(first)select(first,false);
+ split.addEventListener('click',function(e){
+  if(e.target.closest('.mpanel'))return;
+  var a=e.target.closest('a.pick'),tr=e.target.closest('tr[data-m]');
+  if(!a&&e.target.closest('a,button,select'))return;
+  if(!tr)return;if(a)e.preventDefault();
+  if(narrow.matches&&tr.dataset.m===cur){cur=null;rows.forEach(function(r){r.classList.remove('pick')});place();return}
+  select(tr.dataset.m,true);
+ });
+ split.addEventListener('keydown',function(e){
+  var a=e.target.closest('a.pick');if(!a||(e.key!=='ArrowDown'&&e.key!=='ArrowUp'))return;
+  var i=rows.indexOf(a.closest('tr'))+(e.key==='ArrowDown'?1:-1);
+  if(i<0||i>=rows.length)return;e.preventDefault();select(rows[i].dataset.m,true);rows[i].querySelector('a.pick').focus();
+ });
+ window.addEventListener('hashchange',function(){var k=fromHash();if(k)select(k,false)});
+ if(narrow.addEventListener)narrow.addEventListener('change',place);else if(narrow.addListener)narrow.addListener(place);
+})();
+</script>"""
+
+
 @app.get("/")
 def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
     board = scoreboard_url()
     ids = ctfd_ids()
-    rows = []
-    for num, title, cat, level, pts, brief, live, _files in MISSIONS:
-        submit = ""
-        if board:
-            target = f"{board}challenges"
-            if num in ids:            # opens that challenge's popup in CTFd
-                target += "#" + quote(f"{ids[num]['name']}-{ids[num]['id']}", safe="")
-            submit = f'<a class="submit" href="{escape(target)}"{NEW_TAB}>Soumettre le flag {EXT}</a>'
-        status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
-                  '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
-                  + submit)
-        rows.append((f' class="mission" id="mission-{num}"', [
-            (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
-            (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
-            (access(live), ' class="acc"'), (status, "")]))
-    n = len(rows) + 2
-    total_row = (f'<tr class="tot"><th class="r">{n}</th><td data-ref="A{n}"></td><td data-ref="B{n}">Total</td>'
-                 f'<td data-ref="C{n}"></td><td data-ref="D{n}"></td><td data-ref="E{n}"></td>'
-                 f'<td data-ref="F{n}" class="num sel" data-f="=SOMME(F2:F{n-1})">{total}</td>'
-                 f'<td data-ref="G{n}"></td><td data-ref="H{n}"></td></tr>')
-    body = grid(["N°", "Mission", "Description", "Catégorie", "Niveau", "Points", "Accès", "Statut"],
-                rows, total_row, "frozen")
+    unlocked = guide_unlocked()
+    heads = ["N°", "Mission", "Catégorie", "Niveau", "Points", "Accès", "Statut"]
+    letters = "".join(f"<th>{COLS[i]}</th>" for i in range(len(heads)))
+    body = ['<tr class="h"><th class="r">1</th>' +
+            "".join(f'<td data-ref="{COLS[i]}1">{h}</td>' for i, h in enumerate(heads)) + "</tr>"]
+    panels, r = [], 1
+    for sec, span, test in SECTIONS:
+        ms = [m for m in MISSIONS if test(m[0])]
+        r += 1
+        body.append(f'<tr class="secr"><th class="r">{r}</th><td colspan="{len(heads)}" data-ref="A{r}">'
+                    f'{sec}<span>{span}, {sum(m[4] for m in ms)} points</span></td></tr>')
+        for m in ms:
+            num, title, cat, level, pts, _brief, live, _files = m
+            r += 1
+            body.append(
+                f'<tr class="mission" id="mission-{num}" data-m="{num}" data-pts="{pts}" data-r="{r}" '
+                f'data-t="{escape(title)}"><th class="r">{r}</th><td data-ref="A{r}">{num}</td>'
+                f'<td data-ref="B{r}" class="mi"><a class="pick" href="#detail-{num}">{escape(title)}</a></td>'
+                f'<td data-ref="C{r}">{escape(cat)}</td>'
+                f'<td data-ref="D{r}"><span class="chip {LEVEL_CLASS[level]}">{level}</span></td>'
+                f'<td data-ref="E{r}" class="num">{pts}</td>'
+                f'<td data-ref="F{r}" class="acc">{access(live)}</td>'
+                f'<td data-ref="G{r}" class="stc"><span class="dot"></span><span class="stl">À faire</span></td></tr>')
+            panels.append(mission_panel(m, board, ids, unlocked))
+    n = r + 1
+    body.append(f'<tr class="tot"><th class="r">{n}</th><td data-ref="A{n}"></td><td data-ref="B{n}">Total</td>'
+                f'<td data-ref="C{n}"></td><td data-ref="D{n}"></td>'
+                f'<td data-ref="E{n}" class="num sel" data-f="=SOMME(E3:E{r})">{total}</td>'
+                f'<td data-ref="F{n}"></td><td data-ref="G{n}"></td></tr>')
+    prog = (f'<div class="prog" data-total="{total}"><span><b class="pn">0</b> sur {len(MISSIONS)} résolues</span>'
+            '<span class="bar" aria-hidden="true"><i></i></span>'
+            f'<span><b class="pp">0</b> sur {total} points</span>'
+            '<span class="mute pnote">Suivi enregistré dans ce navigateur</span></div>')
+    table = (f'<table class="grid mlist"><thead><tr><th class="r"></th>{letters}</tr></thead>'
+             f'<tbody>{"".join(body)}</tbody></table>')
+    page_body = (f'{prog}<div class="split"><div class="mwrap">{table}</div>'
+                 f'<div class="mpanels">{"".join(panels)}</div></div>')
     where = (f' et se soumettent sur le <a href="{escape(board)}"{NEW_TAB}>tableau des scores</a>'
              if board else "")
     note = (f'<p class="note">La veille de la finale, la liste de départ a été truquée en échangeant les '
             f'puces de chronométrage. Suivez la piste jusqu\'au coupable. {len(MISSIONS)} missions, '
             f'{total} points. Les flags ont la forme <code>TRIATHLON{{...}}</code>{where}. '
             f'Détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
-    return html(layout("Missions", fr(body), "/", f"F{n}",
-                       f"=SOMME(F2:F{n-1})", fr(note)))
+    return html(layout("Missions", fr(page_body), "/", f"E{n}", f"=SOMME(E3:E{r})", fr(note),
+                       scripts=MISSIONS_JS))
 
 
 @app.get("/contexte")
@@ -377,8 +536,7 @@ def tile(n, t):
 
 
 # Tool state is checked from the player's browser (the hub never calls the tools):
-# an opaque no-cors answer means the tool is up. Copier falls back to execCommand
-# because the Pi serves plain HTTP, where navigator.clipboard is unavailable.
+# an opaque no-cors answer means the tool is up. Copier is handled by SCRIPT.
 TOOLS_JS = """<script>
 (function(){
  document.querySelectorAll('[data-check]').forEach(function(el){
@@ -388,17 +546,6 @@ TOOLS_JS = """<script>
    el.textContent=ok?'En ligne':'Injoignable'};
   fetch(el.dataset.check,{mode:'no-cors',cache:'no-store',signal:ctl?ctl.signal:undefined})
    .then(function(){set(true)},function(){set(false)});
- });
- document.querySelectorAll('button[data-copy]').forEach(function(b){
-  b.addEventListener('click',function(){
-   var v=b.dataset.copy;
-   function ok(){b.textContent='Copié';setTimeout(function(){b.textContent='Copier'},1500)}
-   function legacy(){var a=document.createElement('textarea');a.value=v;a.style.position='fixed';
-    a.style.opacity='0';document.body.appendChild(a);a.select();
-    try{document.execCommand('copy');ok()}catch(e){}a.remove()}
-   if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(v).then(ok,legacy)}
-   else{legacy()}
-  });
  });
 })();
 </script>"""
@@ -515,37 +662,69 @@ GUIDE = {
 }
 
 
-def gcode(text):
-    """Escape a step and turn `backtick` spans into <code> (no other raw HTML)."""
+COPY_ICON = ('<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">'
+             '<rect x="5.5" y="5.5" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+             '<path d="M3 10.5V3.5a1 1 0 0 1 1-1h6.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>')
+
+
+def gcode(text, copy=False):
+    """Escape a guide line and turn `backtick` spans into <code> (no other raw HTML).
+    With copy=True each span gets a Copier button holding the exact text, trailing
+    spaces included."""
     parts = escape(text).split("`")
-    return "".join(p if i % 2 == 0 else f"<code>{p}</code>" for i, p in enumerate(parts))
+    out = []
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            out.append(part)
+        elif copy:
+            out.append(f'<span class="cc"><code>{part}</code><button type="button" class="cpy" '
+                       f'data-copy="{part}" title="Copier" aria-label="Copier {part}">{COPY_ICON}</button></span>')
+        else:
+            out.append(f"<code>{part}</code>")
+    return "".join(out)
 
 
-# Client-side progressive reveal: the first step shows, the rest wait behind
-# "Étape suivante" (or "Tout afficher"). No server state, no flags on the page.
-GUIDE_JS = """<script>
-(function(){
- document.querySelectorAll('.gcard').forEach(function(card){
-  var steps=card.querySelectorAll('.step'),
-      next=card.querySelector('.next'),all=card.querySelector('.all');
-  function sync(){var left=card.querySelectorAll('.step.hidden').length;
-   if(!left){if(next)next.style.display='none';if(all)all.style.display='none'}}
-  if(next)next.addEventListener('click',function(){
-   var h=card.querySelector('.step.hidden');if(h)h.classList.remove('hidden');sync()});
-  if(all)all.addEventListener('click',function(){
-   card.querySelectorAll('.step.hidden').forEach(function(s){s.classList.remove('hidden')});sync()});
-  sync();
- });
-})();
-</script>"""
+MISSION_BY_NUM = {m[0]: m for m in MISSIONS}
+
+
+def guide_where(num):
+    """Links for where to go: the mission's live service, then the browser tools
+    that the guide line names (CyberChef, the team terminal)."""
+    _concept, tool, _steps = GUIDE[num]
+    live = MISSION_BY_NUM[num][6]
+    name, port = LIVE_LABEL[live]
+    links = [f'<a class="wto" href="{escape(service_url(live))}"{NEW_TAB}>{name} '
+             f'<span class="mute">({port})</span> {EXT}</a>']
+    for label, key, url in (("CyberChef", "CyberChef", tool_url(CYBERCHEF_URL, CYBERCHEF_PORT)),
+                            ("Terminal d'équipe", "terminal", tool_url(TERMINAL_URL, TERMINAL_PORT))):
+        if key in tool:
+            links.append(f'<a class="wto" href="{escape(url)}"{NEW_TAB}>{label} {EXT}</a>' if url else
+                         f'<span class="wto off">{label} <span class="mute">(non configuré)</span></span>')
+    return "".join(links)
+
+
+def guide_block(num):
+    """One mission's guide: the principle, where to go, then the steps. The shared
+    script reveals the steps one at a time and remembers how far the player got."""
+    concept, tool, steps = GUIDE[num]
+    items = "".join(f'<li class="step{"" if i == 0 else " hidden"}">{gcode(st, copy=True)}</li>'
+                    for i, st in enumerate(steps))
+    return (f'<div class="gblock"><p class="concept">{gcode(concept)}</p>'
+            f'<div class="gwhere"><h4>Où aller</h4><div class="wlinks">{guide_where(num)}</div>'
+            f'<p class="wtxt">{gcode(tool)}</p></div>'
+            f'<div class="gsteps" data-g="{num}"><h4>Étapes</h4><ol class="steps">{items}</ol>'
+            '<div class="gctl"><button class="next" type="button" data-go="next">Étape suivante</button>'
+            '<button class="all" type="button" data-go="all">Tout afficher</button>'
+            '<button class="reset" type="button" data-go="reset" hidden>Recommencer</button>'
+            f'<span class="gcount">Étape 1 sur {len(steps)}</span></div></div></div>')
 
 
 def guide_lock(error="", status=200):
     err = f'<p class="status err" role="alert">{escape(error)}</p>' if error else ""
     body = (
         '<div class="lock"><h1>Mode guidé</h1>'
-        '<p>Un pas-à-pas pour les grands débutants : pour chaque mission, la technique en une phrase, '
-        'où aller, puis les étapes révélées une par une, sans jamais donner le flag.</p>'
+        '<p>Un pas-à-pas pour les grands débutants. Chaque mission y est expliquée en une phrase, avec '
+        'où aller et des étapes révélées une par une. Le guide ne donne jamais le flag.</p>'
         '<p>C\'est optionnel. Demandez le mot de passe à l\'organisation si vous voulez ces explications.</p>'
         f'<form method="post" action="/guide">{err}'
         '<label for="mdp">Mot de passe</label>'
@@ -556,30 +735,34 @@ def guide_lock(error="", status=200):
 
 
 def guide_page():
-    cards = []
-    missions = {m[0]: m for m in MISSIONS}
-    for num, (concept, tool, steps) in GUIDE.items():
-        _, title, cat, level, _pts, _brief, live, _files = missions[num]
-        acc = access(live)
-        where = f'{gcode(tool)} {acc}' if acc else gcode(tool)
-        items = "".join(
-            f'<li class="step{"" if i == 0 else " hidden"}">{gcode(s)}</li>'
-            for i, s in enumerate(steps))
-        cards.append(
-            f'<article class="gcard" id="guide-{num}">'
-            f'<div class="gtop"><span class="mn">{num}</span> <b>{fr(escape(title))}</b> '
-            f'<span class="chip {LEVEL_CLASS[level]}">{level}</span> '
-            f'<span class="mute">{escape(cat)}</span></div>'
-            f'<p class="concept">{fr(gcode(concept))}</p>'
-            f'<p class="where"><b>Où :</b> {where}</p>'
-            f'<ol class="steps">{items}</ol>'
-            '<div class="gctl"><button class="next" type="button">Étape suivante</button>'
-            '<button class="all" type="button">Tout afficher</button></div></article>')
-    intro = ('<p class="ghead">Pour chaque mission : la technique en une phrase, où aller, puis les étapes '
-             'une par une. Les flags changent à chaque événement, donc la dernière étape dit où le flag '
-             'apparaît, à vous de le recopier dans le tableau des scores.</p>')
-    body = f'<div class="guide">{intro}{"".join(cards)}</div>'
-    return html(layout("Mode guidé", fr(body), "/guide", "A1", "Mode guidé", scripts=GUIDE_JS))
+    board = scoreboard_url()
+    ids = ctfd_ids()
+    index, sections = [], []
+    for sec, span, test in SECTIONS:
+        entries, cards = [], []
+        for num, title, cat, level, pts, _brief, _live, _files in MISSIONS:
+            if not test(num) or num not in GUIDE:
+                continue
+            n = len(GUIDE[num][2])
+            entries.append(
+                f'<li><a href="#guide-{num}" data-m="{num}"><span class="dot"></span><span class="no">{num}</span>'
+                f'<span class="t">{escape(title)}</span><span class="gp" data-gp="{num}">1/{n}</span></a></li>')
+            cards.append(
+                f'<article class="gcard" id="guide-{num}" data-m="{num}">'
+                f'<div class="gtop"><span class="mn">{num}</span> <b>{escape(title)}</b> '
+                f'<span class="chip {LEVEL_CLASS[level]}">{level}</span> <span class="chip cat">{escape(cat)}</span> '
+                f'<span class="pts">{pts} points</span></div>{guide_block(num)}'
+                f'<div class="gfoot">{status_select(num)}{submit_link(num, board, ids)}'
+                f'<a class="back" href="/#mission-{num}">Voir la mission</a></div></article>')
+        index.append(f'<div class="gsec"><h2>{sec}</h2><ol>{"".join(entries)}</ol></div>')
+        sections.append(f'<h2 class="gsech">{sec}<span>{span}</span></h2>{"".join(cards)}')
+    intro = ('<p class="ghead">Chaque fiche explique la technique en une phrase, indique où aller, puis révèle '
+             'les étapes une par une. Les flags changent à chaque événement, donc la dernière étape dit où le '
+             'flag apparaît. Recopiez-le ensuite dans le tableau des scores. Votre avancement reste dans ce '
+             'navigateur.</p>')
+    body = (f'<div class="gwrap"><nav class="gindex" aria-label="Sommaire du guide">{"".join(index)}</nav>'
+            f'<div class="gmain">{intro}{"".join(sections)}</div></div>')
+    return html(layout("Mode guidé", fr(body), "/guide", "A1", "Mode guidé"))
 
 
 @app.get("/guide")

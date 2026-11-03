@@ -100,8 +100,10 @@ For true first-timers, the hub also has an optional **Mode guidé** tab: a
 step-by-step walkthrough of every mission (what the technique is, where to go,
 then the steps revealed one at a time, always stopping before the flag). It is
 gated by a simple password (`GUIDE_PASSWORD`, default `debutant`) so ordinary
-players don't hit spoilers — hand the word only to teams that want the training
-wheels.
+players don't hit spoilers. Hand the word only to teams that want the training
+wheels. Once unlocked, each mission's guide also shows in its panel on the
+Missions tab. The browser remembers the steps a team has revealed and the status
+it set for each mission (localStorage, shared between the tabs).
 
 Live services after step 2:
 
