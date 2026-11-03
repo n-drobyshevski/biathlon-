@@ -9,6 +9,12 @@ edit one, then copy it to the others.
 Links to the other tools reuse the host the player typed, with each tool's
 fixed port (same rule as the hub). The Applications menu lists the regular
 internal tools only. It never links the staff portal or the hub.
+
+Online (Cloudflare Tunnel, see CLOUDFLARE.md) every tool has its own
+subdomain instead of a port: when the player's host is <lab-label>.<domain>
+(e.g. share.ctf.example.com), links go to <tool's subdomain>.<domain> on the
+same scheme. An IP or any other host keeps the host:port rule, so the offline
+Pi is unaffected.
 """
 from html import escape as esc
 
@@ -24,6 +30,11 @@ APPS = {
     "certificats": (8012, "Certificats de finaliste", "Génération et impression"),
     "sapgw": (8014, "Gateway SAP (SMGW)", "Moniteur du gateway DFL"),
 }
+# Online subdomain of each tool (same names as the hub's links and CLOUDFLARE.md)
+SUBDOMAIN = {"intranet": "share", "athletes": "idor", "resultats": "sqli", "api": "jwt",
+             "chrono": "git", "certificats": "ssti", "sapgw": "sapgw"}
+LAB_LABELS = {"site", "share", "idor", "sqli", "jwt", "git", "ssti", "sapgw",
+              "hub", "ctfd", "cyberchef", "terminal"}
 ORDER = ["intranet", "athletes", "resultats", "api", "chrono", "certificats", "sapgw"]
 CUR = ' aria-current="page"'
 
@@ -77,10 +88,23 @@ def host():
     return h.rsplit(":", 1)[0] if not h.endswith("]") else h
 
 
+def lab_domain():
+    """The online base domain if the player came in via <lab-label>.<domain>, else ""."""
+    labels = host().lower().split(".")
+    if len(labels) >= 3 and labels[0] in LAB_LABELS and not labels[-1].isdigit():
+        return ".".join(labels[1:])
+    return ""
+
+
 def app_url(key, path="/", current=None):
     """Link to another tool on the player's host; relative inside the current one."""
     if key == current:
         return path
+    domain = lab_domain()
+    if domain:                      # online: one subdomain per tool, behind the tunnel
+        proto = request.headers.get("X-Forwarded-Proto", "").split(",")[0].strip()
+        scheme = proto if proto in ("http", "https") else request.scheme
+        return f"{scheme}://{SUBDOMAIN[key]}.{domain}{path}"
     return f"http://{host()}:{APPS[key][0]}{path}"
 
 

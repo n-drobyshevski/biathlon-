@@ -18,11 +18,24 @@ Cross links with the cellule de crise (hub, port 8080):
 Usage (on the Pi, after finishing the CTFd setup wizard in a browser):
     python3 scripts/ctfd-setup.py --host 192.168.8.2
 
+Online (Cloudflare Tunnel, see CLOUDFLARE.md): pass the base domain instead.
+Every **Connect:** line becomes that challenge's own subdomain
+(https://site.<domain>, https://share.<domain>, ...), the hub links become
+https://hub.<domain>. CTFd's own public URL comes from REVERSE_PROXY in
+docker-compose.cloudflare.yml (it then trusts cloudflared's X-Forwarded-*
+headers); there is no separate CTFd setting for it. CTFd publishes no host
+port online, so reach it on its container IP:
+    CTFD_URL=http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+        $(docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml ps -q ctfd)):8000 \
+    python3 scripts/ctfd-setup.py --base-domain ctf.example.com
+
 Needs in .env:
     CTFD_TOKEN=ctfd_...        admin access token (CTFd: Settings > Access Tokens)
 Optional:
     CTFD_URL=http://localhost:8000
     CTF_HOST=192.168.8.2       instead of --host
+    CTF_DOMAIN=ctf.example.com instead of --base-domain (online mode)
+CTFD_URL may also come from the shell environment.
 
 Standard library only, so it runs with the Pi's system python3.
 """
@@ -40,6 +53,13 @@ HUB_PORT = 8080
 TITLE_RE = re.compile(r"^# (\d\d) · (.+?) — `([^`]+)` · \w+ · (\d+) pts", re.M)
 HINT_RE = re.compile(r"<details><summary>Hint (\d+) \(−(\d+)\)</summary>(.*?)</details>", re.S)
 CONNECT_RE = re.compile(r"^\*\*Connect:\*\* `([^`]+)`", re.M)
+HOST_PORT_RE = re.compile(r"http://<CTF-HOST>:\d+")
+
+# Online mode: the subdomain each challenge's **Connect:** line points at
+# (same names as the hub's *_URL values in docker-compose.cloudflare.yml).
+CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "idor",
+               "05": "share", "07": "share", "09": "share", "13": "share", "15": "share",
+               "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw"}
 
 
 def read_env(path):
@@ -53,7 +73,12 @@ def read_env(path):
     return env
 
 
-def parse_readme(path, host):
+def hub_url(host, domain):
+    """The cellule de crise's address: https://hub.<domain>/ online, else http://host:8080/."""
+    return f"https://hub.{domain}/" if domain else f"http://{host}:{HUB_PORT}/"
+
+
+def parse_readme(path, host, domain=None):
     text = open(path, encoding="utf-8").read()
     m = TITLE_RE.search(text)
     if not m:
@@ -68,11 +93,18 @@ def parse_readme(path, host):
     # for 02/03, the internal share "Partage DFlop" :8020 for 05/07/09/13/15),
     # so there are no hub /fichiers download links to generate here.
     body = text[m.end():].split("<details>", 1)[0].strip()
-    host_s = host or "<CTF-HOST>"
-    body = body.replace("<CTF-HOST>", host_s)
+    if domain:                                     # online: one subdomain per service
+        body = HOST_PORT_RE.sub(f"https://{CONNECT_SUB[num]}.{domain}", body)
+        body = body.replace("<CTF-HOST>", f"hub.{domain}")
+        hub = hub_url(host, domain)
+        body += (f"\n\n**Cellule de crise :** [fiche de la mission {num}]({hub}#mission-{num})"
+                 f" · toutes les missions et liens : {hub}")
+    else:
+        host_s = host or "<CTF-HOST>"
+        body = body.replace("<CTF-HOST>", host_s)
 
-    body += (f"\n\n**Cellule de crise :** [fiche de la mission {num}](http://{host_s}:{HUB_PORT}/#mission-{num})"
-             f" · toutes les missions et liens : http://{host_s}:{HUB_PORT}")
+        body += (f"\n\n**Cellule de crise :** [fiche de la mission {num}](http://{host_s}:{HUB_PORT}/#mission-{num})"
+                 f" · toutes les missions et liens : http://{host_s}:{HUB_PORT}")
 
     cm = CONNECT_RE.search(body)
     connection = cm.group(1) if cm else ""
@@ -107,6 +139,8 @@ class CTFd:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", help="address players use to reach the Pi (e.g. 192.168.8.2)")
+    ap.add_argument("--base-domain", help="online mode (Cloudflare Tunnel): base domain of the lab "
+                                          "subdomains, e.g. ctf.example.com (or CTF_DOMAIN in .env)")
     ap.add_argument("--env", default=os.path.join(ROOT, ".env"))
     ap.add_argument("--locale", default="fr", help="CTFd default interface language (default: fr)")
     ap.add_argument("--ids-file", default=os.path.join(ROOT, "handouts", "dist", "ctfd_ids.json"),
@@ -116,7 +150,10 @@ def main():
 
     env = read_env(args.env)
     host = args.host or env.get("CTF_HOST", "")
-    challenges = [parse_readme(os.path.join(ROOT, "challenges", d, "README.md"), host)
+    # online when --base-domain is given, or CTF_DOMAIN is set and no explicit --host
+    domain = args.base_domain or ("" if args.host else env.get("CTF_DOMAIN") or os.environ.get("CTF_DOMAIN", ""))
+    domain = domain.strip().strip("./")
+    challenges = [parse_readme(os.path.join(ROOT, "challenges", d, "README.md"), host, domain or None)
                   for d in sorted(os.listdir(os.path.join(ROOT, "challenges")))
                   if os.path.exists(os.path.join(ROOT, "challenges", d, "README.md"))]
 
@@ -137,10 +174,12 @@ def main():
     token = env.get("CTFD_TOKEN") or os.environ.get("CTFD_TOKEN")
     if not token:
         raise SystemExit("Set CTFD_TOKEN in .env (CTFd admin: Settings > Access Tokens).")
-    if not host:
+    if domain:
+        print(f"Online mode: Connect links on the subdomains of {domain}.")
+    elif not host:
         print("Note: no --host given; descriptions will say <CTF-HOST> and skip download links.")
 
-    api = CTFd(env.get("CTFD_URL", "http://localhost:8000"), token)
+    api = CTFd(env.get("CTFD_URL") or os.environ.get("CTFD_URL") or "http://localhost:8000", token)
     existing = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}
     ids = {}
 
@@ -172,8 +211,8 @@ def main():
         print(f"[{action}] {ch['num']} {ch['name']} — {ch['value']} pts, {len(ch['hints'])} hints, flag set")
 
     # CTFd top menu: a page whose route is a URL becomes an external link
-    if host:
-        menu = {"title": "Cellule de crise", "route": f"http://{host}:{HUB_PORT}/", "content": "",
+    if host or domain:
+        menu = {"title": "Cellule de crise", "route": hub_url(host, domain), "content": "",
                 "format": "markdown", "draft": False, "hidden": False, "auth_required": False,
                 "link_target": "_blank"}
         page = next((p for p in api.call("GET", "/pages") if p.get("title") == menu["title"]), None)

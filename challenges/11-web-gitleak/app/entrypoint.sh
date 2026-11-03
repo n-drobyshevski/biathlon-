@@ -58,8 +58,14 @@ cat > index.html <<'HTML'
 </main></div>
 <footer class="foot"><span>Direction des Systèmes d'Information</span><span>Assistance au poste 300</span><span>Chronométrage de la finale 2026</span><span class="ver">DFlop Timing 1.4</span></footer>
 <script>
+var sub={8020:'share',8004:'idor',8006:'sqli',8010:'jwt',8012:'ssti',8014:'sapgw'},
+ lab=['site','share','idor','sqli','jwt','git','ssti','sapgw','hub','ctfd','cyberchef','terminal'],
+ hl=location.hostname.split('.'),
+ dom=(hl.length>2&&lab.indexOf(hl[0])>=0&&!/^\d+$/.test(hl[hl.length-1]))?hl.slice(1).join('.'):'';
 document.querySelectorAll('a[data-port]').forEach(function(a){
- a.href=location.protocol+'//'+location.hostname+':'+a.dataset.port+(a.dataset.path||'/');});
+ var p=a.dataset.path||'/';
+ a.href=(dom&&sub[a.dataset.port])?location.protocol+'//'+sub[a.dataset.port]+'.'+dom+p
+  :location.protocol+'//'+location.hostname+':'+a.dataset.port+p;});
 </script>
 </body></html>
 HTML

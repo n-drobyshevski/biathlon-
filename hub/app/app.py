@@ -20,7 +20,7 @@ import hmac
 import json
 import os
 from html import escape
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from flask import Flask, Response, redirect, request
 
@@ -225,6 +225,13 @@ def tool_url(override, port):
     return f"http://{host}:{port}/"
 
 
+def live_where(key):
+    """Short address shown next to a live link: ":8020" offline, or the host of its
+    <KEY>_URL override (e.g. share.ctf.example.com when hosted online)."""
+    override = os.environ.get(PORTS[key][0], "")
+    return (urlsplit(override).netloc if override else "") or LIVE_LABEL[key][1]
+
+
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Partage DFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
@@ -257,8 +264,8 @@ def access(live):
     """Every mission is reached through a live service; the hub serves no files."""
     if not live:
         return ""
-    name, port = LIVE_LABEL[live]
-    return f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({port})</span>'
+    name = LIVE_LABEL[live][0]
+    return f'<a href="{escape(service_url(live))}">{name}</a> <span class="mute">({escape(live_where(live))})</span>'
 
 
 @app.get("/")
@@ -314,7 +321,7 @@ def context():
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Partage interne", "Les fichiers de preuve sont sur « Partage DFlop », l'espace documentaire "
-                            "interne (:8020). L'identifiant de connexion est affiché sur le portail "
+                            f"interne ({live_where('share')}). L'identifiant de connexion est affiché sur le portail "
                             "staff du site DécaFlop (mission 01)."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Un navigateur suffit, même sur un poste verrouillé. CyberChef et le terminal "
@@ -409,7 +416,7 @@ def outils():
     ts = tools()
     tiles = "".join(tile(n, t) for n, t in enumerate(ts, 1))
     share = (f'<a href="{escape(service_url("share"))}">Partage DFlop</a> '
-             '<span class="mute">(:8020)</span>')
+             f'<span class="mute">({escape(live_where("share"))})</span>')
     rows = [("", [(k, ' class="k"'), (v, ' class="desc"')]) for k, v in [
         ("Hors ligne", "Tout tourne sur le Pi de l'événement. Pas besoin d'internet."),
         ("Rien à installer", "Un navigateur suffit, même sur un poste verrouillé."),
@@ -521,6 +528,11 @@ def gcode(text):
     return "".join(p if i % 2 == 0 else f"<code>{p}</code>" for i, p in enumerate(parts))
 
 
+# Online (Cloudflare Tunnel) the team terminal has no internet and no Pi IP: it
+# reaches the services by their internal name. Offline text unchanged.
+GUIDE_ONLINE_GIT = ("http://ADRESSE:8011/.git/ ./dump` (ADRESSE est l'adresse du Pi)",
+                    "http://git:5000/.git/ ./dump` (en ligne, le terminal joint le site par son nom interne, git)")
+
 # Client-side progressive reveal: the first step shows, the rest wait behind
 # "Étape suivante" (or "Tout afficher"). No server state, no flags on the page.
 GUIDE_JS = """<script>
@@ -562,6 +574,8 @@ def guide_page():
         _, title, cat, level, _pts, _brief, live, _files = missions[num]
         acc = access(live)
         where = f'{gcode(tool)} {acc}' if acc else gcode(tool)
+        if os.environ.get(PORTS["git"][0]):      # online: the terminal has no Pi IP to use
+            steps = [s.replace(*GUIDE_ONLINE_GIT) for s in steps]
         items = "".join(
             f'<li class="step{"" if i == 0 else " hidden"}">{gcode(s)}</li>'
             for i, s in enumerate(steps))
