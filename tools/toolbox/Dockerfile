@@ -31,7 +31,8 @@ RUN pip3 install --no-cache-dir --break-system-packages git-dumper pyjwt request
 RUN useradd -m -s /bin/bash player \
     && mkdir -p /work && chown player:player /work
 COPY shell.sh /usr/local/bin/player-shell
-RUN chmod +x /usr/local/bin/player-shell
+COPY grab.sh /usr/local/bin/grab
+RUN chmod +x /usr/local/bin/player-shell /usr/local/bin/grab
 
 USER player
 WORKDIR /work

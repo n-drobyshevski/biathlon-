@@ -10,9 +10,13 @@ cat <<'BANNER'
 ────────────────────────────────────────────────────────────
  Outils : git, git-dumper, binwalk, foremost, exiftool, john, hashcat, tshark,
           unzip, xxd, jq, curl, wget, python3.
- Les fichiers de preuve sont sur l'Intranet DécaFlop (:8020) et
- les services tournent sur l'IP du Pi — récupérez-les au besoin
- (ex. : git-dumper http://<IP-du-Pi>:8011/.git/ dump && cd dump).
+
+ Le shell tourne SUR le Pi : rien à téléverser depuis le PC, on
+ récupère les fichiers directement depuis les services —
+   • site public (:8001)  curl -OJ http://<IP-du-Pi>:8001/medias/decaflop_poster.png
+   • Intranet (:8020)     grab http://<IP-du-Pi>:8020/telecharger/<...>
+                          (grab demande le login — celui du challenge 01)
+   • dépôt .git (:8011)   git-dumper http://<IP-du-Pi>:8011/.git/ dump && cd dump
 BANNER
 echo " Espace de travail : $ws"
 echo
