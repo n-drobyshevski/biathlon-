@@ -110,9 +110,9 @@ challenge is fine for 6 players, and players can't spoil it for each other:
   image**, with `pids`/`cpu` caps and an init that reaps orphans. A popped app
   cannot rewrite its code or files, and `docker compose restart <service>`
   always brings it back pristine.
-- The Intranet share counts failed logins **per browser**, not per IP, so one
-  player's typos (in the browser terminal everyone shares one IP) never lock
-  out the others. With CTFd and the browser toolbox, the
+- The Intranet share never locks its login: a wrong password just says so,
+  and the player (or anyone sharing their IP, like the browser terminal)
+  can retry at once. With CTFd and the browser toolbox, the
 full stack is ~2–2.5 GB in practice: comfortable on 4 GB, but test it before the
 event.
 

@@ -46,10 +46,8 @@ def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
 
     # the share, from the SAME env, accepts exactly those creds and rejects others
     share = _load("share_gate", SHARE_APP / "app.py")
-    share._FAILS.clear()
     assert share.app.test_client().post(
         "/login", data={"identifiant": shown_user, "motdepasse": shown_pass}).status_code == 302
-    share._FAILS.clear()
     assert share.app.test_client().post(
         "/login", data={"identifiant": shown_user, "motdepasse": "not-the-password"}).status_code == 401
 

@@ -49,32 +49,6 @@ def test_ssti_template_error_is_reported(monkeypatch):
     assert r.status_code == 500 and "TemplateSyntaxError" in r.data.decode()
 
 
-# ------------------------------------------------------------------ share
-def test_share_lockout_is_per_browser(share_module):
-    share_module._FAILS.clear()
-    a, b = share_module.app.test_client(), share_module.app.test_client()
-    a.get("/login")
-    b.get("/login")                                    # same IP, other browser
-    codes = [a.post("/login", data={"identifiant": "x", "motdepasse": "y"}).status_code
-             for _ in range(8)]
-    assert 429 in codes
-    ok = b.post("/login", data={"identifiant": "equipe-it",
-                                "motdepasse": share_module.SHARE_PASSWORD})
-    assert ok.status_code == 302 and ok.headers["Location"].endswith("/")
-    share_module._FAILS.clear()
-
-
-def test_share_per_ip_ceiling_stops_cookie_rotation(share_module):
-    share_module._FAILS.clear()
-    codes = []
-    for _ in range(share_module._IP_LIMIT + 5):
-        c = share_module.app.test_client()             # fresh cookie every time
-        c.get("/login")
-        codes.append(c.post("/login", data={"identifiant": "x", "motdepasse": "y"}).status_code)
-    assert codes[-1] == 429
-    share_module._FAILS.clear()
-
-
 # ------------------------------------------------------------------ compose
 def test_offline_compose_locks_every_app(compose_offline):
     for name in FLASK_APPS:

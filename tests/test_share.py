@@ -24,7 +24,6 @@ def test_logged_out_redirects_to_login(share_anon, path):
 
 
 def test_wrong_login_shows_french_error(share_module):
-    share_module._FAILS.clear()
     c = share_module.app.test_client()
     r = c.post("/login", data={"identifiant": "equipe-it", "motdepasse": "nope"})
     assert r.status_code == 401
@@ -33,14 +32,14 @@ def test_wrong_login_shows_french_error(share_module):
     assert c.get("/").status_code == 302
 
 
-def test_login_is_rate_limited(share_module):
-    share_module._FAILS.clear()
+def test_wrong_passwords_never_lock_the_login(share_module):
     c = share_module.app.test_client()
     codes = [c.post("/login", data={"identifiant": "x", "motdepasse": "y"}).status_code
-             for _ in range(8)]
-    assert 429 in codes
-    assert "Trop de tentatives" in c.post("/login", data={"identifiant": "x", "motdepasse": "y"}).data.decode()
-    share_module._FAILS.clear()
+             for _ in range(20)]
+    assert codes == [401] * 20
+    ok = c.post("/login", data={"identifiant": "equipe-it",
+                                "motdepasse": share_module.SHARE_PASSWORD})
+    assert ok.status_code == 302 and ok.headers["Location"].endswith("/")
 
 
 def test_logout_redirects_and_deauths(share):

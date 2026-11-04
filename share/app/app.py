@@ -22,7 +22,6 @@ import csv
 import hmac
 import io
 import os
-import secrets
 import sys
 import time
 import unicodedata
@@ -379,47 +378,9 @@ def page(title, section, body, current_path=(), q=""):
 
 
 # --------------------------------------------------------------------------
-# Auth (the login is not a puzzle — the staff portal hands out the account)
+# Auth (the login is not a puzzle — the staff portal hands out the account).
+# No lockout on wrong passwords: players just retry.
 # --------------------------------------------------------------------------
-# Failed logins are counted per browser, not just per IP: every player in the
-# browser terminal (toolbox) reaches the share from the SAME container IP, so a
-# per-IP counter let one player's typos lock everyone out. Each browser gets a
-# random id in its (signed) session cookie when it opens the login page; six
-# misses within a minute lock out that browser only. A looser per-IP ceiling
-# still stops a script that throws its cookies away between attempts.
-_FAILS = {}
-_WINDOW = 60.0
-_LIMIT = 6         # per browser (IP + session id)
-_IP_LIMIT = 30     # per IP, all browsers behind it together
-
-
-def _keys(ip):
-    return (("client", ip, session.get("cid", "")), ("ip", ip))
-
-
-def _count(key):
-    now = time.time()
-    xs = [t for t in _FAILS.get(key, []) if now - t < _WINDOW]
-    if xs:
-        _FAILS[key] = xs
-    else:
-        _FAILS.pop(key, None)
-    return len(xs)
-
-
-def _too_many(ip):
-    client, per_ip = _keys(ip)
-    return _count(client) >= _LIMIT or _count(per_ip) >= _IP_LIMIT
-
-
-def _record_fail(ip):
-    if len(_FAILS) > 2000:                     # forget idle buckets (cookie-rotating scripts)
-        for key in list(_FAILS):
-            _count(key)
-    for key in _keys(ip):
-        _FAILS.setdefault(key, []).append(time.time())
-
-
 def _bare_login(u):
     """Accept DECAFLOP\\user and user@decaflop.local as well as user."""
     u = u.strip()
@@ -466,21 +427,15 @@ def login():
     if request.method == "GET":
         if session.get("ok"):
             return redirect("/")
-        session.setdefault("cid", secrets.token_urlsafe(12))   # this browser's lockout bucket
         return login_page()
-    ip = request.remote_addr or "?"
     raw = request.form.get("identifiant", "")
-    if _too_many(ip):
-        return login_page("Trop de tentatives. Patientez quelques instants avant de réessayer.", 429, raw)
     u = _bare_login(raw)
     p = request.form.get("motdepasse", "")
     if hmac.compare_digest(u, SHARE_USER) and hmac.compare_digest(p, SHARE_PASSWORD):
-        _FAILS.pop(_keys(ip)[0], None)                  # this browser's misses only
         session.clear()
         session["ok"] = True
         session["user"] = SHARE_USER
         return redirect("/")
-    _record_fail(ip)
     return login_page("Identifiant ou mot de passe incorrect.", 401, raw)
 
 
