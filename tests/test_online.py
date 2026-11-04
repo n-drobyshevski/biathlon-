@@ -214,7 +214,8 @@ def test_online_overlay_isolates_every_service():
         assert "no-new-privileges:true" in svc["security_opt"], name
         assert svc["cap_drop"] == ["ALL"], name
         assert svc.get("read_only") is True, name                      # app cannot rewrite itself
-        assert 0 < svc.get("pids_limit", 0) <= 256, name               # no fork bomb
+        cap = 1024 if name == "toolbox" else 256     # toolbox: 64 per player, in shell.sh
+        assert 0 < svc.get("pids_limit", 0) <= cap, name               # no fork bomb
         for v in svc.get("volumes", []):
             if v["type"] == "volume":            # CTFd's data, the players' terminal homes
                 assert (name, v["source"]) in (("ctfd", "ctfd-data"),

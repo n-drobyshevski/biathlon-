@@ -210,9 +210,13 @@ services:
     build: ./tools/toolbox
     command: ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8091:7681"]
-    mem_limit: 512m
+    # 1.5 GB: one hashcat run needs ~0.7 GB the first time (it compiles its
+    # CPU kernels), ~0.45 GB after; two players cracking at once must fit.
+    # A run that still overflows is OOM-killed alone (largest process), never
+    # another player's shell. pids: 64 per player (in shell.sh) x a few.
+    mem_limit: 1536m
     cpus: 2.0
-    pids_limit: 256
+    pids_limit: 1024
     init: true
     cap_drop: [ALL]
     cap_add: [SETUID, SETGID, CHOWN, KILL]

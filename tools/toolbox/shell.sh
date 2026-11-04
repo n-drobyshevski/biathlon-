@@ -78,12 +78,8 @@ mkdir -p "$ACCOUNTS" && chmod 700 "$ACCOUNTS"
 
 as_seat() { setpriv --reuid="$1" --regid="$1" --clear-groups -- "${@:2}"; }
 seat_uid() { id -u "joueur$1"; }
-seat_procs() {   # number of processes of uid $1
-  local n=0 p
-  for p in /proc/[0-9]*; do
-    [ "$(stat -c %u "$p" 2>/dev/null)" = "$1" ] && n=$((n + 1))
-  done
-  echo "$n"
+seat_procs() {   # number of processes of uid $1 (one fork, not one per process)
+  find /proc -mindepth 1 -maxdepth 1 -name '[0-9]*' -uid "$1" 2>/dev/null | wc -l
 }
 end_session() {  # kill every process of seat $1 (its tmux too); files are kept
   as_seat "$(seat_uid "$1")" /bin/bash -c 'kill -KILL -1' 2>/dev/null
@@ -300,6 +296,6 @@ cd "$ws"
 exec setpriv --reuid="$uid" --regid="$uid" --clear-groups -- /usr/bin/env -i \
   HOME="$ws" USER="$user" LOGNAME="$user" SHELL=/bin/bash PSEUDO="$pseudo" \
   TERM="${TERM:-xterm-256color}" LANG=C.UTF-8 TMPDIR="$ws" \
-  PATH=/usr/local/bin:/usr/bin:/bin \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
   HISTFILE="$ws/.bash_history" \
   /usr/bin/tmux -u -f /etc/toolbox/tmux.conf -S "$sock" new-session -A -s jeu

@@ -72,7 +72,7 @@ run **on the Pi** and are driven entirely from a browser.
   (without deleting anything) a session stuck in a fork bomb or still growing
   past the quota. The container has **no repository, flags or challenge
   source mounted**, a read-only image, and the whole thing is capped
-  (`mem_limit 512m`, `cpus 2.0`, `pids 256`, at most 20 terminals).
+  (`mem_limit 1536m`, `cpus 2.0`, `pids 1024`, at most 20 terminals).
   One limit remains: a player can still see the command lines of others'
   running programs (`/proc`). Their files and output stay private.
 
@@ -107,7 +107,7 @@ so build it while you still have internet, same as the challenge images.
 | 7 challenge containers + the hub + the file share (`mem_limit` 96–128 MB each) | ~0.5–0.8 GB actual |
 | CTFd (in docker-compose, SQLite + `WORKERS 1`, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | CyberChef (static, `mem_limit` 96 MB) | ~15–30 MB actual |
-| Terminal toolbox (`mem_limit` 512 MB, `cpus 2.0`) | ~0.15 GB idle, short bursts when cracking/carving |
+| Terminal toolbox (`mem_limit` 1.5 GB, `cpus 2.0`) | ~50 MB + ~10 MB per player idle; **hashcat ~0.7 GB** the first time a player runs a hash mode (kernel compile), ~0.45 GB after; git-dumper ~90 MB, tshark ~85 MB |
 | OS + Docker | ~0.5–0.8 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
@@ -118,20 +118,29 @@ challenge is fine for 6 players, and players can't spoil it for each other:
 - **12 (SSTI)** is code execution by design, so each certificate is rendered
   in a throwaway child process: `config.update(FLAG=...)`, swapped pages or a
   background `yes` die with that request (CPU-limited, killed after 3 s).
+  At most 4 renders run at once (2 per address), and a child that eats too
+  much memory is the one the kernel kills, never the app: a flood of heavy
+  payloads only gets its sender "Le générateur est occupé".
 - Every Flask app runs as `nobody` with no capabilities on a **read-only
   image**, with `pids`/`cpu` caps and an init that reaps orphans. A popped app
   cannot rewrite its code or files, and `docker compose restart <service>`
   always brings it back pristine.
 - The Intranet share never locks its login: a wrong password just says so,
   and the player (or anyone sharing their IP, like the browser terminal)
-  can retry at once. With CTFd and the browser toolbox, the
-full stack is ~2–2.5 GB in practice: comfortable on 4 GB, but test it before the
-event.
+  can retry at once.
 
-The only way to push a 4 GB Pi is several players cracking at once. Our cracks
-are tiny (a 15-word `wordlist.txt`, a 1 MB carve) — keep it that way: **don't
-drop `rockyou.txt` in**, and the `toolbox` caps mean a runaway only OOM-kills its
-own container, not the Pi. As cheap insurance, enable compressed RAM swap once
+With CTFd and the browser toolbox the full stack is ~2–2.5 GB in practice,
+~3 GB while two players run hashcat at the same time: fine on 4 GB, but test
+it before the event.
+
+The only way to push a 4 GB Pi is several players cracking at once. hashcat's
+memory comes from compiling its CPU kernels, not from the wordlist: our
+cracks are tiny (a 15-word `wordlist.txt`, a 1 MB carve), keep it that way,
+**don't drop `rockyou.txt` in**. If three or more crack at the very same
+moment, the toolbox cap kills one hashcat run (that player just runs it
+again); the other players' shells and the Pi are not affected. Note that
+Debian's `john` (1.9.0, not "jumbo") has no raw-MD5 or JWT formats: for 09
+and 10 use `hashcat` (the hints say so) or CyberChef. As cheap insurance, enable compressed RAM swap once
 (prep, with internet):
 
 ```bash

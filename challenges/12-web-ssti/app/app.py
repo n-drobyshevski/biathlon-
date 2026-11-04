@@ -18,13 +18,17 @@ process (fork): whatever a payload changes (config.update(FLAG=...), swapped
 view functions, monkeypatched modules) dies with that child, and the next
 request starts from the pristine parent again. The child gets a CPU limit, a
 wall-clock timeout and its whole process group is killed afterwards, so a busy
-loop or a background `yes` cannot pin the Pi either.
+loop or a background `yes` cannot pin the Pi either. At most RENDER_SLOTS
+renders run at once (RENDER_PER_CLIENT per client address), and every child
+volunteers as the out-of-memory killer's first victim: a flood of heavy
+payloads costs its sender a "busy" page, never the app itself.
 """
 import os
 import resource
 import select
 import signal
 import sys
+import threading
 import time
 import warnings
 from html import escape
@@ -40,6 +44,11 @@ app.config["FLAG"] = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 RENDER_TIMEOUT = 3.0          # seconds of wall clock per certificate
 RENDER_CPU = 2                # seconds of CPU per certificate (RLIMIT_CPU)
 RENDER_MAX = 2 * 1024 * 1024  # bytes of rendered output kept
+RENDER_SLOTS = 4              # children alive at once (each copies ~20 MB on write)
+RENDER_PER_CLIENT = 2         # of which one client address may hold
+
+_slots = threading.BoundedSemaphore(RENDER_SLOTS)
+_per_client, _per_client_lock = {}, threading.Lock()
 
 # The child only renders and exits, so forking from the threaded dev server is
 # fine here; silence Python 3.12's generic "multi-threaded fork" warning.
@@ -79,11 +88,21 @@ def _render_isolated(source):
     template does can outlive the child.
     """
     rfd, wfd = os.pipe()
-    pid = os.fork()
+    try:
+        pid = os.fork()
+    except OSError:                                       # pids cap reached: just "busy"
+        os.close(rfd)
+        os.close(wfd)
+        return False, "busy"
     if pid == 0:                                          # ---- child
         try:
             os.close(rfd)
             os.setsid()                                   # own process group, killed below
+            try:                                          # under memory pressure, kill me,
+                with open("/proc/self/oom_score_adj", "w") as fh:   # never the app
+                    fh.write("1000")
+            except OSError:
+                pass
             resource.setrlimit(resource.RLIMIT_CPU, (RENDER_CPU, RENDER_CPU))
             try:
                 out = b"\x00" + render_template_string(source).encode("utf-8", "replace")
@@ -121,9 +140,46 @@ def _render_isolated(source):
     return True, data[1:RENDER_MAX + 1].decode("utf-8", "replace")
 
 
+def _take_slot(client):
+    with _per_client_lock:
+        if _per_client.get(client, 0) >= RENDER_PER_CLIENT:
+            return False
+        _per_client[client] = _per_client.get(client, 0) + 1
+    if _slots.acquire(timeout=RENDER_TIMEOUT):
+        return True
+    _give_slot(client, release=False)
+    return False
+
+
+def _give_slot(client, release=True):
+    if release:
+        _slots.release()
+    with _per_client_lock:
+        n = _per_client.get(client, 1) - 1
+        if n > 0:
+            _per_client[client] = n
+        else:
+            _per_client.pop(client, None)
+
+
+def _busy():
+    return Response(page('<p class="status err" role="alert">Le générateur est occupé. '
+                         'Réessayez dans quelques secondes.</p>'), status=503, mimetype="text/html")
+
+
 @app.post("/generate")
 def generate():
     name = request.form.get("name", "")
+    client = request.remote_addr or "?"
+    if not _take_slot(client):
+        return _busy()
+    try:
+        return _generate(name)
+    finally:
+        _give_slot(client)
+
+
+def _generate(name):
     # VULN: user input becomes part of the template source (SSTI), instead of
     # being passed as a value to a fixed template.
     ok, cert = _render_isolated(
@@ -134,6 +190,8 @@ def generate():
         '<div class="sig"><span>Direction de course</span><span>Partenaire titre DécaFlop</span></div>'
         '</div></div>')
     if not ok:
+        if cert == "busy":
+            return _busy()
         msg = ("La génération a pris trop de temps et a été interrompue." if cert == "timeout"
                else f"Le modèle du certificat n'a pas pu être généré ({escape(cert)}).")
         return Response(page(f'<p class="status err" role="alert">{msg}</p>'), status=500,
