@@ -143,7 +143,7 @@ def test_every_file_has_a_preview_page(share, share_module):
 
 
 def test_preview_renders_text_csv_and_zip(share, dist):
-    hint = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    hint = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt?vu=1").data.decode()
     first = (dist / "sap_hint.txt").read_text().splitlines()[0]
     assert '<pre class="code">' in hint and esc(first) in hint
     grid = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv").data.decode()
@@ -151,6 +151,19 @@ def test_preview_renders_text_csv_and_zip(share, dist):
     archive = share.get("/apercu/Direction%20de%20course/Dossier%20incident/case_file.zip").data.decode()
     assert "<td>flag.txt</td>" in archive and "protégée par un mot de passe" in archive
     assert "TRIATHLON{" not in archive              # names only, never the encrypted content
+
+
+def test_hint_warns_before_revealing(share, dist):
+    # First open shows the spoiler warning instead of the hint content.
+    first = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    assert "véritable indice" in first
+    assert '<pre class="code">' not in first              # content withheld
+    assert '?vu=1' in first                                # link to proceed
+    # Proceeding reveals the content and remembers the choice for the session.
+    seen = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt?vu=1").data.decode()
+    assert '<pre class="code">' in seen and "véritable indice" not in seen
+    again = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    assert '<pre class="code">' in again and "véritable indice" not in again
 
 
 def test_listing_opens_viewer_and_keeps_details(share):
