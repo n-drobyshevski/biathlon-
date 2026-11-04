@@ -200,7 +200,8 @@ services:
   #   read each other's files, kill each other's processes or plant commands
   #   in each other's shell. Homes live on the toolbox-data volume (kept
   #   across restarts, wiped by `down -v` like CTFd's), with per-player
-  #   process / file / quota caps enforced by a watchdog.
+  #   process / file / quota caps enforced by a watchdog. Players only see
+  #   their own processes (hidepid, set by toolbox-init at start).
   #   ttyd runs as root only to switch to the player's user (and hang up its
   #   tmux client): every capability except SETUID/SETGID/CHOWN/KILL is
   #   dropped, the image is read-only, the players' shells get no capability.
@@ -219,14 +220,20 @@ services:
     pids_limit: 1024
     init: true
     cap_drop: [ALL]
-    cap_add: [SETUID, SETGID, CHOWN, KILL]
+    # SYS_ADMIN + SETPCAP: only for toolbox-init, the entrypoint, which
+    # remounts /proc with hidepid (players cannot see each other's processes
+    # or command lines) and then removes both from the bounding set before
+    # starting ttyd: no player shell can ever use them. Docker's AppArmor
+    # profile stays on; where it forbids the remount, the hiding is skipped
+    # (see the toolbox logs / `toolbox-admin liste`).
+    cap_add: [SETUID, SETGID, CHOWN, KILL, SYS_ADMIN, SETPCAP]
     security_opt: ["no-new-privileges:true"]
     read_only: true
     volumes:
       - toolbox-data:/work                    # players' homes + accounts; `down -v` wipes it
     tmpfs:
       - "/run/toolbox:size=1m,mode=0700"
-      - "/tmp:size=64m,mode=1777"
+      - "/tmp:size=64m,mode=1733"             # writable, not listable: no peeking at others' temp files
     restart: unless-stopped
 
 volumes:

@@ -7,8 +7,9 @@
 # persistent home and a tmux session that survives a closed tab or lost
 # Wi-Fi: see shell.sh. ttyd itself runs as root so it can switch to the
 # player's user, but docker-compose.yml drops every capability except
-# SETUID/SETGID/CHOWN/KILL, sets no-new-privileges and a read-only root
-# filesystem; the players' shells have no capabilities at all.
+# SETUID/SETGID/CHOWN/KILL (SYS_ADMIN/SETPCAP too, but only for toolbox-init,
+# which drops them before ttyd starts), sets no-new-privileges and a read-only
+# root filesystem; the players' shells have no capabilities at all.
 FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -48,7 +49,8 @@ RUN for n in $(seq 1 24); do \
 COPY shell.sh /usr/local/bin/player-shell
 COPY grab.sh /usr/local/bin/grab
 COPY bashrc tmux.conf /etc/toolbox/
-RUN chmod 0755 /usr/local/bin/player-shell /usr/local/bin/grab \
+COPY init.sh /usr/local/bin/toolbox-init
+RUN chmod 0755 /usr/local/bin/player-shell /usr/local/bin/grab /usr/local/bin/toolbox-init \
     && ln -s player-shell /usr/local/bin/toolbox-admin \
     && chmod 0644 /etc/toolbox/bashrc /etc/toolbox/tmux.conf
 
@@ -58,4 +60,7 @@ EXPOSE 7681
 # -W = writable (accept keyboard input), -O = refuse WebSockets from another
 # origin, -m 20 = at most 20 terminals. Each client lands in player-shell,
 # which logs the player in. (docker-compose.yml repeats this command.)
+# toolbox-init runs first: it hides each player's processes from the others
+# (/proc hidepid), then drops the capabilities that needed, and starts ttyd.
+ENTRYPOINT ["/usr/local/bin/toolbox-init"]
 CMD ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
