@@ -78,13 +78,29 @@ def test_every_evidence_file_byte_identical(share, share_module, dist):
         assert r.data == disk, f["name"]
 
 
-def test_decoys_download_as_text(share, share_module):
+def test_decoys_download_with_their_own_type(share, share_module):
     decoys = [f for f in share_module.FILES if f["decoy"]]
-    assert len(decoys) >= 3
+    assert len(decoys) >= 30                          # plenty of smoke around the evidence
     for f in decoys:
         r = share.get(url_for_file(f))
-        assert r.status_code == 200
-        assert r.mimetype == "text/plain"
+        assert r.status_code == 200, f["name"]
+        assert r.data == f["text"].encode("utf-8"), f["name"]
+        if f["kind"] in share_module.TEXT_KINDS | {"csv"}:
+            assert r.mimetype == "text/plain", f["name"]
+        else:                                         # empty office files, images, system files
+            assert r.mimetype != "text/plain", f["name"]
+
+
+def test_every_decoy_lists_and_opens(share, share_module):
+    for f in share_module.FILES:
+        if not f["decoy"]:
+            continue
+        folder = "/d/" + "/".join(quote(s) for s in f["path"][:-1])
+        assert f["name"] in share.get(folder).data.decode(), f["name"]
+        page = share.get("/apercu/" + "/".join(quote(s) for s in f["path"]))
+        assert page.status_code == 200, f["name"]
+        if f["kind"] not in share_module.TEXT_KINDS | {"csv", "zip"}:
+            assert "Aperçu non disponible" in page.data.decode(), f["name"]
 
 
 def test_poster_and_photo_not_served_here(share):

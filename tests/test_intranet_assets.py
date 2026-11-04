@@ -101,7 +101,7 @@ def test_share_callout_has_download(share):
 
 
 def test_share_empty_folder(share):
-    r = share.get("/d/Communication/Visuels")
+    r = share.get("/d/Communication/R%C3%A9seaux%20sociaux")
     assert r.status_code == 200 and "Ce dossier est vide" in r.data.decode()
 
 
