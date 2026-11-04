@@ -35,6 +35,7 @@ from urllib.parse import quote, urlencode
 from flask import Flask, Response, abort, redirect, request, send_from_directory, session
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import capture  # noqa: E402
 import fab  # noqa: E402
 import intranet  # noqa: E402
 from intranet import icon  # noqa: E402
@@ -1066,7 +1067,11 @@ def hint_warning(f):
         '</div>')
 
 
-def viewer_page(f, content, wide=False, classeur=False):
+CAPTURE_CSS = '<link rel="stylesheet" href="/static/capture.css">'
+PCAP_PREVIEW_BYTES = 5_000_000
+
+
+def viewer_page(f, content, wide=False, classeur=False, css=""):
     folder = f["path"][:-1]
     crumbs = ['<a href="/documents">Documents</a>'] + [
         f'<a href="{folder_href(folder[:i + 1])}">{esc(s)}</a>' for i, s in enumerate(folder)]
@@ -1081,7 +1086,9 @@ def viewer_page(f, content, wide=False, classeur=False):
            f'<a class="x" href="{folder_href(folder)}" title="Fermer l\'aperçu">Fermer</a></nav></div>')
     head = intranet.head(f'{f["name"]} - {SITE}')
     if classeur:                       # interactive CSV preview (static/classeur.*)
-        head = head.replace("</head>", CLASSEUR_CSS + "</head>", 1)
+        css += CLASSEUR_CSS
+    if css:
+        head = head.replace("</head>", css + "</head>", 1)
     return (head + intranet.SPRITE +
             intranet.suite("intranet", "docs", display_user(), "/logout") + bar +
             f'<main class="viewer{" wide" if wide else ""}" id="main"><p class="vmeta">{meta}</p>{content}</main>'
@@ -1107,6 +1114,9 @@ def preview(filepath):
         content = csv_view(f, data)
     elif f["kind"] == "zip":
         content = zip_view(f, read_bytes(f, 50_000_000))
+    elif f["kind"] == "pcap":           # packet list + layers of the clicked packet (capture.py)
+        content = capture.view(read_bytes(f, PCAP_PREVIEW_BYTES), request.args.get("p", ""), preview_href(f))
+        return html(viewer_page(f, content, wide=True, css=CAPTURE_CSS))
     else:
         content = no_preview(f)
     grid = f["kind"] == "csv" and data is not None

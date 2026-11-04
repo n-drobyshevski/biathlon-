@@ -153,8 +153,10 @@ def test_every_file_has_a_preview_page(share, share_module):
         page = share.get(preview_url(f)).data.decode()
         assert f'<h1>{f["name"]}</h1>' in page, f["name"]
         assert f'href="{url_for_file(f)}">Télécharger' in page
-        if f["kind"] in ("pcap", "img"):
+        if f["kind"] == "img":
             assert "Aperçu non disponible" in page
+        if f["kind"] == "pcap":                       # packet list (capture.py)
+            assert '<table class="pc-tbl">' in page
 
 
 def test_preview_renders_text_csv_and_zip(share, dist):
