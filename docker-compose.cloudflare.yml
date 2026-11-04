@@ -34,19 +34,11 @@
 # where they differ, on its public subdomain label (staff = site, gitleak =
 # git), so the toolbox banner can say "same name as the subdomain".
 #
-# Hardening shared by the Flask apps (python:3.12-slim, listen on :5000, write
-# nothing but /tmp): run as nobody, no capabilities, no privilege escalation,
-# read-only image (a popped app cannot rewrite itself; a restart restores it),
-# and capped so a fork bomb or busy loop cannot starve the Pi.
+# The Flask apps' hardening (nobody, no capabilities, no-new-privileges,
+# read-only image, /tmp tmpfs, init, pids/cpu caps) is in the base file's
+# x-locked-app, so it applies offline too; online only adds the network.
 x-locked-app: &locked-app
   networks: [internal]
-  user: "65534:65534"
-  cap_drop: [ALL]
-  security_opt: ["no-new-privileges:true"]
-  read_only: true
-  tmpfs: ["/tmp:size=32m,mode=1777"]
-  pids_limit: 128
-  cpus: 1.0
 
 services:
   # ---- The only container with internet access: the outbound tunnel ------
@@ -113,17 +105,11 @@ services:
     <<: *locked-app
     ports: !override ["127.0.0.1:8010:5000"]
 
-  # The entrypoint builds the leaky git repo at startup: as nobody, on a
-  # read-only image, it can only write under /tmp, so the site lives there
-  # (same content, same .git).
   gitleak:
     <<: *locked-app
     networks:
       internal:
         aliases: [git]    # same name as its subdomain, for the toolbox
-    environment:
-      SITE_DIR: /tmp/site
-      HOME: /tmp
     ports: !override ["127.0.0.1:8011:5000"]
 
   ssti:
@@ -165,21 +151,13 @@ services:
     pids_limit: 64
     ports: !override ["127.0.0.1:8090:80"]
 
-  # Already non-root + no-new-privileges + pids/cpu caps in the base file.
+  # Per-tab users, capabilities, read-only image, tmpfs scratch space, the
+  # origin check (-O) and the terminal cap (-m) all come from the base file.
   # Online it has NO internet either: players reach services by internal name
-  # (see its banner). -O (--check-origin) refuses WebSockets opened from another
-  # origin, so a script planted on another lab subdomain cannot open a shell
-  # with a player's Access cookie; -m caps concurrent terminals. Player scratch
-  # space is tmpfs: capped, private to the container, wiped on restart.
+  # (see its banner). -O matters most here: a script planted on another lab
+  # subdomain cannot open a shell with a player's Access cookie.
   toolbox:
     networks: [internal]
-    command: ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
-    cap_drop: [ALL]
-    read_only: true
-    tmpfs:
-      - "/work:size=256m,uid=1000,gid=1000,mode=0755"
-      - "/home/player:size=32m,uid=1000,gid=1000,mode=0700"
-      - "/tmp:size=64m,mode=1777"
     ports: !override ["127.0.0.1:8091:7681"]
 
 networks:

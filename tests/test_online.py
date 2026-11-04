@@ -214,10 +214,12 @@ def test_online_overlay_isolates_every_service():
         assert "no-new-privileges:true" in svc["security_opt"], name
         assert svc["cap_drop"] == ["ALL"], name
         assert svc.get("read_only") is True, name                      # app cannot rewrite itself
-        assert 0 < svc.get("pids_limit", 0) <= 256, name               # no fork bomb
+        cap = 1024 if name == "toolbox" else 256     # toolbox: 64 per player, in shell.sh
+        assert 0 < svc.get("pids_limit", 0) <= cap, name               # no fork bomb
         for v in svc.get("volumes", []):
-            if v["type"] == "volume":                                # CTFd's own data volume
-                assert (name, v["source"]) == ("ctfd", "ctfd-data"), name
+            if v["type"] == "volume":            # CTFd's data, the players' terminal homes
+                assert (name, v["source"]) in (("ctfd", "ctfd-data"),
+                                               ("toolbox", "toolbox-data")), name
                 continue
             # the only host path mounted anywhere: the read-only player evidence
             assert v["type"] == "bind" and v["target"] == "/handouts" and v.get("read_only"), name
@@ -229,7 +231,7 @@ def test_online_overlay_isolates_every_service():
     assert cf.get("read_only") is True and cf.get("pids_limit")
     tb = cfg["services"]["toolbox"]["command"]
     assert tb[0] == "ttyd" and "-O" in tb and "-W" in tb                # websocket origin check
-    assert any(t.startswith("/work:") for t in cfg["services"]["toolbox"]["tmpfs"])
+    assert any(v["target"] == "/work" for v in cfg["services"]["toolbox"]["volumes"])  # player homes
     # metrics/config/pprof on loopback only: never reachable from the challenges
     assert cf["command"] == ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:20241", "run"]
     # fixed bridge name, matched by scripts/cloudflare-egress.sh

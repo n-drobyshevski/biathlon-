@@ -10,7 +10,7 @@ with a link to each live service.
   ports; override with <KEY>_URL (e.g. IDOR_URL, SHARE_URL) if needed.
 - The crew login for the share is given in the Contexte sheet.
 - Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
-  overrides the address. Teams submit flags there.
+  overrides the address. Players submit flags there (solo accounts).
 - ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
   the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
@@ -322,7 +322,7 @@ def crisis_cell():
 @app.get("/contexte")
 def context():
     board = scoreboard_url()
-    score = (f'<a href="{escape(board)}">{escape(board)}</a> (équipes, flags, indices et classement)' if board
+    score = (f'<a href="{escape(board)}">{escape(board)}</a> (votre compte joueur, flags, indices et classement)' if board
              else "fourni par l'organisation")
     rows = [("", [(k, ""), (v, ' class="desc"')]) for k, v in [
         ("Incident", "Liste de départ de la finale falsifiée"),
@@ -336,7 +336,7 @@ def context():
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
                             f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
-                            "se cache dans les ressources du site DécaFlop — commencez par la mission 01."),
+                            "se cache dans les ressources du site DécaFlop : commencez par la mission 01."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Un navigateur suffit, même sur un poste verrouillé. CyberChef et le terminal "
                    "d'équipe tournent sur le Pi, dans l'onglet <a href=\"/outils\">Outils</a>."),
@@ -369,7 +369,7 @@ def tools():
          "purpose": "Un shell Linux dans le navigateur, avec les outils de l'équipe déjà installés.",
          "chips": ["git-dumper", "john", "binwalk", "foremost", "exiftool", "curl", "python3"]},
         {"name": "Tableau des scores", "icon": "board", "url": scoreboard_url(),
-         "purpose": "Créez ou rejoignez votre équipe, soumettez les flags et suivez le classement.",
+         "purpose": "Créez votre compte joueur, soumettez les flags et suivez le classement.",
          "chips": ["Équipes", "Flags", "Indices", "Classement"]},
     ]
 
@@ -429,12 +429,10 @@ TOOLS_JS = """<script>
 def outils():
     ts = tools()
     tiles = "".join(tile(n, t) for n, t in enumerate(ts, 1))
-    share = (f'<a href="{escape(service_url("share"))}">Intranet DécaFlop</a> '
-             f'<span class="mute">({escape(live_where("share"))})</span>')
     rows = [("", [(k, ' class="k"'), (v, ' class="desc"')]) for k, v in [
         ("Hors ligne", "Tout tourne sur le Pi de l'événement. Pas besoin d'internet."),
         ("Rien à installer", "Un navigateur suffit, même sur un poste verrouillé."),
-        ("Fichiers de preuve", f"Ils sont sur {share}. Glissez un fichier téléchargé dans la zone "
+        ("Fichiers de preuve", "Glissez un fichier que vous avez téléchargé dans la zone "
                                "Input de CyberChef pour l'analyser."),
         ("Espace de travail", "Le terminal donne à chaque connexion son propre dossier, sur le Pi. "
                               "Il ne voit pas les fichiers de votre ordinateur."),

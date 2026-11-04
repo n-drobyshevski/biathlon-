@@ -15,6 +15,10 @@ Cross links with the cellule de crise (hub, port 8080):
 - the CTFd id of each challenge is written to handouts/dist/ctfd_ids.json,
   which the hub reads to open the exact challenge from "Soumettre le flag".
 
+Account mode: players play solo by default (CTFd "users" mode, one account per
+player, own score and hints). The script switches CTFd to it if no team exists
+yet; --user-mode teams keeps team play.
+
 Usage (on the Pi, after finishing the CTFd setup wizard in a browser):
     python3 scripts/ctfd-setup.py --host 192.168.8.2
 
@@ -136,6 +140,22 @@ class CTFd:
         return out.get("data")
 
 
+def ensure_user_mode(api, mode):
+    """Solo play by default: each player has their own CTFd account, score and
+    unlocked hints. Switching is only safe before any team exists, so an event
+    already running in the other mode is left alone (with a warning)."""
+    current = (api.call("GET", "/configs/user_mode") or {}).get("value") or "users"
+    if current == mode:
+        print(f"CTFd account mode: {mode}.")
+        return
+    if current == "teams" and api.call("GET", "/teams"):
+        print(f"Warning: CTFd is in 'teams' mode and teams already exist; left as is. To switch "
+              f"to '{mode}', use CTFd's Admin > Config > Reset (accounts), then re-run this script.")
+        return
+    api.call("PATCH", "/configs", {"user_mode": mode})
+    print(f"CTFd account mode switched from '{current}' to '{mode}'.")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", help="address players use to reach the Pi (e.g. 192.168.8.2)")
@@ -145,6 +165,8 @@ def main():
     ap.add_argument("--locale", default="fr", help="CTFd default interface language (default: fr)")
     ap.add_argument("--ids-file", default=os.path.join(ROOT, "handouts", "dist", "ctfd_ids.json"),
                     help="where to write the challenge ids for the hub's deep links")
+    ap.add_argument("--user-mode", choices=("users", "teams"), default="users",
+                    help="CTFd account mode (default: users = everyone plays solo)")
     ap.add_argument("--dry-run", action="store_true", help="parse and print, change nothing")
     args = ap.parse_args()
 
@@ -180,6 +202,7 @@ def main():
         print("Note: no --host given; descriptions will say <CTF-HOST> and skip download links.")
 
     api = CTFd(env.get("CTFD_URL") or os.environ.get("CTFD_URL") or "http://localhost:8000", token)
+    ensure_user_mode(api, args.user_mode)
     existing = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}
     ids = {}
 

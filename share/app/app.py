@@ -379,24 +379,9 @@ def page(title, section, body, current_path=(), q=""):
 
 
 # --------------------------------------------------------------------------
-# Auth (the login is not a puzzle — the staff portal hands out the account)
+# Auth (the login is not a puzzle — the staff portal hands out the account).
+# No lockout on wrong passwords: players just retry.
 # --------------------------------------------------------------------------
-_FAILS = {}
-_WINDOW = 60.0
-_LIMIT = 6
-
-
-def _too_many(ip):
-    now = time.time()
-    xs = [t for t in _FAILS.get(ip, []) if now - t < _WINDOW]
-    _FAILS[ip] = xs
-    return len(xs) >= _LIMIT
-
-
-def _record_fail(ip):
-    _FAILS.setdefault(ip, []).append(time.time())
-
-
 def _bare_login(u):
     """Accept DECAFLOP\\user and user@decaflop.local as well as user."""
     u = u.strip()
@@ -444,19 +429,14 @@ def login():
         if session.get("ok"):
             return redirect("/")
         return login_page()
-    ip = request.remote_addr or "?"
     raw = request.form.get("identifiant", "")
-    if _too_many(ip):
-        return login_page("Trop de tentatives. Patientez quelques instants avant de réessayer.", 429, raw)
     u = _bare_login(raw)
     p = request.form.get("motdepasse", "")
     if hmac.compare_digest(u, SHARE_USER) and hmac.compare_digest(p, SHARE_PASSWORD):
         session.clear()
         session["ok"] = True
         session["user"] = SHARE_USER
-        _FAILS.pop(ip, None)
         return redirect("/")
-    _record_fail(ip)
     return login_page("Identifiant ou mot de passe incorrect.", 401, raw)
 
 
@@ -916,6 +896,30 @@ def no_preview(f, missing=False):
     return (f'<div class="sheet nopv">{icon(f["kind"])}<h2>{title}</h2><p>{text}</p>{act}</div>')
 
 
+# Files that are genuine, spoiler-level hints (not decoys). The first time a
+# player opens one in a session, a warning stands in front of the content so a
+# curious click does not spoil the search.
+SPOILER_PATHS = {("Basis SAP", "Exports", "sap_hint.txt")}
+
+
+def is_spoiler(f):
+    return f["path"] in SPOILER_PATHS
+
+
+def hint_warning(f):
+    """Interstitial shown before a real hint is revealed."""
+    return (
+        '<div class="sheet nopv hint-warn">' + icon("txt") +
+        '<h2>Ceci est un véritable indice</h2>'
+        '<p>Ce fichier n\'est pas un leurre : il contient un vrai indice pour '
+        'l\'épreuve. Ne l\'ouvrez que si vous êtes vraiment bloqué et que vous '
+        'n\'avez plus aucune piste. Le consulter trop tôt vous gâchera la '
+        'recherche.</p>'
+        f'<a class="btn" href="{preview_href(f)}?vu=1">Afficher quand même l\'indice</a>'
+        f'<a class="btn sec" href="{folder_href(f["path"][:-1])}">Revenir au dossier</a>'
+        '</div>')
+
+
 def viewer_page(f, content, wide=False):
     folder = f["path"][:-1]
     crumbs = ['<a href="/documents">Documents</a>'] + [
@@ -940,6 +944,11 @@ def preview(filepath):
     f = FILES_BY_PATH.get(tuple(s for s in filepath.split("/") if s))
     if f is None:
         abort(404)
+    if is_spoiler(f):
+        if request.args.get("vu") == "1":
+            session["hint_vu"] = True
+        if not session.get("hint_vu"):
+            return html(viewer_page(f, hint_warning(f)))
     data = read_bytes(f)
     if data is None:
         content = no_preview(f, missing=True)

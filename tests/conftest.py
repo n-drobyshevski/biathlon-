@@ -101,7 +101,6 @@ def share_anon(share_module):
 @pytest.fixture()
 def share(share_module):
     """A share client that is logged in as the crew account."""
-    share_module._FAILS.clear()                      # not tripped by a prior test
     c = share_module.app.test_client()
     r = c.post("/login", data={"identifiant": "equipe-it", "motdepasse": SHARE_PASSWORD})
     assert r.status_code == 302
