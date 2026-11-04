@@ -202,3 +202,12 @@ def test_preview_of_missing_file(share, share_module, monkeypatch, tmp_path):
     monkeypatch.setattr(sys.modules["share_app"], "HANDOUT_DIR", str(tmp_path))
     page = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv")
     assert page.status_code == 200 and "pas encore disponible" in page.data.decode()
+
+
+def test_login_cookie_does_not_clash_with_ctfd(share_module):
+    """Same host offline: CTFd's cookie is "session", the intranet's must differ."""
+    c = share_module.app.test_client()
+    r = c.post("/login", data={"identifiant": "equipe-it", "motdepasse": "transition2026"})
+    cookies = r.headers.getlist("Set-Cookie")
+    assert any(h.startswith("intranet_session=") for h in cookies)
+    assert not any(h.startswith("session=") for h in cookies)

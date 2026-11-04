@@ -46,6 +46,10 @@ SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SHARE_SECRET_KEY") or os.urandom(32)
+# Offline every service shares the Pi's host, and browsers ignore ports for
+# cookies: under Flask's default name "session" the intranet's login and the
+# scoreboard's (CTFd also uses "session") would keep replacing each other.
+app.config["SESSION_COOKIE_NAME"] = "intranet_session"
 
 PRODUCT = "Intranet DécaFlop 16.0.4351"
 SITE = "Intranet DécaFlop"
