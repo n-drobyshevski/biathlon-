@@ -31,9 +31,10 @@ APPS = {
     "sapgw": (8014, "Gateway SAP (SMGW)", "Moniteur du gateway DFL"),
 }
 # Online subdomain of each tool (same names as the hub's links and CLOUDFLARE.md)
-SUBDOMAIN = {"intranet": "share", "athletes": "idor", "resultats": "sqli", "api": "jwt",
-             "chrono": "git", "certificats": "ssti", "sapgw": "sapgw"}
-LAB_LABELS = {"site", "share", "idor", "sqli", "jwt", "git", "ssti", "sapgw",
+# In-story names on purpose: a subdomain must never name the vulnerability.
+SUBDOMAIN = {"intranet": "share", "athletes": "athletes", "resultats": "resultats", "api": "api",
+             "chrono": "chrono", "certificats": "certificats", "sapgw": "sapgw"}
+LAB_LABELS = {"site", "share", "athletes", "resultats", "api", "chrono", "certificats", "sapgw",
               "hub", "ctfd", "cyberchef", "terminal"}
 ORDER = ["intranet", "athletes", "resultats", "api", "chrono", "certificats", "sapgw"]
 CUR = ' aria-current="page"'

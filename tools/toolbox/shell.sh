@@ -21,8 +21,9 @@ cat <<'BANNER'
  En ligne (via Cloudflare), ce terminal n'a
  ni internet ni IP du Pi : visez le service
  par son nom interne, port 5000, le même
- que son sous-domaine (site, share, idor,
- sqli, jwt, git, ssti, sapgw), par exemple
+ que son sous-domaine (site, share,
+ athletes, resultats, api, chrono,
+ certificats, sapgw), par exemple
    wget http://share:5000/<chemin>
 
 BANNER

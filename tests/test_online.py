@@ -17,8 +17,8 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DOMAIN = "ctf.example.com"
-SUB = {"01": "site", "02": "site", "03": "site", "04": "idor", "05": "share", "06": "sqli",
-       "07": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
+SUB = {"01": "site", "02": "site", "03": "site", "04": "athletes", "05": "share", "06": "resultats",
+       "07": "share", "09": "share", "10": "api", "11": "chrono", "12": "certificats", "13": "share",
        "14": "sapgw", "15": "share"}
 # online: these each get their own internal network (shared with cloudflared
 # only); everything else (challenges, share, toolbox) sits on `internal`
@@ -85,7 +85,7 @@ def test_dry_run_base_domain(setup_mod):
 
 
 def test_dry_run_domain_from_env_and_host_wins(setup_mod):
-    assert _dry_run(CTF_DOMAIN=DOMAIN)["12"].endswith(f"connect=https://ssti.{DOMAIN}")
+    assert _dry_run(CTF_DOMAIN=DOMAIN)["12"].endswith(f"connect=https://certificats.{DOMAIN}")
     # an explicit --host keeps the offline links even if CTF_DOMAIN is still set
     assert _dry_run("--host", "192.168.8.2", CTF_DOMAIN=DOMAIN)["12"].endswith(
         "connect=http://192.168.8.2:8012")
@@ -95,8 +95,8 @@ def test_dry_run_domain_from_env_and_host_wins(setup_mod):
 def test_intranet_menu_follows_subdomains_online(monkeypatch):
     monkeypatch.setenv("FLAG", "TRIATHLON{idor_online}")
     c = _load("intra_idor_online", ROOT / "challenges" / "04-web-idor" / "app" / "app.py").app.test_client()
-    online = c.get("/", base_url=f"http://idor.{DOMAIN}", headers={"X-Forwarded-Proto": "https"}).data.decode()
-    for sub in ("share", "sqli", "jwt", "git", "ssti", "sapgw"):
+    online = c.get("/", base_url=f"http://athletes.{DOMAIN}", headers={"X-Forwarded-Proto": "https"}).data.decode()
+    for sub in ("share", "resultats", "api", "chrono", "certificats", "sapgw"):
         assert f'href="https://{sub}.{DOMAIN}/"' in online, sub
     assert not re.search(r'href="https?://[^"]*:\d+', online)
     offline = c.get("/", base_url="http://10.0.0.5:8004").data.decode()
@@ -113,8 +113,9 @@ def test_intranet_ignores_ips_and_unknown_hosts():
                          ("192.168.8.2", "http://192.168.8.2:8004/"),
                          ("pi.local:8020", "http://pi.local:8004/"),
                          ("share.lan", "http://share.lan:8004/"),           # 2 labels: not a lab domain
-                         (f"share.{DOMAIN}", f"http://idor.{DOMAIN}/"),     # scheme of the request
-                         (f"SITE.{DOMAIN}", f"http://idor.{DOMAIN}/")):
+                         (f"share.{DOMAIN}", f"http://athletes.{DOMAIN}/"),  # scheme of the request
+                         (f"SITE.{DOMAIN}", f"http://athletes.{DOMAIN}/"),
+                         (f"idor.{DOMAIN}", f"http://idor.{DOMAIN}:8004/")):  # old names: not lab hosts
         with app.test_request_context("/", base_url=f"http://{host}"):
             assert intranet.app_url("athletes") == expect, host
 
@@ -135,8 +136,8 @@ def test_staff_portal_share_link_online(dist, monkeypatch):
 def test_gitleak_page_js_maps_ports_to_subdomains():
     ep = (ROOT / "challenges" / "11-web-gitleak" / "app" / "entrypoint.sh").read_text()
     js = ep.split("<script>", 1)[1].split("</script>", 1)[0]
-    for port, sub in ((8020, "share"), (8004, "idor"), (8006, "sqli"), (8010, "jwt"),
-                      (8012, "ssti"), (8014, "sapgw")):
+    for port, sub in ((8020, "share"), (8004, "athletes"), (8006, "resultats"), (8010, "api"),
+                      (8012, "certificats"), (8014, "sapgw")):
         assert f"{port}:'{sub}'" in js
     assert "location.hostname+':'+a.dataset.port" in js          # offline rule kept
 
@@ -240,8 +241,8 @@ def test_online_overlay_isolates_every_service():
     assert cfg["networks"]["edge"]["driver_opts"]["com.docker.network.bridge.name"] == "ctf-edge"
     assert cf["environment"]["TUNNEL_TOKEN"] == "dummy" and "ports" not in cf
     env = cfg["services"]["hub"]["environment"]
-    for key, sub in (("SITE_URL", "site"), ("IDOR_URL", "idor"), ("SQLI_URL", "sqli"),
-                     ("JWT_URL", "jwt"), ("GIT_URL", "git"), ("SSTI_URL", "ssti"),
+    for key, sub in (("SITE_URL", "site"), ("IDOR_URL", "athletes"), ("SQLI_URL", "resultats"),
+                     ("JWT_URL", "api"), ("GIT_URL", "chrono"), ("SSTI_URL", "certificats"),
                      ("SAPGW_URL", "sapgw"), ("SHARE_URL", "share"), ("SCOREBOARD_URL", "ctfd"),
                      ("CYBERCHEF_URL", "cyberchef"), ("TERMINAL_URL", "terminal")):
         assert env[key] == f"https://{sub}.{DOMAIN}/", key
@@ -252,3 +253,32 @@ def test_online_overlay_refuses_without_token_or_domain():
     files = ("docker-compose.yml", "docker-compose.cloudflare.yml")
     assert _compose_config(*files, CTF_DOMAIN=DOMAIN).returncode != 0
     assert _compose_config(*files, TUNNEL_TOKEN="dummy").returncode != 0
+
+
+# --------------------------------------------------- no spoiler in a name
+# Players see every subdomain (address bar, hub labels, CTFd Connect lines,
+# terminal banner): none may name the vulnerability of its mission.
+SPOILERS = ("idor", "sqli", "jwt", "git", "ssti", "xss", "inject")
+
+
+def _spoils(name):
+    return any(w in name.lower() for w in SPOILERS)
+
+
+def test_no_subdomain_names_the_vulnerability(setup_mod):
+    intranet = _load("intranet_names", ROOT / "share" / "app" / "intranet.py")
+    names = set(setup_mod.CONNECT_SUB.values()) | set(intranet.SUBDOMAIN.values()) | intranet.LAB_LABELS
+    assert not [n for n in names if _spoils(n)], names
+    overlay = (ROOT / "docker-compose.cloudflare.yml").read_text()
+    for host in re.findall(r"https://([a-z0-9-]+)\.\$\{CTF_DOMAIN", overlay):
+        assert not _spoils(host), host
+    ep = (ROOT / "challenges" / "11-web-gitleak" / "app" / "entrypoint.sh").read_text()
+    js = ep.split("<script>", 1)[1].split("</script>", 1)[0]
+    assert not [n for n in re.findall(r"'([a-z]+)'", js) if _spoils(n)]
+
+
+def test_terminal_banner_names_no_vulnerability():
+    banner = (ROOT / "tools" / "toolbox" / "shell.sh").read_text().split("BANNER", 2)[1]
+    note = banner.split("En ligne", 1)[1]
+    words = re.findall(r"[a-z]+", note.lower())
+    assert not [w for w in words if w in SPOILERS], words

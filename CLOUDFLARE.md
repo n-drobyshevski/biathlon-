@@ -46,7 +46,7 @@ It assumes **a challenge container will be popped**, and contains the damage:
 | Non-root, `cap_drop: ALL`, `no-new-privileges` | The Flask apps (incl. `gitleak`) run as `nobody`. CTFd runs as its own user. nginx (`cyberchef`) keeps only the 4 capabilities it needs. `toolbox` is the non-root `player`. |
 | Read-only root filesystem everywhere, scratch on small `tmpfs` | A popped app cannot rewrite its own code or pages to deface them for everyone; `restart <service>` brings it back pristine. CTFd's state stays in its `ctfd-data` volume. The terminal's `/work` is a 256 MB tmpfs that is wiped on restart. |
 | `pids_limit` + `cpus` caps | A fork bomb in a challenge stops at 128 processes (verified: the app keeps serving) and cannot starve the Pi. |
-| Terminal: ttyd `-O` (`--check-origin`), `-m 20` | ttyd refuses WebSockets opened from another origin. A script a player plants on another lab subdomain cannot open a shell with someone else's Access cookie (verified: same-origin gets 101, `ssti.<domain>` as Origin is dropped). At most 20 concurrent terminals. |
+| Terminal: ttyd `-O` (`--check-origin`), `-m 20` | ttyd refuses WebSockets opened from another origin. A script a player plants on another lab subdomain cannot open a shell with someone else's Access cookie (verified: same-origin gets 101, another lab subdomain as Origin is dropped). At most 20 concurrent terminals. |
 | Images pinned by tag **and digest** (`cloudflared:2026.10.1@sha256:a15a…`, `ctfd:3.8.8@sha256:07cc…`), `--no-autoupdate` | A re-tagged or tampered upstream image cannot slip in, and nothing changes under you mid-event. To bump: `docker buildx imagetools inspect <image>:<tag>`, then copy the top-level digest (multi-arch, includes arm64). |
 | Hub links → subdomains | The overlay sets `SITE_URL=https://site.${CTF_DOMAIN}/` etc., so the cellule de crise links to `https://<svc>.<domain>/` instead of `host:port`. The intranet "Applications" menus of the challenges switch to subdomains by themselves when they are reached on one. |
 | cloudflared metrics on loopback (`--metrics 127.0.0.1:20241`) | In a container cloudflared otherwise listens on `0.0.0.0:20241`, on the same network as the challenges. Verified: from a popped `ssti`, that port served `/metrics`, `/config` (every hostname and origin) and `/debug/pprof` (heap dumps of the process holding the tunnel token). Now closed. |
@@ -89,17 +89,21 @@ such as `ctf.example.com`.
 In the tunnel → **Public Hostname → Add a public hostname**. The service URL
 is the **internal** docker name and port, never the Pi's IP or a host port:
 
+Subdomains are in-story app names on purpose (the same names as the
+intranet's Applications menu): a hostname like `sqli.<domain>` would tell
+players the vulnerability. Keep it that way if you add one.
+
 | Public hostname | Service type | URL |
 | --- | --- | --- |
 | `hub.<domain>` | HTTP | `hub:5000` |
 | `ctfd.<domain>` | HTTP | `ctfd:8000` |
 | `site.<domain>` | HTTP | `staff:5000` |
 | `share.<domain>` | HTTP | `share:5000` |
-| `idor.<domain>` | HTTP | `idor:5000` |
-| `sqli.<domain>` | HTTP | `sqli:5000` |
-| `jwt.<domain>` | HTTP | `jwt:5000` |
-| `git.<domain>` | HTTP | `gitleak:5000` |
-| `ssti.<domain>` | HTTP | `ssti:5000` |
+| `athletes.<domain>` | HTTP | `idor:5000` |
+| `resultats.<domain>` | HTTP | `sqli:5000` |
+| `api.<domain>` | HTTP | `jwt:5000` |
+| `chrono.<domain>` | HTTP | `gitleak:5000` |
+| `certificats.<domain>` | HTTP | `ssti:5000` |
 | `sapgw.<domain>` | HTTP | `sapgw:5000` |
 | `cyberchef.<domain>` | HTTP | `cyberchef:80` |
 | `terminal.<domain>` | HTTP | `toolbox:7681` |
@@ -141,7 +145,7 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
    enabled (it is the default login method).
 6. Test from a private browser window: `https://hub.<domain>` must show the
    Cloudflare Access login page **before** any lab content. Check one challenge
-   host too, e.g. `https://ssti.<domain>`.
+   host too, e.g. `https://certificats.<domain>`.
 
 ### 3b. Make the tunnel itself refuse unauthenticated requests (fail-closed)
 
@@ -288,12 +292,12 @@ Every challenge's **Connect** line then points at its subdomain:
 | Challenges | Connect |
 | --- | --- |
 | 01, 02, 03 | `https://site.<domain>` |
-| 04 | `https://idor.<domain>` |
+| 04 | `https://athletes.<domain>` |
 | 05, 07, 09, 13, 15 | `https://share.<domain>` |
-| 06 | `https://sqli.<domain>` |
-| 10 | `https://jwt.<domain>` |
-| 11 | `https://git.<domain>` |
-| 12 | `https://ssti.<domain>` |
+| 06 | `https://resultats.<domain>` |
+| 10 | `https://api.<domain>` |
+| 11 | `https://chrono.<domain>` |
+| 12 | `https://certificats.<domain>` |
 | 14 | `https://sapgw.<domain>` |
 
 The "Cellule de crise" menu item and the mission links go to
@@ -312,12 +316,13 @@ the session.
 The toolbox (`terminal.<domain>`) is on the internal network too: **it has no
 internet and there is no Pi IP to use.** It reaches the services by their
 internal name on port 5000. Every service also answers on the same name as its
-subdomain (aliases `site` for `staff`, `git` for `gitleak`). The banner tells
+subdomain (aliases `site` for `staff`, `athletes` for `idor`, `resultats` for
+`sqli`, `api` for `jwt`, `chrono` for `gitleak`, `certificats` for `ssti`). The banner tells
 players that. Examples (organizer reference, **not** for the banner):
 
 ```bash
 wget http://share:5000/telecharger/...          # an evidence file (copy the link from the share)
-git-dumper http://gitleak:5000/.git/ dump       # mission 11 (http://git:5000/.git/ works too)
+git-dumper http://gitleak:5000/.git/ dump       # mission 11 (http://chrono:5000/.git/ works too)
 ```
 
 Files players download in the browser come straight from

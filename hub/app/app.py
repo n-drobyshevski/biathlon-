@@ -531,7 +531,7 @@ def gcode(text):
 # Online (Cloudflare Tunnel) the team terminal has no internet and no Pi IP: it
 # reaches the services by their internal name. Offline text unchanged.
 GUIDE_ONLINE_GIT = ("http://ADRESSE:8011/.git/ ./dump` (ADRESSE est l'adresse du Pi)",
-                    "http://git:5000/.git/ ./dump` (en ligne, le terminal joint le site par son nom interne, git)")
+                    "http://chrono:5000/.git/ ./dump` (en ligne, le terminal joint le site par son nom interne, chrono)")
 
 # Client-side progressive reveal: the first step shows, the rest wait behind
 # "Étape suivante" (or "Tout afficher"). No server state, no flags on the page.

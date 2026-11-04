@@ -37,8 +37,12 @@ Point the tunnel's public hostnames at `<service>.railway.internal`:
 | `ctfd.<domain>` | `http://ctfd.railway.internal:8000` |
 | `site.<domain>` | `http://staff.railway.internal:5000` |
 | `share.<domain>` | `http://share.railway.internal:5000` |
-| `idor` / `sqli` / `jwt` / `ssti` / `sapgw` `.<domain>` | `http://<name>.railway.internal:5000` |
-| `git.<domain>` | `http://gitleak.railway.internal:5000` |
+| `athletes.<domain>` | `http://idor.railway.internal:5000` |
+| `resultats.<domain>` | `http://sqli.railway.internal:5000` |
+| `api.<domain>` | `http://jwt.railway.internal:5000` |
+| `chrono.<domain>` | `http://gitleak.railway.internal:5000` |
+| `certificats.<domain>` | `http://ssti.railway.internal:5000` |
+| `sapgw.<domain>` | `http://sapgw.railway.internal:5000` |
 | `cyberchef.<domain>` | `http://cyberchef.railway.internal:80` |
 | `terminal.<domain>` | `http://toolbox.railway.internal:7681` (+ HTTP Host Header `terminal.<domain>`) |
 

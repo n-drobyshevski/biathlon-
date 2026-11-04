@@ -31,8 +31,10 @@
 # ============================================================================
 
 # Inside the internal network every service answers on its compose name AND,
-# where they differ, on its public subdomain label (staff = site, gitleak =
-# git), so the toolbox banner can say "same name as the subdomain".
+# where they differ, on its public subdomain label (staff = site, idor =
+# athletes, sqli = resultats, jwt = api, gitleak = chrono, ssti = certificats),
+# so the toolbox banner can say "same name as the subdomain". The subdomains
+# are in-story app names on purpose: they must never name the vulnerability.
 # Each one also answers as <service>.railway.internal: the tunnel routes can
 # then use those names and work unchanged both here and on the Railway test
 # deploy (deploy/railway/README.md). Both forms work, e.g. hub:5000 or
@@ -80,11 +82,11 @@ services:
         aliases: [hub.railway.internal]
     environment:
       SITE_URL: "https://site.${CTF_DOMAIN:?set CTF_DOMAIN in .env (see CLOUDFLARE.md)}/"
-      IDOR_URL: "https://idor.${CTF_DOMAIN}/"
-      SQLI_URL: "https://sqli.${CTF_DOMAIN}/"
-      JWT_URL: "https://jwt.${CTF_DOMAIN}/"
-      GIT_URL: "https://git.${CTF_DOMAIN}/"
-      SSTI_URL: "https://ssti.${CTF_DOMAIN}/"
+      IDOR_URL: "https://athletes.${CTF_DOMAIN}/"
+      SQLI_URL: "https://resultats.${CTF_DOMAIN}/"
+      JWT_URL: "https://api.${CTF_DOMAIN}/"
+      GIT_URL: "https://chrono.${CTF_DOMAIN}/"
+      SSTI_URL: "https://certificats.${CTF_DOMAIN}/"
       SAPGW_URL: "https://sapgw.${CTF_DOMAIN}/"
       SHARE_URL: "https://share.${CTF_DOMAIN}/"
       SCOREBOARD_URL: "https://ctfd.${CTF_DOMAIN}/"
@@ -114,21 +116,21 @@ services:
     <<: *locked-app
     networks:
       internal:
-        aliases: [idor.railway.internal]
+        aliases: [athletes, idor.railway.internal]
     ports: !override ["127.0.0.1:8004:5000"]
 
   sqli:
     <<: *locked-app
     networks:
       internal:
-        aliases: [sqli.railway.internal]
+        aliases: [resultats, sqli.railway.internal]
     ports: !override ["127.0.0.1:8006:5000"]
 
   jwt:
     <<: *locked-app
     networks:
       internal:
-        aliases: [jwt.railway.internal]
+        aliases: [api, jwt.railway.internal]
     ports: !override ["127.0.0.1:8010:5000"]
 
   # The entrypoint builds the leaky git repo at startup: as nobody, on a
@@ -138,7 +140,7 @@ services:
     <<: *locked-app
     networks:
       internal:
-        aliases: [git, gitleak.railway.internal]  # subdomain name, for the toolbox
+        aliases: [chrono, gitleak.railway.internal]  # subdomain name, for the toolbox
     environment:
       SITE_DIR: /tmp/site
       HOME: /tmp
@@ -148,7 +150,7 @@ services:
     <<: *locked-app
     networks:
       internal:
-        aliases: [ssti.railway.internal]
+        aliases: [certificats, ssti.railway.internal]
     ports: !override ["127.0.0.1:8012:5000"]
 
   sapgw:
