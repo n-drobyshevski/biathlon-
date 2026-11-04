@@ -68,8 +68,15 @@ def test_offline_toolbox_gives_each_player_a_private_persistent_space(compose_of
     tb = compose_offline["services"]["toolbox"]
     assert tb["command"][0] == "ttyd" and "-O" in tb["command"] and "-m" in tb["command"]
     assert tb["cap_drop"] == ["ALL"]
-    assert sorted(tb["cap_add"]) == ["CHOWN", "KILL", "SETGID", "SETUID"]
+    assert sorted(tb["cap_add"]) == ["CHOWN", "KILL", "SETGID", "SETPCAP", "SETUID", "SYS_ADMIN"]
+    assert "apparmor=unconfined" not in tb["security_opt"]           # host profile kept
     assert tb.get("read_only") is True and tb.get("init") is True
+    assert any(t.startswith("/tmp:") and "mode=1733" in t for t in tb["tmpfs"])   # not listable
+    # SYS_ADMIN/SETPCAP exist only for the entrypoint: it hides the players'
+    # processes from each other, then drops both before ttyd starts
+    init = (ROOT / "tools" / "toolbox" / "init.sh").read_text()
+    assert "hidepid=invisible,gid=0" in init
+    assert init.rstrip().endswith('exec setpriv --bounding-set=-sys_admin,-setpcap -- "$@"')
     work = [v for v in tb["volumes"] if v["target"] == "/work"]
     assert work and work[0]["type"] == "volume"                     # homes survive restarts
     assert "toolbox-data" in compose_offline["volumes"]
@@ -80,6 +87,7 @@ def test_offline_toolbox_gives_each_player_a_private_persistent_space(compose_of
     assert "Trop de tentatives" not in shell                        # wrong password never locks
     docker = (ROOT / "tools" / "toolbox" / "Dockerfile").read_text()
     assert "USER player" not in docker and "joueur" in docker and "tmux" in docker
+    assert 'ENTRYPOINT ["/usr/local/bin/toolbox-init"]' in docker
     tmux = (ROOT / "tools" / "toolbox" / "tmux.conf").read_text()
     assert "--rcfile /etc/toolbox/bashrc" in tmux
 

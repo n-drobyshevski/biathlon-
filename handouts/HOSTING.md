@@ -73,8 +73,16 @@ run **on the Pi** and are driven entirely from a browser.
   past the quota. The container has **no repository, flags or challenge
   source mounted**, a read-only image, and the whole thing is capped
   (`mem_limit 1536m`, `cpus 2.0`, `pids 1024`, at most 20 terminals).
-  One limit remains: a player can still see the command lines of others'
-  running programs (`/proc`). Their files and output stay private.
+  Players cannot even see each other's processes or command lines: at start,
+  `toolbox-init` remounts `/proc` with `hidepid`, then drops the capabilities
+  that needed (`SYS_ADMIN`, `SETPCAP`) before ttyd starts, so no player shell
+  ever has them. `/tmp` is writable but not listable. On a host whose Docker
+  applies its default AppArmor profile (check:
+  `cat /sys/module/apparmor/parameters/enabled`), that remount is refused:
+  the terminal works the same, command lines are just visible again, and
+  `docker compose logs toolbox` / `toolbox-admin liste` say so. Note that
+  `docker compose exec toolbox ...` (organizer only) still runs with
+  `SYS_ADMIN`: only people with access to the Pi's Docker can do that.
 
   Organizer commands (forgotten password, list, delete):
   ```bash

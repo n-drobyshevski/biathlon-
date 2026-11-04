@@ -10,7 +10,9 @@
 #    created in the Dockerfile) and private home /work/joueurNN (0700, on the
 #    toolbox-data volume, so it survives restarts). /work cannot be listed.
 #    Other players cannot read the files, kill the processes, or touch the
-#    shell setup (root-owned, read-only rcfile) of someone else.
+#    shell setup (root-owned, read-only rcfile) of someone else, and cannot
+#    see their processes or command lines either (/proc hidepid, set up by
+#    toolbox-init before ttyd starts; root's group still sees everything).
 #  - The shell runs inside tmux: closing the tab or losing the Wi-Fi only
 #    detaches it. Logging in again from any browser reattaches the same
 #    session: same windows, same running programs, same files.
@@ -183,6 +185,7 @@ if [ "$(basename "$0")" = "toolbox-admin" ]; then
   cmd="${1:-}"; who="${2:-}"
   case "$cmd" in
     liste)
+      echo "Processus des autres joueurs cachés (hidepid) : $(cat "$STATE/hidepid" 2>/dev/null || echo '?')"
       printf '%-24s %-9s %8s  %s\n' PSEUDO UTILISATEUR ESPACE PROCESSUS
       for f in "$ACCOUNTS"/*; do
         [ -f "$f" ] || continue
