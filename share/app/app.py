@@ -881,6 +881,30 @@ def no_preview(f, missing=False):
     return (f'<div class="sheet nopv">{icon(f["kind"])}<h2>{title}</h2><p>{text}</p>{act}</div>')
 
 
+# Files that are genuine, spoiler-level hints (not decoys). The first time a
+# player opens one in a session, a warning stands in front of the content so a
+# curious click does not spoil the search.
+SPOILER_PATHS = {("Basis SAP", "Exports", "sap_hint.txt")}
+
+
+def is_spoiler(f):
+    return f["path"] in SPOILER_PATHS
+
+
+def hint_warning(f):
+    """Interstitial shown before a real hint is revealed."""
+    return (
+        '<div class="sheet nopv hint-warn">' + icon("txt") +
+        '<h2>Ceci est un véritable indice</h2>'
+        '<p>Ce fichier n\'est pas un leurre : il contient un vrai indice pour '
+        'l\'épreuve. Ne l\'ouvrez que si vous êtes vraiment bloqué et que vous '
+        'n\'avez plus aucune piste. Le consulter trop tôt vous gâchera la '
+        'recherche.</p>'
+        f'<a class="btn" href="{preview_href(f)}?vu=1">Afficher quand même l\'indice</a>'
+        f'<a class="btn sec" href="{folder_href(f["path"][:-1])}">Revenir au dossier</a>'
+        '</div>')
+
+
 def viewer_page(f, content, wide=False):
     folder = f["path"][:-1]
     crumbs = ['<a href="/documents">Documents</a>'] + [
@@ -905,6 +929,11 @@ def preview(filepath):
     f = FILES_BY_PATH.get(tuple(s for s in filepath.split("/") if s))
     if f is None:
         abort(404)
+    if is_spoiler(f):
+        if request.args.get("vu") == "1":
+            session["hint_vu"] = True
+        if not session.get("hint_vu"):
+            return html(viewer_page(f, hint_warning(f)))
     data = read_bytes(f)
     if data is None:
         content = no_preview(f, missing=True)
