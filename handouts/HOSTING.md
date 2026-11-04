@@ -59,17 +59,29 @@ run **on the Pi** and are driven entirely from a browser.
 - **Terminal d'équipe (ttyd)** — `http://<PiIP>:8091`. A Linux shell in the
   browser with `git-dumper`, `john`, `binwalk`, `foremost`, `exiftool`, `curl`,
   `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
-  a shell. **Every browser tab gets its own Unix user** (seat `joueur01` to
-  `joueur24`) with a private home `/work/joueurNN`: players cannot read each
-  other's files, kill each other's processes, or plant commands in a shared
-  `~/.bashrc` or history. When the tab closes, everything that seat started is
-  killed and its home wiped before the seat is reused. Each seat is capped at
-  64 processes, so a fork bomb only stalls its own terminal. The container has
-  **no repository, flags or challenge source mounted**, a read-only image,
-  scratch space in RAM (tmpfs, never the SD card), and the whole thing is
-  capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`, at most 20 terminals).
+  a shell. **Each player logs in with a pseudo and a password** (created the
+  first time, ideally the same pseudo as on CTFd) and gets their own Unix
+  user (`joueur01` to `joueur24`), a private home `/work/joueurNN` and a
+  `tmux` session. Closing the tab, losing the Wi-Fi or switching laptops only
+  detaches it: logging in again brings back the same session, running
+  programs and files. Homes are on the `toolbox-data` volume, so they also
+  survive a restart of the container or the Pi. Players cannot read each
+  other's files, kill each other's processes, or plant commands in each
+  other's shell. A wrong password just says so (no lockout).
+  Per player: 64 processes, 300 MB per file, 300 MB of home; a watchdog ends
+  (without deleting anything) a session stuck in a fork bomb or still growing
+  past the quota. The container has **no repository, flags or challenge
+  source mounted**, a read-only image, and the whole thing is capped
+  (`mem_limit 512m`, `cpus 2.0`, `pids 256`, at most 20 terminals).
   One limit remains: a player can still see the command lines of others'
   running programs (`/proc`). Their files and output stay private.
+
+  Organizer commands (forgotten password, list, delete):
+  ```bash
+  docker compose exec toolbox toolbox-admin liste            # pseudos, disk use, processes
+  docker compose exec toolbox toolbox-admin mdp <pseudo>     # forget the password (files kept)
+  docker compose exec toolbox toolbox-admin supprimer <pseudo>   # delete the account and its files
+  ```
 
 Both link from the cellule de crise's **Outils** tab and auto-point at the Pi's
 IP. Override the addresses with `CYBERCHEF_URL` / `TERMINAL_URL` on the `hub`
@@ -202,20 +214,24 @@ Run through this once, ideally the day before:
 - [ ] From a second device on the travel router, open
       `http://<PiIP>:8080`: 14 missions, every "Accès" link reaches its live
       service (site, share or challenge)
-- [ ] CTFd at `:8000`: setup wizard done (Teams mode), `ctfd-setup.py` loaded
-      the 14 challenges; a test team can register, submit a flag and unlock a hint
+- [ ] CTFd at `:8000`: setup wizard done (Users mode, solo), `ctfd-setup.py`
+      loaded the 14 challenges; a test player can register, submit a flag and
+      unlock a hint
+- [ ] Terminal at `:8091`: log in with a test pseudo, create a file, close the
+      tab, log in again: same session and file. Then
+      `docker compose exec toolbox toolbox-admin supprimer <pseudo>`
 - [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
       open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
 
 ## During the event
 
-- 6 people, 1h–1h30: expect most teams to clear the easy + medium tier and at
+- 6 people, 1h–1h30: expect most players to clear the easy + medium tier and at
   least start the SAP pair. The hint system (point-costed, in each README /
   your scoreboard) keeps beginners from stalling. For a true first-timer, the
   hub's **Mode guidé** tab is a full step-by-step walkthrough (stops before the
   flag), gated by `GUIDE_PASSWORD` (default `debutant`) — give the word only to
-  teams that want it, so others aren't spoiled.
+  players who want it, so others aren't spoiled.
 - If a flag leaks, `./scripts/gen-flags.sh` + `docker compose up -d --build` +
   `./scripts/build-handouts.sh` rotates everything in ~1 minute. Update the
   scoreboard flags afterward.

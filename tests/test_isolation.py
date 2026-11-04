@@ -64,18 +64,30 @@ def test_offline_compose_locks_every_app(compose_offline):
     assert env["SITE_DIR"].startswith("/tmp/")                   # read-only image
 
 
-def test_offline_toolbox_gives_each_tab_its_own_user(compose_offline):
+def test_offline_toolbox_gives_each_player_a_private_persistent_space(compose_offline):
     tb = compose_offline["services"]["toolbox"]
     assert tb["command"][0] == "ttyd" and "-O" in tb["command"] and "-m" in tb["command"]
     assert tb["cap_drop"] == ["ALL"]
     assert sorted(tb["cap_add"]) == ["CHOWN", "KILL", "SETGID", "SETUID"]
     assert tb.get("read_only") is True and tb.get("init") is True
-    assert any(t.startswith("/work:") and "size=" in t for t in tb["tmpfs"])
+    work = [v for v in tb["volumes"] if v["target"] == "/work"]
+    assert work and work[0]["type"] == "volume"                     # homes survive restarts
+    assert "toolbox-data" in compose_offline["volumes"]
     shell = (ROOT / "tools" / "toolbox" / "shell.sh").read_text()
-    assert "exec setpriv --reuid" in shell and "--rcfile /etc/toolbox/bashrc" in shell
-    assert "ulimit -H -u" in shell
+    assert "exec setpriv --reuid" in shell and "tmux" in shell      # reattachable session
+    assert "pw_check" in shell and "scrypt" in shell                # password per pseudo
+    assert "ulimit -H -u" in shell and "ulimit -H -f" in shell and "--watchdog" in shell
+    assert "Trop de tentatives" not in shell                        # wrong password never locks
     docker = (ROOT / "tools" / "toolbox" / "Dockerfile").read_text()
-    assert "USER player" not in docker and "joueur" in docker
+    assert "USER player" not in docker and "joueur" in docker and "tmux" in docker
+    tmux = (ROOT / "tools" / "toolbox" / "tmux.conf").read_text()
+    assert "--rcfile /etc/toolbox/bashrc" in tmux
+
+
+def test_ctfd_setup_defaults_to_solo_play():
+    text = (ROOT / "scripts" / "ctfd-setup.py").read_text()
+    assert 'choices=("users", "teams"), default="users"' in text
+    assert "ensure_user_mode(api, args.user_mode)" in text
 
 
 @pytest.fixture(scope="module")

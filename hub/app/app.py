@@ -10,7 +10,7 @@ with a link to each live service.
   ports; override with <KEY>_URL (e.g. IDOR_URL, SHARE_URL) if needed.
 - The crew login for the share is given in the Contexte sheet.
 - Scoreboard (CTFd): CTFD_PORT links it on the player's host; SCOREBOARD_URL
-  overrides the address. Teams submit flags there.
+  overrides the address. Players submit flags there (solo accounts).
 - ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
   the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
@@ -308,7 +308,7 @@ def crisis_cell():
 @app.get("/contexte")
 def context():
     board = scoreboard_url()
-    score = (f'<a href="{escape(board)}">{escape(board)}</a> (équipes, flags, indices et classement)' if board
+    score = (f'<a href="{escape(board)}">{escape(board)}</a> (votre compte joueur, flags, indices et classement)' if board
              else "fourni par l'organisation")
     rows = [("", [(k, ""), (v, ' class="desc"')]) for k, v in [
         ("Incident", "Liste de départ de la finale falsifiée"),
@@ -355,7 +355,7 @@ def tools():
          "purpose": "Un shell Linux dans le navigateur, avec les outils de l'équipe déjà installés.",
          "chips": ["git-dumper", "john", "binwalk", "foremost", "exiftool", "curl", "python3"]},
         {"name": "Tableau des scores", "icon": "board", "url": scoreboard_url(),
-         "purpose": "Créez ou rejoignez votre équipe, soumettez les flags et suivez le classement.",
+         "purpose": "Créez votre compte joueur, soumettez les flags et suivez le classement.",
          "chips": ["Équipes", "Flags", "Indices", "Classement"]},
     ]
 

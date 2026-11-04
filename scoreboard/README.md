@@ -1,11 +1,12 @@
 # Scoreboard on the Pi
 
-You need somewhere for teams to submit flags and see the board. Two options.
+You need somewhere for players to submit flags and see the board. Two options.
 
 ## Option A — CTFd (default, included)
 
-CTFd handles **teams, flag checking, the point-costed hints and the live
-scoreboard**. It's part of `docker-compose.yml` (image `ctfd/ctfd:3.8.8`,
+CTFd handles **player accounts, flag checking, the point-costed hints and the
+live scoreboard**. Everyone plays **solo**: one CTFd account per player, with
+their own solves, score and unlocked hints. It's part of `docker-compose.yml` (image `ctfd/ctfd:3.8.8`,
 arm64-native, SQLite, data in the `ctfd-data` volume, ~0.5–0.7 GB RAM), so
 `docker compose up -d --build` starts it with everything else on port **8000**.
 Pull the images once while you still have internet.
@@ -13,8 +14,10 @@ Pull the images once while you still have internet.
 **One-time setup (≈5 minutes):**
 
 1. Open `http://<PiIP>:8000` and complete the setup wizard: event name, **user
-   mode "Teams"**, your admin account. Leave registration open so teams can
-   sign up themselves.
+   mode "Users"** (solo), your admin account. Leave registration open so
+   players can sign up themselves. (`ctfd-setup.py` below switches CTFd to
+   "Users" anyway if you picked "Teams" and no team exists yet; pass
+   `--user-mode teams` to keep team play.)
 2. In CTFd, open **Settings → Access Tokens** (your admin profile) and generate
    a token. Put it in `.env`, with the address players use:
    ```

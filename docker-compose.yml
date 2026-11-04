@@ -193,15 +193,19 @@ services:
 
   # http://<PiIP>:8091 — ttyd web terminal with git-dumper, john, binwalk,
   #   foremost, exiftool, curl, python3. The catch-all (really only 11 needs a
-  #   shell). NO repo/flags/source mounted. Every browser tab gets its own
-  #   Unix user and private home, wiped when the tab closes (see
-  #   tools/toolbox/shell.sh): players cannot read each other's files, kill
-  #   each other's processes or plant commands in a shared ~/.bashrc.
-  #   ttyd runs as root only to switch to the seat's user (and hang up its
-  #   shell): every capability except SETUID/SETGID/CHOWN/KILL is dropped,
-  #   the image is read-only, and the players' shells get no capability.
+  #   shell). NO repo/flags/source mounted. Each player logs in with a pseudo
+  #   + password (created on first use) and gets their own Unix user, private
+  #   home and tmux session (see tools/toolbox/shell.sh): close the tab or
+  #   lose the Wi-Fi, log in again, everything is still there. Players cannot
+  #   read each other's files, kill each other's processes or plant commands
+  #   in each other's shell. Homes live on the toolbox-data volume (kept
+  #   across restarts, wiped by `down -v` like CTFd's), with per-player
+  #   process / file / quota caps enforced by a watchdog.
+  #   ttyd runs as root only to switch to the player's user (and hang up its
+  #   tmux client): every capability except SETUID/SETGID/CHOWN/KILL is
+  #   dropped, the image is read-only, the players' shells get no capability.
   #   -O refuses WebSockets from another origin, -m caps open terminals.
-  #   Scratch space is tmpfs (in the container's RAM cap, never the SD card).
+  #   Organizer: docker compose exec toolbox toolbox-admin liste|mdp|supprimer
   toolbox:
     build: ./tools/toolbox
     command: ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
@@ -214,11 +218,13 @@ services:
     cap_add: [SETUID, SETGID, CHOWN, KILL]
     security_opt: ["no-new-privileges:true"]
     read_only: true
+    volumes:
+      - toolbox-data:/work                    # players' homes + accounts; `down -v` wipes it
     tmpfs:
-      - "/work:size=256m,mode=0711"
       - "/run/toolbox:size=1m,mode=0700"
       - "/tmp:size=64m,mode=1777"
     restart: unless-stopped
 
 volumes:
   ctfd-data:
+  toolbox-data:
