@@ -5,7 +5,10 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-COPIES = [ROOT / "hub" / "app", ROOT / "challenges" / "01-web-staff" / "app", ROOT / "share" / "app"]
+CHALLENGES = {"04": "04-web-idor", "06": "06-web-sqli", "10": "10-web-jwt", "11": "11-web-gitleak",
+              "12": "12-web-ssti", "14": "14-sap-gateway"}
+COPIES = [ROOT / "hub" / "app", ROOT / "challenges" / "01-web-staff" / "app", ROOT / "share" / "app"] + \
+    [ROOT / "challenges" / d / "app" for d in CHALLENGES.values()]
 DOMAIN = "ctf.example.com"
 PASSWORD = "transition2026"
 
@@ -141,3 +144,54 @@ def test_hub_buttons_sit_in_the_tabs_bar_corner():
     assert "--dfab-gap:8px; --dfab-lift:0px;" in css                 # desktop: bottom-right corner
     assert ":root{--dfab-lift:35px;--dfab-gap:8px}" in css            # phone: just above the tabs
     assert "padding:0 184px 0 12px" in css                           # tabs never run under them
+
+
+# ---------------------------------------------------------------- challenges
+def _challenge(num, monkeypatch, **env):
+    import importlib.util
+    import sys
+    for k, v in {"FLAG": "TRIATHLON{fab}", **env}.items():
+        monkeypatch.setenv(k, v)
+    path = ROOT / "challenges" / CHALLENGES[num] / "app" / "app.py"
+    spec = importlib.util.spec_from_file_location(f"fab_ch_{num}", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod.app.test_client()
+
+
+def test_every_challenge_page_links_hub_and_tools(monkeypatch):
+    for num in ("04", "06", "10", "12", "14"):
+        c = _challenge(num, monkeypatch)
+        page = c.get("/", base_url="http://10.0.0.5:8004").data.decode()
+        nav = fab_html(page)
+        assert "http://10.0.0.5:8080/" in hrefs(nav), num            # main button: cellule de crise
+        assert "http://10.0.0.5:8080/outils" in hrefs(nav), num      # Outils
+        assert "8020" not in nav, num                                # intranet locked before login
+        assert "/static/fab.css" in page and c.get("/static/fab.css").status_code == 200, num
+        c.set_cookie("dflop_intranet", "1", domain="10.0.0.5")
+        nav = fab_html(c.get("/", base_url="http://10.0.0.5:8004").data.decode())
+        assert "http://10.0.0.5:8020/" in hrefs(nav), num            # unlocked after the share login
+
+
+def test_challenge_shortcuts_leave_api_and_text_alone(monkeypatch):
+    c10 = _challenge("10", monkeypatch)
+    r = c10.get("/api/token")
+    assert r.mimetype == "application/json" and "dfab" not in r.data.decode()
+    r = _challenge("14", monkeypatch).get("/sap/gw/reginfo")
+    assert r.mimetype == "text/plain" and "dfab" not in r.data.decode()
+    r = _challenge("12", monkeypatch).post("/generate", data={"name": "{{7*7}}"})
+    assert "49" in r.data.decode() and "dfab" in r.data.decode()  # SSTI still works, page decorated
+
+
+def test_gitleak_shortcuts_on_home_page_only(monkeypatch, tmp_path):
+    site = tmp_path / "site"
+    (site / ".git").mkdir(parents=True)
+    (site / ".git" / "HEAD").write_text("ref: refs/heads/master\n")
+    (site / "index.html").write_text("<html><head></head><body><h1>Chronométrage</h1></body></html>")
+    c = _challenge("11", monkeypatch, SITE_DIR=str(site))
+    for path in ("/", "/index.html"):
+        assert "http://localhost:8080/" in hrefs(fab_html(c.get(path).data.decode()))
+    # what git-dumper crawls is served exactly as on disk, no extra links
+    assert "dfab" not in c.get("/.git/").data.decode()
+    assert c.get("/.git/HEAD").data == b"ref: refs/heads/master\n"
