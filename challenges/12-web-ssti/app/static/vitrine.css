@@ -1,0 +1,62 @@
+/* Athlete-facing spaces of the DécaFlop site (04 Espace athlètes, 12 Certificats
+   de finaliste), on top of decaflop.css: the bar naming the space, account
+   panels, tags, notices, the copy box, the form and the certificate. Identical
+   copies in 04 and 12 (see vitrine.py). */
+.portal{background:var(--soft);border-bottom:1px solid var(--line)}
+.portal .in{display:flex;flex-wrap:wrap;align-items:center;gap:6px 26px;min-height:52px}
+.portal .pname{font-weight:600;color:var(--ink)}
+.portal nav{display:flex;gap:20px;font-size:14px}
+.portal nav a{color:var(--text);text-decoration:none;padding:15px 0 13px;border-bottom:2px solid transparent}
+.portal nav a:hover{color:var(--ink);border-bottom-color:var(--line)}
+.portal nav a[aria-current]{color:var(--ink);border-bottom-color:var(--blue)}
+.portal .who{margin-left:auto;font-size:14px;color:var(--mute)}
+.portal .who a{color:var(--ink);margin-left:8px;text-underline-offset:3px}
+.page-hd .crumb{padding-top:22px}
+.acc{padding:28px 0 56px}
+.acc .panel{margin-bottom:28px}
+.acc table.std{margin-bottom:4px}
+.acc table.std td.k{width:180px;color:var(--mute)}
+.tag{display:inline-block;vertical-align:middle;margin-left:10px;padding:3px 10px;border-radius:999px;
+  font-size:12px;font-weight:600;letter-spacing:0;background:var(--soft);color:var(--mute)}
+.tag.athlete{background:#e7f6ec;color:var(--ok)}
+.tag.crew{background:#fff3dc;color:var(--low)}
+.tag.admin{background:#fde8e8;color:var(--out)}
+.notice{margin:0 0 20px}
+.notice.ok{background:#e7f6ec;color:#155c33}
+.notice.warn{background:#fff3dc;color:#6b4100}
+.notice.err{background:#fde8e8;color:#8f1c23}
+pre.log{margin:0;padding:12px 14px;border-radius:6px;background:var(--soft);font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.scroll{overflow-x:auto}
+.scroll table.std{min-width:640px}
+.codebox{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.codebox code{flex:1 1 260px;min-width:0;padding:12px 14px;border-radius:6px;background:var(--soft);
+  font:14px ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.codebox .btn{min-height:40px;padding:0 18px}
+.form{margin:0 0 8px}
+.form label{display:block;font-weight:600;color:var(--ink);margin:0 0 6px}
+.form .inp{width:100%;max-width:480px;height:46px;padding:0 14px;border:1px solid #c9c9d0;border-radius:6px;
+  font:inherit;color:var(--ink);background:#fff}
+.form .inp:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue)}
+.form .hint{display:block;font-size:13px;color:var(--mute);margin:6px 0 0}
+.form .btns{margin-top:16px}
+.preview h2{font-size:18px;margin:8px 0 12px}
+.cert{border:1px solid #c6c6c6;padding:6px;max-width:640px;margin:4px 0 16px;background:#fff}
+.cert .in-cert{border:3px double var(--blue);padding:30px 26px;text-align:center}
+.cert .org{font-weight:900;font-style:italic;font-size:18px;line-height:1;color:var(--blue);letter-spacing:-.02em}
+.cert .org i{color:#101010}
+.cert h3{font-weight:300;font-size:24px;margin:14px 0 6px}
+.cert .name{font:600 clamp(18px,5.5vw,28px)/1.25 Georgia,"Times New Roman",serif;color:#101010;margin:12px 0;
+  overflow-wrap:anywhere}
+.cert p{margin:0;color:#555}
+.cert .sig{display:flex;justify-content:space-between;gap:16px;margin-top:28px;font-size:12px;color:var(--mute)}
+.cert .sig span{border-top:1px solid #bdbdc4;padding-top:6px;min-width:140px}
+@media (max-width:820px){
+  .portal .who{margin-left:0;width:100%;padding-bottom:10px}
+  .acc table.std td.k{width:120px}
+}
+@media print{
+  .skip,.hd,.portal,.foot,.noprint,.page-hd{display:none!important}
+  body{display:block}
+  .cert{border:0;margin:0 auto}
+}

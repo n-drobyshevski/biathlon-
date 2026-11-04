@@ -337,23 +337,88 @@ def _eth(payload):
 def _frame(src, dst, sport, dport, seq, ack, flags, http):
     return _eth(_ipv4(src, dst, 6, _tcp(sport, dport, seq, ack, flags, src, dst, http)))
 
+def _udp_frame(src, dst, sport, dport, payload):
+    udp = struct.pack("!HHHH", sport, dport, 8 + len(payload), 0) + payload   # checksum 0 = unused
+    return _eth(_ipv4(src, dst, 17, udp))
+
+def _dns(qid, name, answer=None):
+    """A minimal DNS query (or, with `answer`, its A-record response)."""
+    q = b"".join(bytes([len(l)]) + l.encode() for l in name.split(".")) + b"\x00" + struct.pack("!HH", 1, 1)
+    if answer is None:
+        return struct.pack("!HHHHHH", qid, 0x0100, 1, 0, 0, 0) + q
+    rr = struct.pack("!HHHIH", 0xC00C, 1, 1, 300, 4) + socket.inet_aton(answer)
+    return struct.pack("!HHHHHH", qid, 0x8180, 1, 1, 0, 0) + q + rr
+
+def _http_conv(c, s, cport, sport, isn_c, isn_s, req, resp):
+    """One short TCP conversation: handshake, request, response, close."""
+    a, b = isn_c, isn_s
+    pkts = [_frame(c, s, cport, sport, a, 0, 0x02, b""),                  # SYN
+            _frame(s, c, sport, cport, b, a + 1, 0x12, b""),              # SYN, ACK
+            _frame(c, s, cport, sport, a + 1, b + 1, 0x10, b""),          # ACK
+            _frame(c, s, cport, sport, a + 1, b + 1, 0x18, req),          # PSH, ACK: request
+            _frame(s, c, sport, cport, b + 1, a + 1 + len(req), 0x18, resp),
+            _frame(c, s, cport, sport, a + 1 + len(req), b + 1 + len(resp), 0x11, b"")]  # FIN, ACK
+    return pkts
+
 def gen_pcap():
+    """Crew Wi-Fi around the timing booth on the eve of the final. Among the
+    traffic (DNS, chip readers' syslog, the live results screen), the booth
+    talks HTTP Basic to timing.decaflop.local: a first try without credentials
+    (401), one with its OLD password (401), then the accepted one (200) — that
+    password is the flag — and a second split with the same credentials."""
     f = flag("FLAG_05_PCAP", "TRIATHLON{pcap_placeholder}")
-    creds = base64.b64encode(("timingop:" + f).encode()).decode()
-    req = ("GET /timing/submit?bib=1042 HTTP/1.1\r\n"
-           "Host: timing.decaflop.local\r\n"
-           f"Authorization: Basic {creds}\r\n"
-           "User-Agent: DFlop-TimingBooth/1.2\r\n"
-           "Connection: close\r\n\r\n").encode()
-    resp = ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
-            "OK split recorded. (Crew: STOP using HTTP Basic over the open booth Wi-Fi!)\r\n").encode()
-    c, s = "10.13.37.42", "10.13.37.10"
-    p1 = _frame(c, s, 49231, 80, 1000, 5000, 0x18, req)   # PSH,ACK
-    p2 = _frame(s, c, 80, 49231, 5000, 1000+len(req), 0x18, resp)
+    good = base64.b64encode(("timingop:" + f).encode()).decode()
+    old = base64.b64encode(b"timingop:chrono2025").decode()
+    booth, timing, gw, tablet, screen, reader = ("10.13.37.42", "10.13.37.10", "10.13.37.1",
+                                                 "10.13.37.55", "10.13.37.20", "10.13.37.61")
+    ua = "User-Agent: DFlop-TimingBooth/1.2\r\n"
+    def submit(bib, auth):
+        h = f"Authorization: Basic {auth}\r\n" if auth else ""
+        return (f"GET /timing/submit?bib={bib} HTTP/1.1\r\nHost: timing.decaflop.local\r\n{h}{ua}"
+                "Connection: close\r\n\r\n").encode()
+    def denied(msg):
+        return ("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"DFlop Timing\"\r\n"
+                "Content-Type: text/plain\r\nConnection: close\r\n\r\n" + msg + "\r\n").encode()
+    ok = ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+          "OK split recorded. (Crew: STOP using HTTP Basic over the open booth Wi-Fi!)\r\n").encode()
+    def syslog(msg):
+        return _udp_frame(reader, timing, 51514, 514, f"<134>chipreader-T2: {msg}".encode())
+    board_req = (b"GET /live/classement.json HTTP/1.1\r\nHost: live.decaflop.local:8080\r\n"
+                 b"User-Agent: DFlop-Ecran/3.0\r\nConnection: close\r\n\r\n")
+    board = (b'{"course":"finale","vague":3,"tete":[{"dossard":1077,"t":"00:58:12"},'
+             b'{"dossard":1013,"t":"00:58:40"},{"dossard":1042,"t":"01:01:05"}]}')
+    board_resp = (b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n" + board)
+    fav_req = (b"GET /favicon.ico HTTP/1.1\r\nHost: live.decaflop.local:8080\r\nConnection: close\r\n\r\n")
+    fav_resp = (b"HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nNot Found\r\n")
+
+    T = 1793558400                       # 2026-11-01 18:40:00 UTC, the eve of the final
+    timeline = [                         # (seconds from T, [frames]) — the accepted login sits at T
+        (-95, [syslog("tag 0x4A21 vu, porte T2")]),
+        (-81, [_udp_frame(booth, gw, 53001, 53, _dns(0x1a2b, "timing.decaflop.local")),
+               _udp_frame(gw, booth, 53, 53001, _dns(0x1a2b, "timing.decaflop.local", timing))]),
+        (-80, _http_conv(booth, timing, 49201, 80, 7000, 91000, submit(1042, None),
+                         denied("Authentication required."))),
+        (-61, [_udp_frame(tablet, gw, 53113, 53, _dns(0x77c1, "live.decaflop.local")),
+               _udp_frame(gw, tablet, 53, 53113, _dns(0x77c1, "live.decaflop.local", screen))]),
+        (-60, _http_conv(tablet, screen, 50412, 8080, 31000, 12000, board_req, board_resp)),
+        (-41, [syslog("tag 0x4A3F vu, porte T2")]),
+        (-30, _http_conv(booth, timing, 49215, 80, 8000, 92000, submit(1042, old),
+                         denied("Mot de passe expire, contactez l'astreinte IT."))),
+        (0,   _http_conv(booth, timing, 49231, 80, 1000, 5000, submit(1042, good), ok)),
+        (21,  _http_conv(booth, timing, 49240, 80, 9000, 93000, submit(1077, good), ok)),
+        (34,  _http_conv(tablet, screen, 50420, 8080, 32000, 13000, fav_req, fav_resp)),
+        (52,  [syslog("tag 0x4A21 vu, porte T3")]),
+    ]
     with open(os.path.join(OUT, "timing_booth.pcap"), "wb") as fh:
         fh.write(struct.pack("!IHHiIII", 0xa1b2c3d4, 2, 4, 0, 0, 65535, 1))  # global hdr (big-endian magic)
-        for ts, pkt in ((1793558400, p1), (1793558401, p2)):   # 2026-11-01 18:40 UTC, the eve of the final
-            fh.write(struct.pack("!IIII", ts, 0, len(pkt), len(pkt)) + pkt)
+        for offset, frames in timeline:
+            for i, pkt in enumerate(frames):       # a few ms between the packets of one exchange
+                usec = 0 if offset == 0 and i == 3 else 1000 * (3 * i + 1)
+                if offset == 0 and i < 3:          # the handshake just before 18:40:00 sharp
+                    sec, usec = T - 1, 999000 - 1000 * (3 - i)
+                else:
+                    sec = T + offset
+                fh.write(struct.pack("!IIII", sec, usec, len(pkt), len(pkt)) + pkt)
     print("[05] timing_booth.pcap")
 
 # ---------------------------------------------------------------------------

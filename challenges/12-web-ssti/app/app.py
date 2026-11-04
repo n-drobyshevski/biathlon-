@@ -35,8 +35,8 @@ from html import escape
 
 from flask import Flask, Response, render_template_string, request
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
-import intranet  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling vitrine.py, fab.py
+import vitrine  # noqa: E402  (public DécaFlop site look: finishers are not staff)
 import fab  # noqa: E402
 
 app = Flask(__name__)
@@ -63,24 +63,23 @@ _per_client, _per_client_lock = {}, threading.Lock()
 warnings.filterwarnings("ignore", message=r".*use of fork\(\) may lead to deadlocks.*",
                         category=DeprecationWarning)
 
-FORM = """<h1 class="h1">Certificat de finaliste</h1>
-<p class="lead">Générez le certificat d'un finaliste de la finale 2026. Saisissez le nom tel qu'il doit
- apparaître sur le certificat (prénom puis nom).</p>
-<form class="form noprint" method="post" action="/generate">
- <div class="field"><label for="n">Nom du finaliste</label>
-  <input class="in" id="n" name="name" value="Astrid Bjornsen" autofocus>
-  <span class="hint">Les certificats sont imprimés au village partenaires (imprimante PRN-VIL-02).</span></div>
+FORM = """<div class="panel narrow noprint">
+<form class="form" method="post" action="/generate">
+ <label for="n">Nom du finaliste</label>
+ <input class="inp" id="n" name="name" value="Astrid Bjornsen" autofocus>
+ <span class="hint">Les certificats sont imprimés au village partenaires (imprimante PRN-VIL-02).</span>
  <div class="btns"><button class="btn" type="submit">Générer le certificat</button></div>
-</form>"""
+</form></div>"""
 
 
 def page(result=""):
     # `result` is already-rendered HTML; it is concatenated, never re-templated.
-    body = FORM + result
-    return intranet.page("Certificat de finaliste - DécaFlop", body, app="certificats",
-                         site_title="Certificats de finaliste", site_href="/", logo="CF",
-                         topnav=[("/", "Nouveau certificat", True)],
-                         product="Certificats 1.3.0", foot_extra="Finale 2026, village partenaires")
+    head = vitrine.page_head("Certificat de finaliste",
+                             "Générez le certificat d'un finaliste de la finale 2026. Saisissez le nom tel "
+                             "qu'il doit apparaître sur le certificat (prénom puis nom).")
+    body = head + f'<section class="acc"><div class="in">{FORM}{result}</div></section>'
+    return vitrine.page("Certificat de finaliste - DécaFlop", body, portal="Certificats de finaliste",
+                        tabs=[("/", "Nouveau certificat", True)])
 
 
 @app.get("/")
@@ -171,7 +170,7 @@ def _give_slot(client, release=True):
 
 
 def _busy():
-    return Response(page('<p class="status err" role="alert">Le générateur est occupé. '
+    return Response(page('<p class="notice err" role="alert">Le générateur est occupé. '
                          'Réessayez dans quelques secondes.</p>'), status=503, mimetype="text/html")
 
 
@@ -202,11 +201,11 @@ def _generate(name):
             return _busy()
         msg = ("La génération a pris trop de temps et a été interrompue." if cert == "timeout"
                else f"Le modèle du certificat n'a pas pu être généré ({escape(cert)}).")
-        return Response(page(f'<p class="status err" role="alert">{msg}</p>'), status=500,
+        return Response(page(f'<p class="notice err" role="alert">{msg}</p>'), status=500,
                         mimetype="text/html")
-    return Response(page('<h2 class="h2">Aperçu</h2>' + cert +
-                         '<div class="btns noprint"><button class="btn sec" type="button" '
-                         'onclick="window.print()">Imprimer</button></div>'), mimetype="text/html")
+    return Response(page('<div class="preview"><h2 class="noprint">Aperçu</h2>' + cert +
+                         '<div class="btns noprint"><button class="btn line" type="button" '
+                         'onclick="window.print()">Imprimer</button></div></div>'), mimetype="text/html")
 
 
 if __name__ == "__main__":

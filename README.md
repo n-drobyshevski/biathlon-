@@ -202,8 +202,14 @@ CLOUDFLARE.md          optional online hosting runbook (Tunnel + Access)
 WRITEUPS/              organizer solutions (git-ignored, shared privately)
 ```
 
-Every internal tool (the share, the staff portal and challenges 04, 06, 10,
-11, 12, 14) shares one intranet look: `intranet.py` (page chrome) and
+Every internal tool (the share, the staff portal and challenges 06, 10, 11,
+14) shares one intranet look: `intranet.py` (page chrome) and
 `static/intranet.css`. Each Docker build only sees its own folder, so the two
 files are copied into every app; `tests/test_intranet_assets.py` fails if a
 copy drifts. Edit them in `share/app/`, then copy them to the others.
+
+The two athlete-facing apps, 04 (Espace athlètes) and 12 (Certificats de
+finaliste), are reached from the DécaFlop site's championship page, so they
+wear the public site look instead: `vitrine.py` (the site's header and footer,
+linking back to `:8001`), a copy of the site's `static/decaflop.css` and
+`static/vitrine.css`, identical in both apps (`tests/test_vitrine.py`).

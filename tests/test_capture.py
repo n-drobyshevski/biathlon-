@@ -10,6 +10,7 @@ import pytest
 
 PCAP = "/apercu/Chronom%C3%A9trage/Captures/timing_booth.pcap"
 FLAG = "TRIATHLON{pcap_creds_test}"          # conftest's FLAG_05_PCAP
+TOTAL, OLD_N, AUTH_N = 43, 22, 28           # packets in timing_booth.pcap; the expired-password try; the accepted login
 
 
 @pytest.fixture()
@@ -20,27 +21,36 @@ def capture(share_module):
 def test_list_shows_packets_without_headers(share):
     page = share.get(PCAP).data.decode()
     assert '<table class="pc-tbl">' in page and "/static/capture.css" in page.split("</head>")[0]
-    assert "2 paquets" in page
+    assert f"{TOTAL} paquets" in page
     assert "GET /timing/submit?bib=1042 HTTP/1.1" in page and "HTTP/1.1 200 OK (text/plain)" in page
     assert "10.13.37.42" in page and "10.13.37.10" in page
     assert "Authorization" not in page and "Aucun paquet sélectionné" in page
 
 
 def test_clicked_packet_shows_layers_and_http_headers(share):
-    page = share.get(PCAP + "?p=1").data.decode()
-    for layer in ("Trame 1", "Ethernet II", "Internet Protocol Version 4", "Transmission Control Protocol",
+    page = share.get(PCAP + f"?p={AUTH_N}").data.decode()
+    for layer in (f"Trame {AUTH_N}", "Ethernet II", "Internet Protocol Version 4", "Transmission Control Protocol",
                   "Hypertext Transfer Protocol"):
         assert layer in page, layer
     creds = base64.b64encode(("timingop:" + FLAG).encode()).decode()
     assert f"<code>Authorization: Basic {creds}</code>" in page     # still base64: the player decodes it
     assert FLAG not in page
-    assert 'aria-current="true">1</a>' in page
+    assert f'aria-current="true">{AUTH_N}</a>' in page
     assert "01/11/2026 18:40:00" in page                           # the eve of the final, as in the story
-    reply = share.get(PCAP + "?p=2").data.decode()
-    assert "Corps : " in reply and "OK split recorded." in reply
+    reply = share.get(PCAP + f"?p={AUTH_N + 1}").data.decode()
+    assert "Corps : " in reply and "OK split recorded." in reply and "200 OK" in reply
 
 
-@pytest.mark.parametrize("p", ["0", "3", "abc", "-1", "1e3"])
+def test_capture_has_smoke_and_a_rejected_decoy(share):
+    page = share.get(PCAP).data.decode()
+    for noise in ("DNS", "/live/classement.json", "401 Unauthorized", "10.13.37.61"):
+        assert noise in page, noise
+    old = base64.b64encode(b"timingop:chrono2025").decode()
+    assert f"<code>Authorization: Basic {old}</code>" in share.get(PCAP + f"?p={OLD_N}").data.decode()
+    assert "401 Unauthorized" in share.get(PCAP + f"?p={OLD_N + 1}").data.decode()   # the server refused it
+
+
+@pytest.mark.parametrize("p", ["0", "44", "abc", "-1", "1e3"])
 def test_bad_packet_number_shows_list_only(share, p):
     r = share.get(PCAP + "?p=" + p)
     assert r.status_code == 200 and "Aucun paquet sélectionné" in r.data.decode()
