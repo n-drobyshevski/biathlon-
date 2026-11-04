@@ -352,7 +352,7 @@ def gen_pcap():
     p2 = _frame(s, c, 80, 49231, 5000, 1000+len(req), 0x18, resp)
     with open(os.path.join(OUT, "timing_booth.pcap"), "wb") as fh:
         fh.write(struct.pack("!IHHiIII", 0xa1b2c3d4, 2, 4, 0, 0, 65535, 1))  # global hdr (big-endian magic)
-        for ts, pkt in ((1762022400, p1), (1762022401, p2)):
+        for ts, pkt in ((1793558400, p1), (1793558401, p2)):   # 2026-11-01 18:40 UTC, the eve of the final
             fh.write(struct.pack("!IIII", ts, 0, len(pkt), len(pkt)) + pkt)
     print("[05] timing_booth.pcap")
 
