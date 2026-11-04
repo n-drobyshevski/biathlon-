@@ -485,7 +485,7 @@ GUIDE = {
     "05": ("Une connexion en HTTP non chiffré laisse passer l'identifiant et le mot de passe en clair sur le réseau.",
            "Le partage interne, puis CyberChef.",
            ["Dans le partage, dossier Chronométrage puis Captures, téléchargez `timing_booth.pcap`.",
-            "Dans CyberChef, appliquez `Extract Strings` et cherchez la ligne qui commence par `Authorization: Basic` suivie d'un texte.",
+            "Dans CyberChef, appliquez `Extract Strings` et cherchez les lignes qui commencent par `Authorization: Basic` suivies d'un texte. Il y en a plusieurs : gardez celle que le serveur a acceptée (réponse `200 OK`).",
             "Appliquez `From Base64` sur ce texte : vous obtenez `timingop:` suivi du flag. Le flag est la partie après le deux-points."]),
     "06": ("Le formulaire de connexion insère directement votre saisie dans une requête SQL, "
            "on peut donc la détourner (injection SQL).",
