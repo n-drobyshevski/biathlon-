@@ -15,11 +15,30 @@
 #    docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d
 # ============================================================================
 
+# ---- Player isolation -------------------------------------------------------
+# Every team shares ONE instance of each service, so nothing a player does may
+# stick for the others. The Flask apps (hub, share and the challenges) run as
+# nobody with no capabilities and a read-only image: even a popped app (12 is
+# code execution by design) cannot rewrite its code or files, and a restart
+# always brings it back pristine. Scratch space is a small tmpfs. pids/cpu caps
+# keep a fork bomb or busy loop from starving the Pi; `init` reaps orphans so
+# they never pile up against the pids cap.
+x-locked-app: &locked-app
+  user: "65534:65534"
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  tmpfs: ["/tmp:size=32m,mode=1777"]
+  init: true
+  pids_limit: 128
+  cpus: 1.0
+
 services:
   # ---- Players' entry point (not a challenge) ----------------------------
   # http://<PiIP>:8080 — the "cellule de crise": briefs the team, lists every
   # mission, links the live ones and serves the handout files.
   hub:
+    <<: *locked-app
     build: ./hub
     environment:
       CTFD_PORT: "8000"                       # links to the CTFd scoreboard on the same host
@@ -40,6 +59,7 @@ services:
   # its press area / actualités: handouts/dist is mounted read-only and served
   # byte-for-byte at /medias/<name>.
   staff:
+    <<: *locked-app
     build: ./challenges/01-web-staff
     environment:
       FLAG: "${FLAG_01_STAFF}"
@@ -60,6 +80,7 @@ services:
   # byte-for-byte from the same handouts/dist. The cellule de crise hands out
   # the login (see the Contexte sheet).
   share:
+    <<: *locked-app
     build: ./share
     environment:
       SHARE_USER: "${SHARE_USER:-equipe-it}"
@@ -72,6 +93,7 @@ services:
 
   # ---- 04 · Web · medium (IDOR) -----------------------------------------
   idor:
+    <<: *locked-app
     build: ./challenges/04-web-idor
     environment:
       FLAG: "${FLAG_04_IDOR}"
@@ -81,6 +103,7 @@ services:
 
   # ---- 06 · Web · medium (SQLi auth bypass) -----------------------------
   sqli:
+    <<: *locked-app
     build: ./challenges/06-web-sqli
     environment:
       FLAG: "${FLAG_06_SQLI}"
@@ -93,6 +116,7 @@ services:
   # leaked in 11's git history (see gitleak below), so dumping that repo is an
   # alternate route into this challenge. Both default to 10's own default.
   jwt:
+    <<: *locked-app
     build: ./challenges/10-web-jwt
     environment:
       FLAG: "${FLAG_10_JWT}"
@@ -105,16 +129,24 @@ services:
   # API_JWT_SECRET must match 10's JWT_SECRET: the entrypoint writes it into the
   # first commit's config, so the git leak also exposes 10's signing secret.
   gitleak:
+    <<: *locked-app
     build: ./challenges/11-web-gitleak
     environment:
       FLAG: "${FLAG_11_GIT}"
       API_JWT_SECRET: "${JWT_SECRET:-DecaFlop2026}"
+      # read-only image: the entrypoint builds the leaky repo under /tmp
+      SITE_DIR: /tmp/site
+      HOME: /tmp
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8011:5000"]
     mem_limit: 128m
     restart: unless-stopped
 
   # ---- 12 · Web · hard (SSTI) -------------------------------------------
+  # Code execution inside a shared app: each certificate renders in a
+  # throwaway child process (see app.py), so a payload's changes never reach
+  # the next player; the locked-app settings above stop file changes.
   ssti:
+    <<: *locked-app
     build: ./challenges/12-web-ssti
     environment:
       FLAG: "${FLAG_12_SSTI}"
@@ -124,6 +156,7 @@ services:
 
   # ---- 14 · SAP · medium (gateway reginfo, simulated) -------------------
   sapgw:
+    <<: *locked-app
     build: ./challenges/14-sap-gateway
     environment:
       FLAG: "${FLAG_14_SAP_GW}"
@@ -160,16 +193,49 @@ services:
 
   # http://<PiIP>:8091 — ttyd web terminal with git-dumper, john, binwalk,
   #   foremost, exiftool, curl, python3. The catch-all (really only 11 needs a
-  #   shell). Non-root, NO repo/flags/source mounted, each connection gets its
-  #   own scratch workspace; capped so one player can't starve the Pi.
+  #   shell). NO repo/flags/source mounted. Each player logs in with a pseudo
+  #   + password (created on first use) and gets their own Unix user, private
+  #   home and tmux session (see tools/toolbox/shell.sh): close the tab or
+  #   lose the Wi-Fi, log in again, everything is still there. Players cannot
+  #   read each other's files, kill each other's processes or plant commands
+  #   in each other's shell. Homes live on the toolbox-data volume (kept
+  #   across restarts, wiped by `down -v` like CTFd's), with per-player
+  #   process / file / quota caps enforced by a watchdog. Players only see
+  #   their own processes (hidepid, set by toolbox-init at start).
+  #   ttyd runs as root only to switch to the player's user (and hang up its
+  #   tmux client): every capability except SETUID/SETGID/CHOWN/KILL is
+  #   dropped, the image is read-only, the players' shells get no capability.
+  #   -O refuses WebSockets from another origin, -m caps open terminals.
+  #   Organizer: docker compose exec toolbox toolbox-admin liste|mdp|supprimer
   toolbox:
     build: ./tools/toolbox
+    command: ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8091:7681"]
-    mem_limit: 512m
+    # 1.5 GB: one hashcat run needs ~0.7 GB the first time (it compiles its
+    # CPU kernels), ~0.45 GB after; two players cracking at once must fit.
+    # A run that still overflows is OOM-killed alone (largest process), never
+    # another player's shell. pids: 64 per player (in shell.sh) x a few.
+    mem_limit: 1536m
     cpus: 2.0
-    pids_limit: 256
+    pids_limit: 1024
+    init: true
+    cap_drop: [ALL]
+    # SYS_ADMIN + SETPCAP: only for toolbox-init, the entrypoint, which
+    # remounts /proc with hidepid (players cannot see each other's processes
+    # or command lines) and then removes both from the bounding set before
+    # starting ttyd: no player shell can ever use them. Docker's AppArmor
+    # profile stays on; where it forbids the remount, the hiding is skipped
+    # (see the toolbox logs / `toolbox-admin liste`).
+    cap_add: [SETUID, SETGID, CHOWN, KILL, SYS_ADMIN, SETPCAP]
     security_opt: ["no-new-privileges:true"]
+    read_only: true
+    volumes:
+      - toolbox-data:/work                    # players' homes + accounts; `down -v` wipes it
+    tmpfs:
+      - "/run/toolbox:size=1m,mode=0700"
+      - "/tmp:size=64m,mode=1733"             # writable, not listable: no peeking at others' temp files
     restart: unless-stopped
 
 volumes:
   ctfd-data:
+  toolbox-data:

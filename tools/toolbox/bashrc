@@ -1,0 +1,10 @@
+# Read-only shell setup for every player (root-owned, see Dockerfile).
+# Loaded with --rcfile, so nothing a player writes in their home can change
+# what their shell (or anyone else's) runs at start.
+[ -f /etc/bash.bashrc ] && . /etc/bash.bashrc
+PS1='${PSEUDO:-\u}@boite:\w\$ '
+alias ls='ls --color=auto'
+alias ll='ls -la'
+cd "$HOME" 2>/dev/null
+# the welcome text, once per session (first tmux pane)
+[ "${TMUX_PANE:-}" = "%0" ] && /usr/local/bin/player-shell --banner

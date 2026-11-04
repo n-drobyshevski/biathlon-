@@ -82,7 +82,7 @@ docker compose up -d --build
 # 3) build the forensics / stego / SAP handout files -> handouts/dist/
 ./scripts/build-handouts.sh
 
-# 4) scoreboard: finish CTFd's setup wizard at http://<PiIP>:8000 (mode "Teams"),
+# 4) scoreboard: finish CTFd's setup wizard at http://<PiIP>:8000 (mode "Users": solo),
 #    put CTFD_TOKEN + CTF_HOST in .env, then load the challenges:
 python3 scripts/ctfd-setup.py
 ```
@@ -100,7 +100,7 @@ For true first-timers, the hub also has an optional **Mode guidé** tab: a
 step-by-step walkthrough of every mission (what the technique is, where to go,
 then the steps revealed one at a time, always stopping before the flag). It is
 gated by a simple password (`GUIDE_PASSWORD`, default `debutant`) so ordinary
-players don't hit spoilers — hand the word only to teams that want the training
+players don't hit spoilers — hand the word only to players who want the training
 wheels.
 
 Live services after step 2:
@@ -116,7 +116,7 @@ Live services after step 2:
 | 8011 | 11 Timing site (exposed .git) |
 | 8012 | 12 Certificate generator (SSTI) |
 | 8014 | 14 SAP gateway (reginfo) |
-| 8000 | CTFd scoreboard: teams, flags, hints, ranking |
+| 8000 | CTFd scoreboard: one account per player, flags, hints, ranking |
 
 Where players find each file (all built into `handouts/dist/` by step 3, then
 mounted read-only into the service that publishes them):
@@ -165,8 +165,10 @@ docker compose up -d --build   # restart with new flags
 python3 scripts/ctfd-setup.py  # push the new flags to CTFd
 ```
 
-The last line pushes the new flags to CTFd; teams and scores are kept. To wipe
-them too, use `docker compose down -v` and redo CTFd's setup wizard.
+The last line pushes the new flags to CTFd; player accounts and scores are
+kept, and so are the players' terminal spaces (logins, files, sessions). To
+wipe them too before a new event, use `docker compose down -v` (it deletes the
+`ctfd-data` and `toolbox-data` volumes) and redo CTFd's setup wizard.
 
 ---
 

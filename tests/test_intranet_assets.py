@@ -101,7 +101,7 @@ def test_share_callout_has_download(share):
 
 
 def test_share_empty_folder(share):
-    r = share.get("/d/Communication/Visuels")
+    r = share.get("/d/Communication/R%C3%A9seaux%20sociaux")
     assert r.status_code == 200 and "Ce dossier est vide" in r.data.decode()
 
 
@@ -124,7 +124,6 @@ def test_share_decoys_hold_no_secrets(share_module):
 
 @pytest.mark.parametrize("login", ["equipe-it", "DECAFLOP\\equipe-it", "equipe-it@decaflop.local"])
 def test_share_accepts_domain_forms(share_module, login):
-    share_module._FAILS.clear()
     c = share_module.app.test_client()
     r = c.post("/login", data={"identifiant": login, "motdepasse": "transition2026"})
     assert r.status_code == 302 and c.get("/").status_code == 200

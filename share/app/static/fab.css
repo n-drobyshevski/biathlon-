@@ -1,0 +1,71 @@
+/* Floating shortcuts, "dossard" (race bib) look: the same out-of-story layer on
+   the hub, the DécaFlop site and the Intranet DécaFlop share.
+   IDENTICAL copies live next to fab.py in hub/app/static,
+   challenges/01-web-staff/app/static and share/app/static; tests/test_fab.py
+   fails if they drift. An app moves the buttons with --dfab-gap (distance from
+   the bottom edge, 16px) and --dfab-lift (room for its own bottom bar) on :root;
+   the hub sets both, for its sheet tabs. */
+.dfab{
+  --dfab-ink:#16181d; --dfab-paper:#fff; --dfab-hot:#e8590c; --dfab-warm:#fff4ec; --dfab-mute:#5f6368;
+  --dfab-line:#e2e3e5; --dfab-focus:#1a73e8;
+  position:fixed;z-index:900;
+  right:calc(16px + env(safe-area-inset-right,0px));
+  bottom:calc(var(--dfab-gap,16px) + var(--dfab-lift,0px) + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:center;gap:10px;
+  font:700 15px/1 "Barlow Condensed","Roboto Condensed","Arial Narrow",sans-serif;
+}
+.dfab *{box-sizing:border-box}
+.dfab svg{display:block;flex:none}
+.dfab-btn{position:relative;display:grid;place-items:center;width:40px;height:40px;margin:0;padding:0;
+  border-radius:50%;border:2px solid var(--dfab-ink);background:var(--dfab-paper);color:var(--dfab-ink);
+  box-shadow:3px 3px 0 var(--dfab-ink);text-decoration:none;cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease,background-color .15s ease}
+.dfab-btn:hover{color:var(--dfab-ink);text-decoration:none;transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--dfab-ink)}
+.dfab-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--dfab-ink)}
+.dfab-btn:focus-visible{outline:3px solid var(--dfab-focus);outline-offset:3px}
+.dfab-btn[aria-expanded="true"]{background:var(--dfab-warm)}
+.dfab-main{width:52px;height:52px;color:var(--dfab-hot)}
+.dfab-main:hover{color:var(--dfab-hot)}
+
+/* names show above the buttons on hover and keyboard focus */
+.dfab-tip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;
+  background:var(--dfab-ink);color:#fff;font:500 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:6px 8px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .12s}
+.dfab-main .dfab-tip{left:auto;right:0;transform:none}
+.dfab-btn:hover .dfab-tip,.dfab-btn:focus-visible .dfab-tip{opacity:1}
+.dfab-btn[aria-expanded="true"] .dfab-tip{opacity:0}
+@media (hover:none){.dfab-btn:hover .dfab-tip{opacity:0}}
+
+/* one-time "Nouveau" marker on the intranet button */
+.dfab-dot{position:absolute;top:-5px;right:-5px;width:13px;height:13px;border-radius:50%;
+  border:2px solid var(--dfab-paper);background:var(--dfab-hot)}
+.dfab-chip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;
+  background:var(--dfab-hot);color:#fff;font:700 10.5px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  letter-spacing:.04em;text-transform:uppercase;padding:5px 7px;border-radius:10px;pointer-events:none}
+.dfab-btn:hover .dfab-chip,.dfab-btn:focus-visible .dfab-chip{opacity:0}
+.dfab-is-new [data-dfab-new]{animation:dfab-pop .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes dfab-pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+
+/* Outils menu */
+.dfab-menu{position:absolute;right:0;bottom:calc(100% + 14px);width:260px;max-width:calc(100vw - 32px);
+  display:flex;flex-direction:column;padding:6px;background:var(--dfab-paper);color:var(--dfab-ink);
+  border:2px solid var(--dfab-ink);border-radius:8px;box-shadow:4px 4px 0 var(--dfab-ink);
+  font:400 13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:left}
+.dfab-menu[hidden]{display:none}
+.dfab-mh{padding:6px 10px 4px;color:var(--dfab-mute);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.dfab-menu a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;color:inherit;text-decoration:none}
+.dfab-menu a:hover{background:var(--dfab-warm);color:inherit;text-decoration:none}
+.dfab-menu a:focus-visible{outline:3px solid var(--dfab-focus);outline-offset:0}
+.dfab-mi{display:grid;place-items:center;width:28px;height:28px;flex:none;border:1.5px solid var(--dfab-ink);
+  border-radius:6px;color:var(--dfab-hot)}
+.dfab-mt{display:flex;flex-direction:column;gap:1px;min-width:0;font-weight:600}
+.dfab-mt small{color:var(--dfab-mute);font-size:12px;font-weight:400}
+.dfab-menu a>svg:last-child{margin-left:auto;color:var(--dfab-mute)}
+.dfab-menu hr{border:0;border-top:1px solid var(--dfab-line);margin:4px 6px}
+.dfab-menu a.dfab-all{font-weight:600;text-decoration:underline}
+
+@media (prefers-reduced-motion:reduce){
+  .dfab-btn,.dfab-tip{transition:none}
+  .dfab-is-new [data-dfab-new]{animation:none}
+}
+@media print{.dfab{display:none}}

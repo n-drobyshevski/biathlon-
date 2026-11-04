@@ -24,7 +24,6 @@ def test_logged_out_redirects_to_login(share_anon, path):
 
 
 def test_wrong_login_shows_french_error(share_module):
-    share_module._FAILS.clear()
     c = share_module.app.test_client()
     r = c.post("/login", data={"identifiant": "equipe-it", "motdepasse": "nope"})
     assert r.status_code == 401
@@ -33,14 +32,14 @@ def test_wrong_login_shows_french_error(share_module):
     assert c.get("/").status_code == 302
 
 
-def test_login_is_rate_limited(share_module):
-    share_module._FAILS.clear()
+def test_wrong_passwords_never_lock_the_login(share_module):
     c = share_module.app.test_client()
     codes = [c.post("/login", data={"identifiant": "x", "motdepasse": "y"}).status_code
-             for _ in range(8)]
-    assert 429 in codes
-    assert "Trop de tentatives" in c.post("/login", data={"identifiant": "x", "motdepasse": "y"}).data.decode()
-    share_module._FAILS.clear()
+             for _ in range(20)]
+    assert codes == [401] * 20
+    ok = c.post("/login", data={"identifiant": "equipe-it",
+                                "motdepasse": share_module.SHARE_PASSWORD})
+    assert ok.status_code == 302 and ok.headers["Location"].endswith("/")
 
 
 def test_logout_redirects_and_deauths(share):
@@ -79,13 +78,29 @@ def test_every_evidence_file_byte_identical(share, share_module, dist):
         assert r.data == disk, f["name"]
 
 
-def test_decoys_download_as_text(share, share_module):
+def test_decoys_download_with_their_own_type(share, share_module):
     decoys = [f for f in share_module.FILES if f["decoy"]]
-    assert len(decoys) >= 3
+    assert len(decoys) >= 30                          # plenty of smoke around the evidence
     for f in decoys:
         r = share.get(url_for_file(f))
-        assert r.status_code == 200
-        assert r.mimetype == "text/plain"
+        assert r.status_code == 200, f["name"]
+        assert r.data == f["text"].encode("utf-8"), f["name"]
+        if f["kind"] in share_module.TEXT_KINDS | {"csv"}:
+            assert r.mimetype == "text/plain", f["name"]
+        else:                                         # empty office files, images, system files
+            assert r.mimetype != "text/plain", f["name"]
+
+
+def test_every_decoy_lists_and_opens(share, share_module):
+    for f in share_module.FILES:
+        if not f["decoy"]:
+            continue
+        folder = "/d/" + "/".join(quote(s) for s in f["path"][:-1])
+        assert f["name"] in share.get(folder).data.decode(), f["name"]
+        page = share.get("/apercu/" + "/".join(quote(s) for s in f["path"]))
+        assert page.status_code == 200, f["name"]
+        if f["kind"] not in share_module.TEXT_KINDS | {"csv", "zip"}:
+            assert "Aperçu non disponible" in page.data.decode(), f["name"]
 
 
 def test_poster_and_photo_not_served_here(share):
@@ -143,7 +158,7 @@ def test_every_file_has_a_preview_page(share, share_module):
 
 
 def test_preview_renders_text_csv_and_zip(share, dist):
-    hint = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    hint = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt?vu=1").data.decode()
     first = (dist / "sap_hint.txt").read_text().splitlines()[0]
     assert '<pre class="code">' in hint and esc(first) in hint
     grid = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv").data.decode()
@@ -151,6 +166,19 @@ def test_preview_renders_text_csv_and_zip(share, dist):
     archive = share.get("/apercu/Direction%20de%20course/Dossier%20incident/case_file.zip").data.decode()
     assert "<td>flag.txt</td>" in archive and "protégée par un mot de passe" in archive
     assert "TRIATHLON{" not in archive              # names only, never the encrypted content
+
+
+def test_hint_warns_before_revealing(share, dist):
+    # First open shows the spoiler warning instead of the hint content.
+    first = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    assert "véritable indice" in first
+    assert '<pre class="code">' not in first              # content withheld
+    assert '?vu=1' in first                                # link to proceed
+    # Proceeding reveals the content and remembers the choice for the session.
+    seen = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt?vu=1").data.decode()
+    assert '<pre class="code">' in seen and "véritable indice" not in seen
+    again = share.get("/apercu/Basis%20SAP/Exports/sap_hint.txt").data.decode()
+    assert '<pre class="code">' in again and "véritable indice" not in again
 
 
 def test_listing_opens_viewer_and_keeps_details(share):

@@ -59,10 +59,39 @@ run **on the Pi** and are driven entirely from a browser.
 - **Terminal d'équipe (ttyd)** — `http://<PiIP>:8091`. A Linux shell in the
   browser with `git-dumper`, `john`, `binwalk`, `foremost`, `exiftool`, `curl`,
   `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
-  a shell. Each browser connection gets its own scratch workspace, the container
-  runs as a **non-root** user with **no repository, flags or challenge source
-  mounted**, and it's capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`), so one
-  player can't starve the others or read another challenge's answers.
+  a shell. **Each player logs in with a pseudo and a password** (created the
+  first time, ideally the same pseudo as on CTFd) and gets their own Unix
+  user **named after the pseudo** (`whoami` prints it; 24 seats, uid 2001 to
+  2024, pseudos like `root` or `1234` are refused), a private home
+  `/work/<pseudo>` and a
+  `tmux` session. Closing the tab, losing the Wi-Fi or switching laptops only
+  detaches it: logging in again brings back the same session, running
+  programs and files. Homes are on the `toolbox-data` volume, so they also
+  survive a restart of the container or the Pi. Players cannot read each
+  other's files, kill each other's processes, or plant commands in each
+  other's shell. A wrong password just says so (no lockout).
+  Per player: 64 processes, 300 MB per file, 300 MB of home; a watchdog ends
+  (without deleting anything) a session stuck in a fork bomb or still growing
+  past the quota. The container has **no repository, flags or challenge
+  source mounted**, a read-only image, and the whole thing is capped
+  (`mem_limit 1536m`, `cpus 2.0`, `pids 1024`, at most 20 terminals).
+  Players cannot even see each other's processes or command lines: at start,
+  `toolbox-init` remounts `/proc` with `hidepid`, then drops the capabilities
+  that needed (`SYS_ADMIN`, `SETPCAP`) before ttyd starts, so no player shell
+  ever has them. `/tmp` is writable but not listable. On a host whose Docker
+  applies its default AppArmor profile (check:
+  `cat /sys/module/apparmor/parameters/enabled`), that remount is refused:
+  the terminal works the same, command lines are just visible again, and
+  `docker compose logs toolbox` / `toolbox-admin liste` say so. Note that
+  `docker compose exec toolbox ...` (organizer only) still runs with
+  `SYS_ADMIN`: only people with access to the Pi's Docker can do that.
+
+  Organizer commands (forgotten password, list, delete):
+  ```bash
+  docker compose exec toolbox toolbox-admin liste            # pseudos, disk use, processes
+  docker compose exec toolbox toolbox-admin mdp <pseudo>     # forget the password (files kept)
+  docker compose exec toolbox toolbox-admin supprimer <pseudo>   # delete the account and its files
+  ```
 
 Both link from the cellule de crise's **Outils** tab and auto-point at the Pi's
 IP. Override the addresses with `CYBERCHEF_URL` / `TERMINAL_URL` on the `hub`
@@ -81,6 +110,30 @@ cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
 `toolbox` image pulls its `apt`/`pip` tools and the `ttyd` binary at build time,
 so build it while you still have internet, same as the challenge images.
 
+## Turn on memory limits (Raspberry Pi OS, once)
+
+Raspberry Pi OS boots with the kernel's **memory cgroup off**. Docker then
+prints `Your kernel does not support memory limit capabilities ... Limitation
+discarded` and silently **ignores every `mem_limit`** in `docker-compose.yml`:
+one player's hashcat run or SSTI payload can then eat the whole Pi, and the
+kernel picks what to kill (possibly CTFd). Turn it on once:
+
+```bash
+F=/boot/firmware/cmdline.txt; [ -f "$F" ] || F=/boot/cmdline.txt   # Bookworm / older
+grep -q cgroup_enable=memory "$F" \
+  || sudo sed -i '1 s/$/ cgroup_enable=memory cgroup_memory=1/' "$F"
+cat "$F"                      # must still be ONE line
+sudo reboot
+```
+
+After the reboot, recreate the containers (limits are applied when a
+container is created, so the ones made before still have none) and check:
+
+```bash
+docker compose up -d --force-recreate
+./scripts/check-pi.sh          # read-only: prints OK / FIX lines
+```
+
 ## Resource budget (4 GB)
 
 | Component | Approx RAM |
@@ -88,19 +141,40 @@ so build it while you still have internet, same as the challenge images.
 | 7 challenge containers + the hub + the file share (`mem_limit` 96–128 MB each) | ~0.5–0.8 GB actual |
 | CTFd (in docker-compose, SQLite + `WORKERS 1`, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | CyberChef (static, `mem_limit` 96 MB) | ~15–30 MB actual |
-| Terminal toolbox (`mem_limit` 512 MB, `cpus 2.0`) | ~0.15 GB idle, short bursts when cracking/carving |
+| Terminal toolbox (`mem_limit` 1.5 GB, `cpus 2.0`) | ~50 MB + ~10 MB per player idle; **hashcat ~0.7 GB** the first time a player runs a hash mode (kernel compile), ~0.45 GB after; git-dumper ~90 MB, tshark ~85 MB |
 | OS + Docker | ~0.5–0.8 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
-challenge is fine for 6 players — these apps are stateless, so there's nothing
-for players to corrupt for each other. With CTFd and the browser toolbox, the
-full stack is ~2–2.5 GB in practice: comfortable on 4 GB, but test it before the
-event.
+challenge is fine for 6 players, and players can't spoil it for each other:
 
-The only way to push a 4 GB Pi is several players cracking at once. Our cracks
-are tiny (a 15-word `wordlist.txt`, a 1 MB carve) — keep it that way: **don't
-drop `rockyou.txt` in**, and the `toolbox` caps mean a runaway only OOM-kills its
-own container, not the Pi. As cheap insurance, enable compressed RAM swap once
+- **04, 06, 10, 11, 14** and the sites keep no state between requests (06 even
+  rebuilds its SQLite database in memory for every login attempt).
+- **12 (SSTI)** is code execution by design, so each certificate is rendered
+  in a throwaway child process: `config.update(FLAG=...)`, swapped pages or a
+  background `yes` die with that request (CPU-limited, killed after 3 s).
+  At most 4 renders run at once (2 per address), and a child that eats too
+  much memory is the one the kernel kills, never the app: a flood of heavy
+  payloads only gets its sender "Le générateur est occupé".
+- Every Flask app runs as `nobody` with no capabilities on a **read-only
+  image**, with `pids`/`cpu` caps and an init that reaps orphans. A popped app
+  cannot rewrite its code or files, and `docker compose restart <service>`
+  always brings it back pristine.
+- The Intranet share never locks its login: a wrong password just says so,
+  and the player (or anyone sharing their IP, like the browser terminal)
+  can retry at once.
+
+With CTFd and the browser toolbox the full stack is ~2–2.5 GB in practice,
+~3 GB while two players run hashcat at the same time: fine on 4 GB, but test
+it before the event.
+
+The only way to push a 4 GB Pi is several players cracking at once. hashcat's
+memory comes from compiling its CPU kernels, not from the wordlist: our
+cracks are tiny (a 15-word `wordlist.txt`, a 1 MB carve), keep it that way,
+**don't drop `rockyou.txt` in**. If three or more crack at the very same
+moment, the toolbox cap kills one hashcat run (that player just runs it
+again); the other players' shells and the Pi are not affected. Note that
+Debian's `john` (1.9.0, not "jumbo") has no raw-MD5 or JWT formats: for 09
+and 10 use `hashcat` (the hints say so) or CyberChef. As cheap insurance, enable compressed RAM swap once
 (prep, with internet):
 
 ```bash
@@ -155,6 +229,8 @@ drift. If a team is stuck on 01, an organizer can just read them the login — i
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
+- [ ] `./scripts/check-pi.sh` (lab running) prints no FIX line: memory
+      limits are enforced (see "Turn on memory limits" above)
 - [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
       "Browser toolbox" above)
 - [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
@@ -183,20 +259,24 @@ Run through this once, ideally the day before:
 - [ ] From a second device on the travel router, open
       `http://<PiIP>:8080`: 14 missions, every "Accès" link reaches its live
       service (site, share or challenge)
-- [ ] CTFd at `:8000`: setup wizard done (Teams mode), `ctfd-setup.py` loaded
-      the 14 challenges; a test team can register, submit a flag and unlock a hint
+- [ ] CTFd at `:8000`: setup wizard done (Users mode, solo), `ctfd-setup.py`
+      loaded the 14 challenges; a test player can register, submit a flag and
+      unlock a hint
+- [ ] Terminal at `:8091`: log in with a test pseudo, create a file, close the
+      tab, log in again: same session and file. Then
+      `docker compose exec toolbox toolbox-admin supprimer <pseudo>`
 - [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
       open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
 
 ## During the event
 
-- 6 people, 1h–1h30: expect most teams to clear the easy + medium tier and at
+- 6 people, 1h–1h30: expect most players to clear the easy + medium tier and at
   least start the SAP pair. The hint system (point-costed, in each README /
   your scoreboard) keeps beginners from stalling. For a true first-timer, the
   hub's **Mode guidé** tab is a full step-by-step walkthrough (stops before the
   flag), gated by `GUIDE_PASSWORD` (default `debutant`) — give the word only to
-  teams that want it, so others aren't spoiled.
+  players who want it, so others aren't spoiled.
 - If a flag leaks, `./scripts/gen-flags.sh` + `docker compose up -d --build` +
   `./scripts/build-handouts.sh` rotates everything in ~1 minute. Update the
   scoreboard flags afterward.
