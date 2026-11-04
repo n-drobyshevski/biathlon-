@@ -335,9 +335,11 @@ def signin_page(error="", pseudo="", status=200, suite=""):
     if ctfd_base():
         intro = ('<p>Connectez-vous avec votre compte du <b>tableau des scores</b> : même pseudo, même mot de '
                  'passe. Il sert ici pour suivre vos missions et pour le bloc-notes.</p>')
-        intro += (f'<p>Pas encore de compte ? <a href="{escape(board)}register" target="_blank" rel="noopener">'
-                  'Créez-le sur le tableau des scores</a>, puis revenez ici.</p>' if board else
-                  '<p>Pas encore de compte ? Créez-le d\'abord sur le tableau des scores.</p>')
+        intro += (f'<p>Votre pseudo et votre mot de passe sont sur la carte remise par l\'organisation. '
+                  f'Pas de carte ? <a href="{escape(board)}register" target="_blank" rel="noopener">'
+                  'Créez un compte sur le tableau des scores</a>, puis revenez ici.</p>' if board else
+                  '<p>Votre pseudo et votre mot de passe sont sur la carte remise par l\'organisation. '
+                  'Pas de carte ? Créez d\'abord un compte sur le tableau des scores.</p>')
         label, maxlen, minlen = "Pseudo ou e-mail du tableau des scores", MAX_NAME_CTFD, 1
     else:
         intro = ('<p>Votre pseudo garde votre suivi des missions et vos notes sur tous vos appareils.</p>'

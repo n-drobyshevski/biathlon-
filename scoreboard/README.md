@@ -34,6 +34,20 @@ Pull the images once while you still have internet.
    costs. It also sets CTFd's default language to French (`--locale` to change).
    Add `--dry-run` to see what it would do without touching CTFd.
 
+**Accounts made in advance (recommended, no e-mail form for players):**
+CTFd's sign-up form insists on an e-mail. Skip it: create the players' accounts
+yourself, with easy passwords, and hand each player a card.
+```bash
+python3 scripts/ctfd-users.py --count 6 --test --close-registration
+# or by name:  python3 scripts/ctfd-users.py alice bob carla --test
+```
+Passwords look like `velo-plage-42`; e-mails are placeholders (`<pseudo>@ctf.lan`,
+nothing is sent). `--test` adds a hidden `test` account (never on the
+scoreboard) for your dry run; `--close-registration` turns the public sign-up
+off. The pseudo/password list goes to `WRITEUPS/ctfd-comptes.txt` (chmod 600,
+git-ignored). Same pseudo + password for CTFd and the hub. Re-running skips
+existing accounts; `--reset` gives them new passwords. `--dry-run` previews.
+
 **Cross links (set up by the script):**
 
 - **CTFd → hub:** a "Cellule de crise" item in CTFd's top menu (opens the hub
