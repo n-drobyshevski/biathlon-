@@ -4,7 +4,7 @@ ctfd-users.py — create the players' CTFd accounts in advance, so nobody has to
 fill in CTFd's registration form (which insists on an e-mail address).
 
 Each account gets an easy password made of two short words and a number
-(e.g. "velo-plage-42") and a placeholder e-mail (<pseudo>@ctf.lan: CTFd needs
+(e.g. "bike-beach-42") and a placeholder e-mail (<pseudo>@ctf.lan: CTFd needs
 one, nothing is ever sent and nobody has to type it). Players sign in to CTFd
 AND to the hub with the pseudo + password from their card.
 
@@ -45,12 +45,12 @@ EMAIL_DOMAIN = "ctf.lan"
 PREFIX = "player"           # --count N creates player01 .. playerNN
 TEST_NAME = "test"
 
-# Short, accent-free, unambiguous words (no l/1 or o/0 lookalike pitfalls in
+# Short, common English words (no l/1 or o/0 lookalike pitfalls in
 # the number part either): easy to read off a card and type on a phone.
-WORDS = ["velo", "plage", "nage", "course", "puce", "dossard", "casque", "bouee",
-         "vague", "podium", "chrono", "relais", "sprint", "piste", "gourde", "basket",
-         "maillot", "selle", "pedale", "virage", "depart", "arrivee", "medaille", "sable",
-         "phare", "port", "voile", "rame", "mouette", "soleil", "vent", "maree"]
+WORDS = ["bike", "beach", "swim", "race", "chip", "wave", "helmet", "medal",
+         "sprint", "track", "bottle", "jersey", "pedal", "start", "finish", "sand",
+         "lighthouse", "harbor", "sail", "paddle", "seagull", "sunny", "wind", "river",
+         "lake", "forest", "rocket", "tiger", "panda", "falcon", "orange", "silver"]
 
 
 def read_env(path):
@@ -65,7 +65,7 @@ def read_env(path):
 
 
 def make_password(rng=secrets):
-    """Two different words and a two-digit number, e.g. "velo-plage-42"."""
+    """Two different words and a two-digit number, e.g. "bike-beach-42"."""
     a = rng.choice(WORDS)
     b = rng.choice([w for w in WORDS if w != a])
     return f"{a}-{b}-{rng.randbelow(90) + 10}"

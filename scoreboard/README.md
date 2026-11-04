@@ -41,7 +41,7 @@ yourself, with easy passwords, and hand each player a card.
 python3 scripts/ctfd-users.py --count 7 --test --close-registration
 # or by name:  python3 scripts/ctfd-users.py alice bob carla --test
 ```
-Passwords look like `velo-plage-42`; e-mails are placeholders (`<pseudo>@ctf.lan`,
+Passwords look like `bike-beach-42`; e-mails are placeholders (`<pseudo>@ctf.lan`,
 nothing is sent). `--test` adds a hidden `test` account (never on the
 scoreboard) for your dry run; `--close-registration` turns the public sign-up
 off. The pseudo/password list goes to `WRITEUPS/ctfd-comptes.txt` (chmod 600,
