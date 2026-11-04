@@ -14,10 +14,14 @@ at startup by entrypoint.sh; this app just serves the webroot — INCLUDING the
 """
 import html
 import os
+import sys
 import time
 from urllib.parse import quote
 
 from flask import Flask, Response, abort, send_from_directory
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling fab.py
+import fab  # noqa: E402
 
 app = Flask(__name__)
 SITE = os.path.realpath(os.environ.get("SITE_DIR", "/srv/site"))
@@ -54,11 +58,22 @@ def serve(p="index.html"):
     if os.path.isdir(full):
         idx = os.path.join(full, "index.html")
         if os.path.isfile(idx) and p in ("", "index.html"):
-            return send_from_directory(SITE, "index.html")
+            return site_page(idx)
         return autoindex(p.rstrip("/") + ("/" if p.strip("/") else ""), full)
+    if full == os.path.join(SITE, "index.html"):
+        return site_page(full)
     if os.path.isfile(full):
         return send_from_directory(SITE, os.path.relpath(full, SITE))
     abort(404)
+
+
+def site_page(path):
+    """The timing site's home page, with the game's floating shortcuts (fab.py:
+    cellule de crise, Outils, intranet once unlocked). Only this page: the .git
+    files and listings players dump are served exactly as they are."""
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    return Response(fab.inject(page, fab.render("challenge", fab.default_urls())), mimetype="text/html")
 
 
 if __name__ == "__main__":

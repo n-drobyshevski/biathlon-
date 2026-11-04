@@ -37,9 +37,17 @@ from flask import Flask, Response, render_template_string, request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
 import intranet  # noqa: E402
+import fab  # noqa: E402
 
 app = Flask(__name__)
 app.config["FLAG"] = os.environ.get("FLAG", "TRIATHLON{placeholder}")
+
+
+# Out of the story: the game's floating shortcuts (fab.py) on every HTML page
+# (cellule de crise, Outils, and the intranet once the player has logged in to it).
+@app.after_request
+def shortcuts(resp):
+    return fab.add(resp, "challenge")
 
 RENDER_TIMEOUT = 3.0          # seconds of wall clock per certificate
 RENDER_CPU = 2                # seconds of CPU per certificate (RLIMIT_CPU)

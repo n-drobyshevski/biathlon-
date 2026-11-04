@@ -69,3 +69,9 @@
   .dfab-is-new [data-dfab-new]{animation:none}
 }
 @media print{.dfab{display:none}}
+/* intranet-style footers (share + challenges): keep the version text clear of the buttons */
+body:has(.dfab) .foot .ver{margin-right:170px}
+@media (max-width:860px){                       /* footer wraps: room below it instead */
+  body:has(.dfab) .foot{padding-bottom:84px}
+  body:has(.dfab) .foot .ver{margin-right:0}
+}

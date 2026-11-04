@@ -1,17 +1,19 @@
 """
-Floating shortcuts in the bottom-right corner of the hub, the DécaFlop site and
-the Intranet DécaFlop share. They are a game layer on top of the story: the
-same "dossard" (race bib) look on all three apps.
+Floating shortcuts in the bottom-right corner of every web page of the lab:
+the hub, the DécaFlop site, the Intranet DécaFlop share and the challenge apps
+(04, 06, 10, 11, 12, 14). They are a game layer on top of the story: the same
+"dossard" (race bib) look everywhere.
 
-IDENTICAL copies live in hub/app, challenges/01-web-staff/app and share/app,
+IDENTICAL copies live in hub/app, share/app and every challenge app/ folder,
 each with static/fab.css next to it (each Docker build only sees its own app/
 folder). tests/test_fab.py fails if any copy drifts: edit one, then copy it to
 the others.
 
 What each app shows (round buttons, left to right, the main one last):
-- hub:   [Intranet]  Outils  Site DécaFlop
-- site:  [Intranet]  Outils  Cellule de crise
-- share: Site DécaFlop  Outils  Cellule de crise
+- hub:        [Intranet]  Outils  Site DécaFlop
+- site:       [Intranet]  Outils  Cellule de crise
+- share:      Site DécaFlop  Outils  Cellule de crise
+- challenges: [Intranet]  Outils  Cellule de crise
 [Intranet] appears only once the player has logged in to the share: the share
 sets COOKIE (mark_intranet). Cookies ignore ports, so offline the hub (:8080)
 and the site (:8001) read the cookie the share (:8020) set on the same host.
@@ -79,7 +81,8 @@ TOOLS = [("cyberchef", "CyberChef", "Décoder, convertir, analyser"),
          ("terminal", "Terminal d'équipe", "Shell Linux, outils installés"),
          ("ctfd", "Tableau des scores", "Équipes, flags, classement")]
 # here: (main button, small button, small button needs the intranet cookie)
-LAYOUT = {"hub": ("site", "share", True), "site": ("hub", "share", True), "share": ("hub", "site", False)}
+LAYOUT = {"hub": ("site", "share", True), "site": ("hub", "share", True), "share": ("hub", "site", False),
+          "challenge": ("hub", "share", True)}
 
 
 def _icon(name, size=20):
@@ -129,7 +132,7 @@ def mark_intranet(resp):
 
 
 def render(here, urls):
-    """The shortcuts for app `here` ("hub", "site" or "share"). `urls` maps the
+    """The shortcuts for app `here` (a LAYOUT key). `urls` maps the
     SERVICES keys to addresses; an empty address leaves that entry out."""
     main_key, small_key, gated = LAYOUT[here]
     buttons = []
@@ -171,6 +174,14 @@ def inject(page, shortcuts):
         shortcuts = CSS + shortcuts
     head, _, tail = page.rpartition("</body>")
     return head + shortcuts + "</body>" + tail
+
+
+def add(resp, here):
+    """after_request helper: put the shortcuts on an HTML response. JSON, plain
+    text, files sent from disk and redirects (no </body>) are left alone."""
+    if resp.mimetype == "text/html" and not resp.direct_passthrough and not resp.is_streamed:
+        resp.set_data(inject(resp.get_data(as_text=True), render(here, default_urls())))
+    return resp
 
 
 # Outils menu (a menu button with JavaScript, a plain link without) and the
