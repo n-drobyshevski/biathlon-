@@ -10,11 +10,12 @@ AND to the hub with the pseudo + password from their card.
 
 Usage (on the Pi, after the CTFd setup wizard; same .env as ctfd-setup.py):
     python3 scripts/ctfd-users.py alice bob carla        # named players
-    python3 scripts/ctfd-users.py --count 6              # joueur01 .. joueur06
-    python3 scripts/ctfd-users.py --count 6 --test       # + a hidden "test" account
-    python3 scripts/ctfd-users.py --count 6 --close-registration
+    python3 scripts/ctfd-users.py --count 7              # player01 .. player07 (6 + a spare)
+    python3 scripts/ctfd-users.py --count 7 --test       # + a hidden "test" account
+    python3 scripts/ctfd-users.py --count 7 --close-registration
 
 Options:
+    --prefix WORD          name of the numbered accounts (default "player")
     --test                 also create "test" (hidden: never on the scoreboard),
                            for the organizer's dry run
     --close-registration   turn off CTFd's public sign-up form (only these
@@ -41,6 +42,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EMAIL_DOMAIN = "ctf.lan"
+PREFIX = "player"           # --count N creates player01 .. playerNN
 TEST_NAME = "test"
 
 # Short, accent-free, unambiguous words (no l/1 or o/0 lookalike pitfalls in
@@ -72,12 +74,12 @@ def make_password(rng=secrets):
 def slug(name):
     """ASCII local part for the placeholder e-mail."""
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
-    return re.sub(r"[^a-z0-9._-]+", "-", s).strip("-.") or "joueur"
+    return re.sub(r"[^a-z0-9._-]+", "-", s).strip("-.") or "player"
 
 
-def plan(names, count, test):
+def plan(names, count, test, prefix=PREFIX):
     """[(name, email, hidden)] in creation order; e-mails are made unique."""
-    names = list(names) + [f"joueur{i:02d}" for i in range(1, count + 1)]
+    names = list(names) + [f"{prefix}{i:02d}" for i in range(1, count + 1)]
     seen, out = set(), []   # e-mails used / pseudos kept
     for name in names:
         name = name.strip()
@@ -169,7 +171,8 @@ def write_list(path, results, board_url=""):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*", help="player pseudos")
-    ap.add_argument("--count", type=int, default=0, help="also create joueur01..joueurNN")
+    ap.add_argument("--count", type=int, default=0, help="also create player01..playerNN")
+    ap.add_argument("--prefix", default=PREFIX, help="name of the numbered accounts (default player)")
     ap.add_argument("--test", action="store_true", help='also create a hidden "test" account')
     ap.add_argument("--close-registration", action="store_true", help="turn off CTFd's public sign-up")
     ap.add_argument("--reset", action="store_true", help="new password for accounts that already exist")
@@ -178,7 +181,7 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
 
-    rows = plan(args.names, args.count, args.test)
+    rows = plan(args.names, args.count, args.test, args.prefix)
     if not rows:
         ap.error("give player pseudos and/or --count N (and optionally --test)")
     if args.dry_run:

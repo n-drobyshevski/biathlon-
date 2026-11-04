@@ -279,7 +279,7 @@ Run through this once, ideally the day before:
 ## Hub accounts, mission statuses and Bloc-notes
 
 **Players sign in to the hub with their scoreboard (CTFd) account**. Easiest:
-create the accounts yourself with `python3 scripts/ctfd-users.py --count 6 --test
+create the accounts yourself with `python3 scripts/ctfd-users.py --count 7 --test
 --close-registration` and hand out the cards (see scoreboard/README.md), so
 nobody fills CTFd's e-mail form. Players sign in before any sheet: one name and one password for the scoreboard and the hub. So
 **finish CTFd's setup before players arrive**, and tell them to create their

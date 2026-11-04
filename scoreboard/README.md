@@ -38,7 +38,7 @@ Pull the images once while you still have internet.
 CTFd's sign-up form insists on an e-mail. Skip it: create the players' accounts
 yourself, with easy passwords, and hand each player a card.
 ```bash
-python3 scripts/ctfd-users.py --count 6 --test --close-registration
+python3 scripts/ctfd-users.py --count 7 --test --close-registration
 # or by name:  python3 scripts/ctfd-users.py alice bob carla --test
 ```
 Passwords look like `velo-plage-42`; e-mails are placeholders (`<pseudo>@ctf.lan`,
