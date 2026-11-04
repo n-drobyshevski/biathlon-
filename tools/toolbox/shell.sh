@@ -46,12 +46,11 @@ cat <<'BANNER'
    exiftool, john, hashcat, tshark, unzip,
    xxd, jq, curl, wget, python3
 
- Les fichiers de preuve sont sur Intranet
- DécaFlop (port 8020) ; les services sur
- l'IP du Pi. curl/wget pour les récupérer :
+ Les services sont sur l'IP du Pi.
+ curl/wget pour récupérer un fichier :
    wget http://<IP-du-Pi>:<port>/<chemin>
- Pour le partage (login du challenge 01) :
-   grab http://<IP>:8020/telecharger/<...>
+ Pour un partage protégé par mot de passe :
+   grab <url-du-fichier> [identifiant]
 
  Cet espace est à vous seul et il est gardé :
  fermez l'onglet, revenez avec le même pseudo
