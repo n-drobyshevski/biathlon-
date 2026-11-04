@@ -555,15 +555,22 @@ def gen_sap_shortcut():
 # ---------------------------------------------------------------------------
 def gen_sap_abap():
     f = flag("FLAG_15_SAP_ABAP", "TRIATHLON{abap_placeholder}")
-    # Split the flag into three pieces, assembled by CONCATENATE in the report
-    # in a non-obvious order, among decoy variables. grep for the whole flag
-    # won't find it; you have to read the logic.
+    # The export token is hard-coded, but not in one piece and not in one place:
+    # - grep finds a complete-looking TRIATHLON{...}: the token of the
+    #   non-production branch (sy-sysid <> 'DFL'), refused by the results
+    #   system. The header says DFL is production (the gateway of 14, too);
+    # - the real token is three pieces, assigned out of order and joined as
+    #   lv_k3 + lv_k1 + lv_k2, with no comment giving the order;
+    # - lv_k1 is stored backwards and turned round by FORM normalize
+    #   (reverse( )): one CyberChef "Reverse".
     n = len(f); a, b = n // 3, 2 * n // 3
     p1, p2, p3 = f[:a], f[a:b], f[b:]
+    dev = "TRIATHLON{dev_" + hashlib.sha256(f.encode()).hexdigest()[:10] + "}"   # stable per event
     abap = f"""*&---------------------------------------------------------------------*
 *& Report ZDFLOP_RESULT_EXPORT
 *& Exporte la table ZRACE_RESULT vers le systeme de resultats via RFC.
 *& Auteur: equipe Basis DFlop   Mandant: 001
+*& Paysage: DFD (developpement) -> DFQ (qualification) -> DFL (production)
 *&---------------------------------------------------------------------*
 REPORT zdflop_result_export.
 
@@ -571,21 +578,23 @@ CONSTANTS: gc_dest  TYPE rfcdest VALUE 'DFLOP_RESULT',
            gc_user  TYPE string  VALUE 'RESULTS_SVC'.
 
 DATA: lv_token TYPE string,
-      lv_a     TYPE string,
-      lv_b     TYPE string,
-      lv_c     TYPE string,
-      lv_decoy TYPE string.
+      lv_k1    TYPE string,
+      lv_k2    TYPE string,
+      lv_k3    TYPE string.
 
 START-OF-SELECTION.
 
-* Jeton d'export (ne pas committer, ne pas tracer). Assemble a l'execution.
-  lv_a = '{p1}'.
-  lv_decoy = 'TRIATHLON{{not_the_flag}}'.      " piege: valeur factice
-  lv_c = '{p3}'.
-  lv_b = '{p2}'.
-
-* Ordre d'assemblage: a + b + c
-  CONCATENATE lv_a lv_b lv_c INTO lv_token.
+  IF sy-sysid <> 'DFL'.
+*   Hors production : jeton de test, refuse par le systeme de resultats.
+    lv_token = '{dev}'.
+  ELSE.
+*   Jeton d'export (ne pas committer, ne pas tracer).
+    lv_k2 = '{p3}'.
+    lv_k1 = '{p2[::-1]}'.
+    lv_k3 = '{p1}'.
+    PERFORM normalize CHANGING lv_k1.
+    CONCATENATE lv_k3 lv_k1 lv_k2 INTO lv_token.
+  ENDIF.
 
   CALL FUNCTION 'Z_RESULT_PUSH'
     DESTINATION gc_dest
@@ -601,6 +610,13 @@ START-OF-SELECTION.
   ELSE.
     WRITE: / 'Export ZRACE_RESULT: echec', sy-subrc.
   ENDIF.
+
+*&---------------------------------------------------------------------*
+*& Form NORMALIZE
+*&---------------------------------------------------------------------*
+FORM normalize CHANGING cv_part TYPE string.
+  cv_part = reverse( cv_part ).
+ENDFORM.
 """
     with open(os.path.join(OUT, "ZDFLOP_RESULT_EXPORT.abap"), "w") as fh:
         fh.write(abap)

@@ -10,5 +10,5 @@ Download the report, read it, and recover the export token.
 
 **Flag format:** `TRIATHLON{...}`
 
-<details><summary>Hint 1 (−15)</summary>Grepping for the flag won't work — it isn't a single string literal. Read how <code>lv_token</code> is built.</details>
-<details><summary>Hint 2 (−30)</summary>The token is assembled with <code>CONCATENATE</code> from three variables, in the order <code>lv_a</code> + <code>lv_b</code> + <code>lv_c</code>. Ignore <code>lv_decoy</code>. Join their values in that order.</details>
+<details><summary>Hint 1 (−15)</summary>The complete-looking token you can grep for is not the one sent in production. Check which branch runs on <code>DFL</code>, the production system named in the header.</details>
+<details><summary>Hint 2 (−30)</summary>In the production branch the token is <code>CONCATENATE lv_k3 lv_k1 lv_k2</code>, and <code>lv_k1</code> first goes through <code>FORM normalize</code>, which reverses it (<code>reverse( )</code>). Turn that piece round, then join the three pieces in that order.</details>

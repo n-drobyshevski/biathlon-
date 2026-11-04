@@ -556,11 +556,15 @@ GUIDE = {
            ["Ouvrez `/sap/gw/reginfo` : la liste d'accès est vide, tout est autorisé.",
             "Sur la page d'accueil, utilisez le formulaire pour enregistrer un programme (TP) avec un nom quelconque.",
             "La réponse affiche une Clé d'enregistrement : c'est le flag."]),
-    "15": ("Un secret écrit en dur dans le code peut être découpé en morceaux pour échapper à une simple recherche.",
-           "Le partage interne.",
+    "15": ("Un secret écrit en dur dans le code peut être découpé, mélangé et caché derrière une condition "
+           "pour échapper à une simple recherche.",
+           "Le partage interne, puis CyberChef.",
            ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`.",
-            "Repérez les variables `lv_a`, `lv_b` et `lv_c` (ignorez `lv_decoy`, un leurre).",
-            "Remettez les morceaux dans l'ordre a puis b puis c : vous obtenez le flag."]),
+            "Le jeton dépend du système (`sy-sysid`). L'en-tête dit que DFL est la production : le jeton complet "
+            "de la branche hors production est un leurre.",
+            "Dans la branche de production, l'ordre des morceaux est donné par `CONCATENATE lv_k3 lv_k1 lv_k2`.",
+            "`lv_k1` passe d'abord par `FORM normalize`, qui l'inverse avec `reverse( )`. Dans CyberChef, "
+            "appliquez `Reverse` à ce morceau, puis recollez les trois dans l'ordre : vous obtenez le flag."]),
 }
 
 
