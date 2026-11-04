@@ -33,6 +33,7 @@ from urllib.parse import quote, urlencode
 from flask import Flask, Response, abort, redirect, request, send_from_directory, session
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
+import fab  # noqa: E402
 import intranet  # noqa: E402
 from intranet import icon  # noqa: E402
 
@@ -457,6 +458,20 @@ def login():
         return redirect("/")
     _record_fail(ip)
     return login_page("Identifiant ou mot de passe incorrect.", 401, raw)
+
+
+# Out of the story: the game's floating shortcuts (fab.py) on every HTML page,
+# the login page included, so a player can always get back to the hub and the
+# site. A logged-in visit also sets the cookie that shows the intranet button
+# on the hub and the site (kept after logout: it marks a first access).
+@app.after_request
+def shortcuts(resp):
+    if session.get("ok") and not fab.intranet_unlocked():
+        fab.mark_intranet(resp)
+    # inject() leaves pages without </body> (redirects) alone; downloads are not HTML.
+    if resp.mimetype == "text/html" and not resp.direct_passthrough and not resp.is_streamed:
+        resp.set_data(fab.inject(resp.get_data(as_text=True), fab.render("share", fab.default_urls())))
+    return resp
 
 
 @app.route("/logout", methods=["GET", "POST"])

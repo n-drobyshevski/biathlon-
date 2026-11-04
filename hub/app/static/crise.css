@@ -4,6 +4,7 @@
 :root{
   --text:#202124; --mute:#5f6368; --line:#e2e3e5; --head:#f1f3f4; --bar:#dadce0;
   --accent:#4b5b70; --sel:#1a73e8; --link:#1a56c4;
+  --dfab-lift:36px;   /* floating shortcuts (fab.css) sit above the sticky sheet tabs */
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -146,6 +147,8 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 
 @media (max-width:640px){
   .menu{padding:2px 16px 8px;overflow-x:auto;white-space:nowrap}
+  .tabs{overflow-x:auto;scrollbar-width:none}   /* one line, so --dfab-lift clears it */
+  .tabs a{white-space:nowrap}
   .share{display:none}
   .title b{font-size:14px;word-break:break-all}
   .score{padding:4px 8px}

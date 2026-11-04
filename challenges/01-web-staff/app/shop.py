@@ -12,6 +12,11 @@ values and never echoed either.
 The one deliberate recon artifact: every page loads /assets/site.config.js (served
 by app.py), which ships the team service account (base64) — the path to the
 Intranet DécaFlop login that gates the share-hosted challenges.
+
+Out of the story, every storefront page also carries the game's floating
+shortcuts (fab.py, bottom right): the hub ("Cellule de crise"), Outils and,
+once the player has logged in to the share, the Intranet DécaFlop. The staff
+portal does not (it uses the intranet chrome, not this layout).
 """
 import os
 import zlib
@@ -20,6 +25,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, Response, abort, request, send_from_directory
 
+import fab
 from icons import ui
 
 shop = Blueprint("shop", __name__)
@@ -457,7 +463,7 @@ def layout(title, body, current="", notice=""):
     nav = "".join(f'<a href="{h}"{CUR if h == current else ""}>{label}</a>' for h, label in NAV)
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css">
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css">{fab.CSS}
 <script src="/assets/site.config.js" defer></script></head><body>
 <a class="skip" href="#main">Aller au contenu</a>
 <header class="hd"><div class="in">
@@ -471,6 +477,7 @@ def layout(title, body, current="", notice=""):
 {notice}
 <main id="main">{body}</main>
 {footer()}
+{fab.render("site", fab.default_urls())}
 </body></html>"""
 
 

@@ -14,15 +14,21 @@ with a link to each live service.
 - ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
   the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
+- Floating shortcuts (fab.py, bottom right): the DécaFlop site, Outils and,
+  once the player has logged in to the share, the Intranet DécaFlop.
 """
 import hashlib
 import hmac
 import json
 import os
+import sys
 from html import escape
 from urllib.parse import quote, urlsplit
 
 from flask import Flask, Response, redirect, request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling fab.py
+import fab  # noqa: E402
 
 app = Flask(__name__)
 
@@ -70,7 +76,7 @@ def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
              if board else "")
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{DOC} - {title}</title><link rel="stylesheet" href="/static/crise.css"></head><body>
+<title>{DOC} - {title}</title><link rel="stylesheet" href="/static/crise.css">{fab.CSS}</head><body>
 <header class="title"><span class="doc" aria-hidden="true"></span>
  <div><b>{DOC}</b> <span class="share">partagé avec l'équipe IT d'urgence</span></div>
  {score}</header>
@@ -79,7 +85,15 @@ def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
 <div class="fx"><span class="ref" id="ref">{cell}</span><span class="f">fx</span><span class="v" id="val">{formula}</span></div>
 <main id="main" class="sheet">{body}</main>
 <nav class="tabs" aria-label="Feuilles">{tabs}</nav>
-{SCRIPT}{scripts}</body></html>"""
+{shortcuts()}{SCRIPT}{scripts}</body></html>"""
+
+
+def shortcuts():
+    """Bottom-right buttons: the site, Outils, and the intranet once unlocked."""
+    return fab.render("hub", {
+        "site": service_url("site"), "share": service_url("share"),
+        "cyberchef": tool_url(CYBERCHEF_URL, CYBERCHEF_PORT),
+        "terminal": tool_url(TERMINAL_URL, TERMINAL_PORT)})
 
 
 def html(page, status=200):
