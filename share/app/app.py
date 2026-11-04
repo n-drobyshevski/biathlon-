@@ -20,6 +20,7 @@ the shared intranet chrome (intranet.py + static/intranet.css).
 """
 import csv
 import hmac
+import mimetypes
 import io
 import json
 import os
@@ -95,6 +96,22 @@ def ev(path, kind, typ, who, when, ver, desc=""):
 def decoy(path, kind, typ, who, when, ver, text, desc=""):
     return {"path": path, "name": path[-1], "source": None, "kind": kind, "type": typ,
             "who": who, "when": when, "ver": ver, "desc": desc, "decoy": True, "text": text}
+
+
+def blank(path, kind, typ, who, when, ver="1.0", text="", desc=""):
+    """Smoke: an office file, image or system leftover that is empty (or a few
+    bytes). Not text/CSV, so it shows "Aperçu non disponible" and downloads
+    as-is with its own media type."""
+    return decoy(path, kind, typ, who, when, ver, text, desc)
+
+
+# Kinds without a viewer of their own borrow an existing icon.
+KIND_ICON = {"doc": "page", "pdf": "page", "ppt": "page", "xls": "csv", "png": "img",
+             "psd": "img", "sys": "txt"}
+
+
+def icon_of(f):
+    return KIND_ICON.get(f["kind"], f["kind"])
 
 
 _LISEZMOI = ("Dossier d'outils de l'equipe IT d'urgence.\n\n"
@@ -197,6 +214,68 @@ _BADGES = ("Commande de badges - finale 2026\n"
            "Livraison prevue vendredi au bureau de course. Pochettes et tours de cou\n"
            "en stock (carton 3, local logistique).\n")
 
+_ODJ_BRIEFING = ("Briefing general - samedi 18h00, salle B\n"
+                 "========================================\n\n"
+                 "1. Mot de la direction de course (C. Dumont)        5 min\n"
+                 "2. Securite et secours (Croix-Blanche)              10 min\n"
+                 "3. Parcours et fermetures de routes (H. Martin)     10 min\n"
+                 "4. Chronometrage et resultats (L. Eriksen)          5 min\n"
+                 "5. Benevoles : postes et horaires (E. Roux)         10 min\n"
+                 "6. Questions                                        10 min\n\n"
+                 "Merci d'arriver 10 minutes avant. Badge obligatoire.\n")
+_CR_PARTENAIRES = ("Compte rendu - point partenaires du 21/10/2026\n"
+                   "==============================================\n\n"
+                   "- DecaFlop : village de 8h a 17h, atelier velo, 400 gourdes offertes.\n"
+                   "- Mairie : prete 120 barrieres et le podium du quai d'honneur.\n"
+                   "- Radio locale : direct de 9h a 11h depuis l'arrivee.\n\n"
+                   "A faire : valider le plan du village avant le 30/10 (logistique).\n")
+_CABLAGE = ("Tapis de chronometrage - cablage\n"
+            "================================\n\n"
+            "Chaque tapis : 1 boitier + 1 rallonge 25 m + 1 batterie de secours.\n"
+            "P0 a P2 : alimentation depuis la cabine. P3 a P6 : groupes electrogenes.\n"
+            "Test de lecture des puces samedi 16h30 avec 3 puces temoin.\n\n"
+            "En cas de coupure : noter les dossards a la main (feuilles dans le bac bleu).\n")
+_LISEZMOI_CAPTURES = ("Captures reseau de la cabine de chronometrage.\n\n"
+                      "Deposees par l'equipe IT d'urgence. Merci de ne pas modifier les\n"
+                      "fichiers : travaillez sur une copie.\n")
+_PENALITES = "dossard;nom;discipline;motif;minutes;arbitre;heure\n"
+_WIFI_INVITES = ("Wi-Fi invites - village partenaires\n"
+                 "===================================\n\n"
+                 "Reseau : DECAFLOP-INVITES\n"
+                 "Acces  : portail captif, code journalier remis a l'accueil du village.\n\n"
+                 "Ce reseau ne donne acces a aucun outil interne. Le Wi-Fi staff\n"
+                 "(DECAFLOP-TIMING) est reserve a la cabine de chronometrage.\n")
+_ASTREINTE = ("Checklist astreinte IT - jour de course\n"
+              "=======================================\n\n"
+              "[ ] 6h00  Allumer les bornes Wi-Fi du PC course et du village\n"
+              "[ ] 6h15  Verifier l'imprimante PRN-VIL-02 (certificats)\n"
+              "[ ] 6h30  Test radio canal 6 avec la cabine\n"
+              "[ ] 7h00  Sauvegarde des postes du bureau de course\n"
+              "[ ] 12h00 Point avec la direction de course\n"
+              "[ ] 17h00 Recuperer les portables d'equipe\n")
+_RAVITO = ("Ravitaillement - liste de courses\n"
+           "=================================\n\n"
+           "- Eau plate : 1 200 L\n"
+           "- Boisson isotonique : 300 L\n"
+           "- Bananes : 40 kg\n"
+           "- Oranges : 25 kg\n"
+           "- Gels : 6 cartons (offerts par DecaFlop)\n"
+           "- Gobelets compostables : 5 000\n")
+_ACCREDITATIONS = ("media;journaliste;type;arrivee\n"
+                   "Le Littoral Sport;A. Perrin;ecrit;samedi\n"
+                   "Radio Cote Ouest;M. Lefebvre;radio;dimanche\n"
+                   "TriMag;J. Bernard;photo;dimanche\n"
+                   "France Region;equipe 2 pers.;video;dimanche\n")
+_TRANSPORTS = ("Ordres de transport - octobre 2026 (DFL)\n"
+               "========================================\n\n"
+               "DFLK900412  T. Girard   Ecran de saisie des inscriptions     importe\n"
+               "DFLK900415  T. Girard   Correctif calcul des categories     importe\n"
+               "DFLK900420  M. Sorensen Mise a jour des roles staff         importe\n"
+               "DFLK900427  T. Girard   Export des resultats (RFC)          importe\n\n"
+               "Prochaine fenetre de transport : apres la finale.\n")
+_LOCK_PLANNING = "Elodie Roux" + " " * 40
+_DESKTOP_INI = "[.ShellClassInfo]\r\nLocalizedResourceName=Bureau\r\n"
+
 FILES = [
     ev(("Chronométrage", "Captures", "timing_booth.pcap"), "pcap", "Capture réseau (PCAP)",
        "Équipe IT d'urgence", "2026-11-01 22:14", "1.0", "Capture du Wi-Fi staff, cabine de chronométrage"),
@@ -239,11 +318,63 @@ FILES = [
           "2026-10-29 09:30", "1.0", _CONSIGNES),
     decoy(("Communication", "Presse", "communique_finale_2026_v3.txt"), "txt", "Communiqué (projet)",
           "Camille Fontaine", "2026-10-30 16:25", "0.3", _COMMUNIQUE),
+    # --- more smoke: short mundane notes, empty office files, system leftovers ---
+    decoy(("Direction de course", "Réunions", "ordre_du_jour_briefing_samedi.txt"), "txt",
+          "Note interne", "Claire Dumont", "2026-10-31 09:05", "1.1", _ODJ_BRIEFING),
+    decoy(("Direction de course", "Réunions", "CR_point_partenaires_2026-10-21.txt"), "txt",
+          "Compte rendu", "Hugo Martin", "2026-10-21 18:40", "1.0", _CR_PARTENAIRES),
+    blank(("Direction de course", "Réunions", "plan_secours_v2.docx"), "doc", "Document Word",
+          "Hugo Martin", "2026-10-25 11:02", "2.0"),
+    blank(("Direction de course", "Archives 2025", "bilan_finale_2025.pdf"), "pdf", "Document PDF",
+          "Claire Dumont", "2025-11-12 15:30"),
+    blank(("Direction de course", "Archives 2025", "resultats_finale_2025.xlsx"), "xls",
+          "Classeur Excel", "Bureau de course", "2025-11-03 10:14"),
+    decoy(("Chronométrage", "Captures", "LISEZ-MOI.txt"), "txt", "Note interne",
+          "Équipe IT d'urgence", "2026-11-01 22:20", "1.0", _LISEZMOI_CAPTURES),
+    decoy(("Chronométrage", "Parcours", "cablage_tapis.txt"), "txt", "Note interne",
+          "Jan Kowalski", "2026-10-30 14:12", "1.0", _CABLAGE),
+    blank(("Chronométrage", "Parcours", "plan_parcours_velo.pdf"), "pdf", "Document PDF",
+          "Lars Eriksen", "2026-10-24 08:55", "3.0"),
+    decoy(("Arbitrage", "Pièces", "feuille_penalites_vierge.csv"), "csv", "Feuille CSV",
+          "Karim Benali", "2026-10-31 07:30", "1.0", _PENALITES, "Modèle à remplir"),
+    blank(("Arbitrage", "Pièces", "reglement_2026.pdf"), "pdf", "Document PDF",
+          "Sophie Lambert", "2026-09-15 17:00", "2026"),
+    decoy(("IT", "Procédures", "wifi_invites_village.txt"), "txt", "Note interne",
+          "Nicolas Petit", "2026-10-29 12:10", "1.0", _WIFI_INVITES),
+    decoy(("IT", "Procédures", "checklist_astreinte.txt"), "txt", "Note interne",
+          "Astreinte IT", "2026-10-30 19:45", "1.2", _ASTREINTE),
+    blank(("IT", "Procédures", "Nouveau document texte.txt"), "txt", "Document texte",
+          "Astreinte IT", "2026-10-31 23:58"),
+    blank(("IT", "Sauvegardes postes", "portable-equipe-02", "desktop.ini"), "sys",
+          "Paramètres de dossier", "Équipe IT d'urgence", "2026-10-30 11:18", text=_DESKTOP_INI),
+    decoy(("Basis SAP", "Transports", "ordres_transport_oct.txt"), "txt", "Note interne",
+          "Thomas Girard", "2026-10-28 17:02", "1.0", _TRANSPORTS),
+    decoy(("Logistique", "Matériel", "liste_courses_ravito.txt"), "txt", "Note interne",
+          "Logistique", "2026-10-27 10:20", "1.3", _RAVITO),
+    blank(("Logistique", "Matériel", "devis_location_barrieres.pdf"), "pdf", "Document PDF",
+          "Logistique", "2026-10-16 09:41"),
+    decoy(("Logistique", "Matériel", "Copie de inventaire_radios.csv"), "csv", "Feuille CSV",
+          "Logistique", "2026-10-29 18:32", "2.0", _RADIOS),
+    blank(("Logistique", "Bénévoles", "~$planning_benevoles.xlsx"), "xls", "Fichier temporaire",
+          "Élodie Roux", "2026-11-01 08:12", text=_LOCK_PLANNING),
+    blank(("Logistique", "Bénévoles", "fiches_postes_benevoles.docx"), "doc", "Document Word",
+          "Élodie Roux", "2026-10-26 16:03", "1.4"),
+    decoy(("Communication", "Presse", "accreditations_presse.csv"), "csv", "Feuille CSV",
+          "Camille Fontaine", "2026-10-30 11:15", "1.1", _ACCREDITATIONS),
+    blank(("Communication", "Visuels", "affiche_finale_2026_HD.psd"), "psd", "Fichier Photoshop",
+          "Camille Fontaine", "2026-10-12 14:44", "4.0"),
+    blank(("Communication", "Visuels", "logo_decaflop_noir.png"), "png", "Image PNG",
+          "Service marketing", "2026-03-02 10:00"),
+    blank(("Communication", "Visuels", "Thumbs.db"), "sys", "Fichier système",
+          "Service marketing", "2026-10-12 14:50"),
+    blank(("Communication", "Presse", "presentation_partenaires.pptx"), "ppt", "Présentation PowerPoint",
+          "Julien Moreau", "2026-10-20 18:22", "1.2"),
 ]
 FILES_BY_PATH = {f["path"]: f for f in FILES}
 # Folders that exist but hold nothing yet.
-EMPTY_FOLDERS = [("Direction de course", "Archives 2025"), ("Communication", "Visuels"),
-                 ("IT", "Sauvegardes postes", "portable-equipe-01")]
+EMPTY_FOLDERS = [("IT", "Sauvegardes postes", "portable-equipe-01"),
+                 ("Arbitrage", "Réclamations"), ("Logistique", "Plans"),
+                 ("Communication", "Réseaux sociaux")]
 
 
 def build_tree():
@@ -491,7 +622,7 @@ def activity_items(limit=None):
     for f in fs:
         verb = "a ajouté" if f["ver"] in ("1.0", "0.1") else "a modifié"
         folder = f["path"][:-1]
-        out.append(f'<li>{icon(f["kind"])}<div><a href="{preview_href(f)}">'
+        out.append(f'<li>{icon(icon_of(f))}<div><a href="{preview_href(f)}">'
                    f'{esc(f["name"])}</a><small>{esc(f["who"])} {verb} ce fichier le {fr_dt(f["when"], " à ")}, '
                    f'dans {esc(" / ".join(folder))}</small></div></li>')
     return '<ul class="feed">' + "".join(out) + '</ul>'
@@ -664,7 +795,7 @@ def file_row(f, selected, tri, ordre):
     href = qs(f=f["name"], tri=tri if tri != "nom" else None, ordre=ordre if ordre != "asc" else None)
     return (f'<tr{SEL if sel else ""}><td class="ck"><a href="{href}" title="Sélectionner">'
             f'{"✓" if sel else "○"}</a></td>'
-            f'<td class="ty">{icon(f["kind"], f["type"])}</td>'
+            f'<td class="ty">{icon(icon_of(f), f["type"])}</td>'
             f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
             f'<a class="dots" href="{href}" title="Afficher les détails" aria-label="Détails de {esc(f["name"])}">'
             f'...</a><span class="meta">{meta}</span></td>'
@@ -772,7 +903,7 @@ def search():
         result = '<p class="empty">Aucun résultat. Vérifiez l\'orthographe ou essayez un autre terme.</p>'
     else:
         trs = "".join(
-            f'<tr><td class="ty">{icon(f["kind"], f["type"])}</td>'
+            f'<tr><td class="ty">{icon(icon_of(f), f["type"])}</td>'
             f'<td><a href="{preview_href(f)}">{esc(f["name"])}</a>'
             f'<span class="meta">{esc(" / ".join(f["path"][:-1]))}, le {fr_dt(f["when"], " à ")}</span></td>'
             f'<td class="hide-sm"><a href="{folder_href(f["path"][:-1])}">'
@@ -908,7 +1039,7 @@ def no_preview(f, missing=False):
         text = (f"Les fichiers de type {esc(f['type'])} ne peuvent pas être affichés dans le navigateur. "
                 "Téléchargez le fichier pour l'ouvrir avec l'application adaptée.")
         act = f'<a class="btn" href="{download_href(f)}">Télécharger</a>'
-    return (f'<div class="sheet nopv">{icon(f["kind"])}<h2>{title}</h2><p>{text}</p>{act}</div>')
+    return (f'<div class="sheet nopv">{icon(icon_of(f))}<h2>{title}</h2><p>{text}</p>{act}</div>')
 
 
 # Files that are genuine, spoiler-level hints (not decoys). The first time a
@@ -944,7 +1075,7 @@ def viewer_page(f, content, wide=False, classeur=False):
             + (f", {size}" if size else ""))
     dl = (f'<a href="{download_href(f)}">Télécharger</a>' if is_available(f)
           else '<span class="off">Télécharger</span>')
-    bar = (f'<div class="vbar"><div class="vname">{icon(f["kind"], f["type"])}<div>'
+    bar = (f'<div class="vbar"><div class="vname">{icon(icon_of(f), f["type"])}<div>'
            f'<h1>{esc(f["name"])}</h1><small>{" / ".join(crumbs)}</small></div></div>'
            f'<nav class="vacts" aria-label="Fichier">{dl}<a href="{details_href(f)}">Détails</a>'
            f'<a class="x" href="{folder_href(folder)}" title="Fermer l\'aperçu">Fermer</a></nav></div>')
@@ -989,7 +1120,11 @@ def download(filepath):
     if f is None:
         abort(404)
     if f["decoy"]:
-        return Response(f["text"], mimetype="text/plain; charset=utf-8",
+        if f["kind"] in TEXT_KINDS | {"csv"}:
+            mime = "text/plain; charset=utf-8"
+        else:                                   # empty office file, image, system file
+            mime = mimetypes.guess_type(f["name"])[0] or "application/octet-stream"
+        return Response(f["text"], mimetype=mime,
                         headers={"Content-Disposition": 'attachment; filename="' + f["name"] + '"'})
     if not os.path.isfile(os.path.join(HANDOUT_DIR, f["source"])):
         abort(404)

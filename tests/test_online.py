@@ -17,7 +17,7 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DOMAIN = "ctf.example.com"
-SUB = {"01": "site", "02": "site", "03": "site", "04": "idor", "05": "share", "06": "sqli",
+SUB = {"01": "site", "02": "site", "03": "site", "04": "site", "05": "share", "06": "sqli",
        "07": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
        "14": "sapgw", "15": "share"}
 # online: these each get their own internal network (shared with cloudflared
@@ -148,7 +148,7 @@ def test_hub_labels_show_subdomain_when_url_set(hub, monkeypatch):
     page = hub.get("/").data.decode()
     assert f'<span class="mute">(share.{DOMAIN})</span>' in page
     assert '<span class="mute">(:8020)</span>' not in page
-    assert '<span class="mute">(:8004)</span>' in page            # not overridden: unchanged
+    assert '<span class="mute">(:8006)</span>' in page            # not overridden: unchanged
     assert f"share.{DOMAIN}" in hub.get("/contexte").data.decode()
 
 

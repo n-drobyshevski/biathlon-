@@ -27,6 +27,7 @@ from flask import Blueprint, Response, abort, request, send_from_directory
 
 import fab
 from icons import ui
+import intranet  # cross-links to the internal tools (host:port offline, subdomain online)
 
 shop = Blueprint("shop", __name__)
 NB = "\u00a0"   # non-breaking space (French typography, prices)
@@ -852,6 +853,11 @@ def championship():
 </div></section>
 <section class="sec" id="equipement"><div class="in"><div class="sec-hd"><h2>L'équipement de la finale</h2>
  <a href="/natation">Voir les rayons</a></div><div class="grid">{"".join(card(s) for s in FINAL_KIT[:4])}</div></div></section>
+<section class="sec" id="athletes"><div class="in"><div class="panel narrow"><h2>Vous êtes inscrit à la finale ?</h2>
+ <p>Votre dossier de course (vague de départ, emplacement au parc à vélos, documents) est consultable dans
+  l'Espace athlètes. Le lien de connexion vous a été envoyé par SMS lors de votre inscription.</p>
+ <div class="btns"><a class="btn" href="{intranet.app_url('athletes')}">Accéder à l'Espace athlètes</a></div>
+</div></div></section>
 <section class="sec grey"><div class="in"><div class="sec-hd"><h2>Venir en spectateur</h2></div><div class="cols2">
  <div class="panel"><h2>Accès</h2><p>Navettes gratuites depuis le centre-ville toutes les 15 minutes. Parking vélo
   surveillé près du stade.</p></div>
@@ -985,6 +991,8 @@ def account():
  <p>L'espace client est fermé pendant la compétition. Vos commandes et vos factures restent consultables en
   magasin, sur présentation d'une pièce d'identité.</p>
  <div class="btns"><a class="btn" href="/magasins">Trouver un magasin</a><a class="btn line" href="/aide#commande">Suivi de commande</a></div>
+ <p class="small mute" style="margin-top:14px">Concurrent de la finale ? Votre dossier de course n'est pas ici :
+  il est dans l'<a href="{intranet.app_url('athletes')}">Espace athlètes</a>.</p>
 </div></div></section>"""
     return html(layout("Mon compte - DécaFlop", fr(body)))
 
