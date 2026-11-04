@@ -99,7 +99,6 @@ def _set_cookies(resp):
 
 
 def test_share_login_unlocks_and_logout_keeps_it(share_module):
-    share_module._FAILS.clear()
     c = share_module.app.test_client()
     bad = c.post("/login", data={"identifiant": "equipe-it", "motdepasse": "nope"})
     assert bad.status_code == 401 and not _set_cookies(bad)
@@ -113,7 +112,6 @@ def test_share_login_unlocks_and_logout_keeps_it(share_module):
 
 
 def test_share_online_cookie_covers_lab_domain(share_module):
-    share_module._FAILS.clear()
     c = share_module.app.test_client()
     ok = c.post("/login", base_url=f"http://share.{DOMAIN}",
                 data={"identifiant": "equipe-it", "motdepasse": PASSWORD})
