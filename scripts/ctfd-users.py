@@ -4,7 +4,7 @@ ctfd-users.py — create the players' CTFd accounts in advance, so nobody has to
 fill in CTFd's registration form (which insists on an e-mail address).
 
 Each account gets an easy password made of two short words and a number
-(e.g. "bike-beach-42") and a placeholder e-mail (<pseudo>@ctf.lan: CTFd needs
+(e.g. "bike-beach-42") and a placeholder e-mail (<pseudo>@ctf.lab: CTFd needs
 one, nothing is ever sent and nobody has to type it). Players sign in to CTFd
 AND to the hub with the pseudo + password from their card.
 
@@ -41,7 +41,7 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EMAIL_DOMAIN = "ctf.lan"
+EMAIL_DOMAIN = "ctf.lab"
 PREFIX = "player"           # --count N creates player01 .. playerNN
 TEST_NAME = "test"
 

@@ -62,11 +62,11 @@ def test_plan_names_count_test_and_unique_emails(mod):
     rows = mod.plan(["Élodie", "ÉLODIE", "Jean Luc", " "], 2, test=True)     # same pseudo twice: kept once
     assert [r[0] for r in rows] == ["Élodie", "Jean Luc", "player01", "player02", "test"]
     emails = [r[1] for r in rows]
-    assert emails[0] == "elodie@ctf.lan" and emails[1] == "jean-luc@ctf.lan"
-    assert all(e.endswith("@ctf.lan") for e in emails)
+    assert emails[0] == "elodie@ctf.lab" and emails[1] == "jean-luc@ctf.lab"
+    assert all(e.endswith("@ctf.lab") for e in emails)
     assert [r[2] for r in rows] == [False, False, False, False, True]   # only test is hidden
     # different pseudos that fold to the same e-mail still get distinct e-mails
-    assert [r[1] for r in mod.plan(["Élodie", "elodie"], 0, test=False)] == ["elodie@ctf.lan", "elodie2@ctf.lan"]
+    assert [r[1] for r in mod.plan(["Élodie", "elodie"], 0, test=False)] == ["elodie@ctf.lab", "elodie2@ctf.lab"]
 
 
 def test_apply_creates_verified_accounts_hidden_test(mod):
@@ -74,7 +74,7 @@ def test_apply_creates_verified_accounts_hidden_test(mod):
     res = mod.apply(api, mod.plan([], 2, test=True), rng=Rng())
     posts = [d for m, p, d in api.calls if m == "POST"]
     assert [d["name"] for d in posts] == ["player01", "player02", "test"]
-    assert all(d["verified"] and d["email"].endswith("@ctf.lan") and d["password"] for d in posts)
+    assert all(d["verified"] and d["email"].endswith("@ctf.lab") and d["password"] for d in posts)
     assert [d["hidden"] for d in posts] == [False, False, True]
     assert all(p for _n, p, _s in res)
 
@@ -92,21 +92,21 @@ def test_existing_accounts_kept_unless_reset(mod):
 
 def test_main_writes_private_list_and_can_close_signup(mod, tmp_path, monkeypatch):
     env = tmp_path / ".env"
-    env.write_text("CTFD_TOKEN=ctfd_x\nCTF_HOST=ctf.lan\n")
+    env.write_text("CTFD_TOKEN=ctfd_x\nCTF_HOST=ctf.lab\n")
     api = FakeCTFd()
     monkeypatch.setattr(mod, "CTFd", lambda url, token: api)
     out = tmp_path / "comptes.txt"
     assert mod.main(["--count", "2", "--test", "--close-registration",
                      "--env", str(env), "--out", str(out)]) == 0
     text = out.read_text()
-    assert "player01" in text and "test" in text and "http://ctf.lan:8000" in text
+    assert "player01" in text and "test" in text and "http://ctf.lab:8000" in text
     assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
     assert ("PATCH", "/configs", {"registration_visibility": "private"}) in api.calls
 
 
 def test_dry_run_needs_no_token(mod, tmp_path, capsys):
     assert mod.main(["--count", "1", "--dry-run", "--env", str(tmp_path / "none")]) == 0
-    assert "player01@ctf.lan" in capsys.readouterr().out
+    assert "player01@ctf.lab" in capsys.readouterr().out
 
 
 def test_rerun_without_reset_keeps_noted_passwords(mod, tmp_path, monkeypatch, capsys):
