@@ -6,9 +6,10 @@
 #  - The terminal asks for a pseudo and a password. The first time, the pseudo
 #    is created with the password the player chooses; afterwards only that
 #    password opens it. A wrong password just says so (no lockout).
-#  - Each pseudo is bound for good to its own Unix user (joueur01..joueur24,
-#    created in the Dockerfile) and private home /work/joueurNN (0700, on the
-#    toolbox-data volume, so it survives restarts). /work cannot be listed.
+#  - Each pseudo is bound for good to one of 24 seats (uid 2001..2024), whose
+#    Unix user is NAMED after the pseudo (whoami = pseudo), with a private home
+#    /work/<pseudo> (0700, on the toolbox-data volume, so it survives
+#    restarts). /work cannot be listed. Unclaimed seats are joueurNN.
 #    Other players cannot read the files, kill the processes, or touch the
 #    shell setup (root-owned, read-only rcfile) of someone else, and cannot
 #    see their processes or command lines either (/proc hidepid, set up by
@@ -46,12 +47,11 @@ cat <<'BANNER'
    exiftool, john, hashcat, tshark, unzip,
    xxd, jq, curl, wget, python3
 
- Les fichiers de preuve sont sur Intranet
- DécaFlop (port 8020) ; les services sur
- l'IP du Pi. curl/wget pour les récupérer :
+ Les services sont sur l'IP du Pi.
+ curl/wget pour récupérer un fichier :
    wget http://<IP-du-Pi>:<port>/<chemin>
- Pour le partage (login du challenge 01) :
-   grab http://<IP>:8020/telecharger/<...>
+ Pour un partage protégé par mot de passe :
+   grab <url-du-fichier> [identifiant]
 
  Cet espace est à vous seul et il est gardé :
  fermez l'onglet, revenez avec le même pseudo
@@ -79,7 +79,39 @@ mkdir -p "$STATE" && chmod 700 "$STATE"
 mkdir -p "$ACCOUNTS" && chmod 700 "$ACCOUNTS"
 
 as_seat() { setpriv --reuid="$1" --regid="$1" --clear-groups -- "${@:2}"; }
-seat_uid() { id -u "joueur$1"; }
+seat_uid() { echo $((2000 + 10#$1)); }      # fixed per seat, whatever its name
+
+# Unix name of a seat = its player's pseudo (joueurNN while unclaimed); home is
+# /work/<name>. /etc/passwd and /etc/group are symlinks (see the Dockerfile) to
+# files rebuilt by sync_users from the image's system accounts + the seats.
+seat_name() {
+  local f
+  for f in "$ACCOUNTS"/*; do
+    case "$f" in *.new) continue ;; esac
+    [ -f "$f" ] && [ "$(cut -d' ' -f1 "$f")" = "$1" ] && { basename "$f"; return 0; }
+  done
+  echo "joueur$1"
+}
+seat_home() { echo "$HOMES/$(seat_name "$1")"; }
+ETC=/work/.etc
+sync_users() {   # rewrite passwd/group (call under lock, or before ttyd starts)
+  local n name uid
+  mkdir -p "$ETC" && chmod 755 "$ETC"
+  cp /etc/toolbox/passwd.base "$ETC/passwd.new"
+  cp /etc/toolbox/group.base "$ETC/group.new"
+  for n in $(seq -w 1 "$SEATS"); do
+    name="$(seat_name "$n")"; uid="$(seat_uid "$n")"
+    echo "$name:x:$uid:$uid:$name:$HOMES/$name:/bin/bash" >>"$ETC/passwd.new"
+    echo "$name:x:$uid:" >>"$ETC/group.new"
+  done
+  chmod 644 "$ETC/passwd.new" "$ETC/group.new"
+  mv "$ETC/passwd.new" "$ETC/passwd" && mv "$ETC/group.new" "$ETC/group"
+}
+reserved_name() {  # system account/group names, numbers, and joueurNN are not pseudos
+  case "$1" in *[!0-9]*) ;; *) return 0 ;; esac
+  case "$1" in joueur[0-9]*) return 0 ;; esac
+  cut -d: -f1 /etc/toolbox/passwd.base /etc/toolbox/group.base | grep -qxF -- "$1"
+}
 seat_procs() {   # number of processes of uid $1 (one fork, not one per process)
   find /proc -mindepth 1 -maxdepth 1 -name '[0-9]*' -uid "$1" 2>/dev/null | wc -l
 }
@@ -87,7 +119,7 @@ end_session() {  # kill every process of seat $1 (its tmux too); files are kept
   as_seat "$(seat_uid "$1")" /bin/bash -c 'kill -KILL -1' 2>/dev/null
 }
 home_mb() {      # disk use of seat $1's home, in MB (measured as that user)
-  as_seat "$(seat_uid "$1")" /usr/bin/du -sm "$HOMES/joueur$1" 2>/dev/null | cut -f1
+  as_seat "$(seat_uid "$1")" /usr/bin/du -sm "$(seat_home "$1")" 2>/dev/null | cut -f1
 }
 
 # Passwords: scrypt, read on stdin (never on a command line, so never visible
@@ -120,19 +152,34 @@ new_seat() {     # first seat no pseudo owns yet (call under lock)
 }
 
 ensure_home() {  # $1 = seat
-  local ws="$HOMES/joueur$1" u
-  u="$(seat_uid "$1")"
+  local ws u
+  ws="$(seat_home "$1")"; u="$(seat_uid "$1")"
   if [ ! -d "$ws" ]; then
     mkdir -m 700 "$ws" && chown "$u:$u" "$ws"
   fi
 }
 
-wipe_home() {    # $1 = seat: delete everything in its home (as that user)
+wipe_dir() {     # $1 = seat, $2 = a directory of that seat: empty it, as that user
   local u
   u="$(seat_uid "$1")"
-  as_seat "$u" /bin/chmod -R u+rwX "$HOMES/joueur$1" 2>/dev/null
-  as_seat "$u" /usr/bin/find "$HOMES/joueur$1" -mindepth 1 -delete 2>/dev/null
+  as_seat "$u" /bin/chmod -R u+rwX "$2" 2>/dev/null
+  as_seat "$u" /usr/bin/find "$2" -mindepth 1 -delete 2>/dev/null
 }
+wipe_home() { wipe_dir "$1" "$(seat_home "$1")"; }
+
+# ---------------------------------------------------------------- users
+# At container start (toolbox-init, before ttyd): rename homes from the old
+# /work/joueurNN layout to /work/<pseudo>, then write passwd/group.
+if [ "${1:-}" = "--sync-users" ]; then
+  for f in "$ACCOUNTS"/*; do
+    [ -f "$f" ] || continue
+    case "$f" in *.new) continue ;; esac
+    s="$(cut -d' ' -f1 "$f")"; new="$HOMES/$(basename "$f")"
+    if [ -d "$HOMES/joueur$s" ] && [ ! -e "$new" ]; then mv "$HOMES/joueur$s" "$new"; fi
+  done
+  sync_users
+  exit 0
+fi
 
 # ---------------------------------------------------------------- watchdog
 if [ "${1:-}" = "--watchdog" ]; then
@@ -186,11 +233,11 @@ if [ "$(basename "$0")" = "toolbox-admin" ]; then
   case "$cmd" in
     liste)
       echo "Processus des autres joueurs cachés (hidepid) : $(cat "$STATE/hidepid" 2>/dev/null || echo '?')"
-      printf '%-24s %-9s %8s  %s\n' PSEUDO UTILISATEUR ESPACE PROCESSUS
+      printf '%-24s %-5s %8s  %s\n' PSEUDO UID ESPACE PROCESSUS
       for f in "$ACCOUNTS"/*; do
         [ -f "$f" ] || continue
         s="$(account_seat "$(basename "$f")")"
-        printf '%-24s %-9s %6sMo  %s\n' "$(basename "$f")" "joueur$s" \
+        printf '%-24s %-5s %6sMo  %s\n' "$(basename "$f")" "$(seat_uid "$s")" \
           "$(home_mb "$s")" "$(seat_procs "$(seat_uid "$s")")"
       done ;;
     mdp)
@@ -203,7 +250,9 @@ if [ "$(basename "$0")" = "toolbox-admin" ]; then
       lock
       end_session "$s"
       wipe_home "$s"
+      rmdir "$(seat_home "$s")" 2>/dev/null
       rm -f "$ACCOUNTS/$who"
+      sync_users                                 # the seat is joueurNN again
       unlock
       echo "Compte $who supprimé, son espace est vidé." ;;
     *)
@@ -229,6 +278,10 @@ while [ -z "$seat" ]; do
   pseudo="$(printf '%s' "$pseudo" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
   if ! printf '%s' "$pseudo" | grep -qE '^[a-z0-9][a-z0-9_.-]{1,23}$'; then
     echo " 2 à 24 caractères : lettres, chiffres, . _ -"
+    continue
+  fi
+  if [ ! -f "$ACCOUNTS/$pseudo" ] && reserved_name "$pseudo"; then
+    echo " Ce nom est réservé au système. Choisissez-en un autre."
     continue
   fi
   stored="$(account_hash "$pseudo")"
@@ -261,16 +314,19 @@ while [ -z "$seat" ]; do
   if [ -z "$s" ] && ! s="$(new_seat)"; then
     unlock; echo " Plus de place sur ce terminal, prévenez l'organisateur."; sleep 5; exit 1
   fi
-  if [ ! -f "$ACCOUNTS/$pseudo" ]; then
-    wipe_home "$s"                               # a seat freed by `supprimer`
+  if [ ! -f "$ACCOUNTS/$pseudo" ] && [ -d "$HOMES/joueur$s" ]; then
+    wipe_dir "$s" "$HOMES/joueur$s"              # leftovers of an unclaimed seat
+    rmdir "$HOMES/joueur$s" 2>/dev/null
   fi
+  new_account=0; [ -f "$ACCOUNTS/$pseudo" ] || new_account=1
   echo "$s $hash" >"$ACCOUNTS/$pseudo.new" && mv "$ACCOUNTS/$pseudo.new" "$ACCOUNTS/$pseudo"
+  [ "$new_account" = 1 ] && sync_users           # the seat's Unix name is now the pseudo
   unlock
   seat="$s"
 done
 unset pw pw2 stored hash
 
-user="joueur$seat"
+user="$pseudo"                                   # Unix name = pseudo (see sync_users)
 uid="$(seat_uid "$seat")"
 ws="$HOMES/$user"
 ensure_home "$seat"

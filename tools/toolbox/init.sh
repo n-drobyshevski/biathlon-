@@ -24,4 +24,7 @@ else
   echo "toolbox-init: WARNING could not remount /proc with hidepid; players can see" \
        "each other's command lines (see handouts/HOSTING.md)" >&2
 fi
+# players' Unix names = their pseudos: write /etc/passwd + /etc/group (on the
+# volume) before anything looks a user up
+/usr/local/bin/player-shell --sync-users
 exec setpriv --bounding-set=-sys_admin,-setpcap -- "$@"

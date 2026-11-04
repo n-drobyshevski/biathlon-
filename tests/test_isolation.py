@@ -86,7 +86,12 @@ def test_offline_toolbox_gives_each_player_a_private_persistent_space(compose_of
     assert "ulimit -H -u" in shell and "ulimit -H -f" in shell and "--watchdog" in shell
     assert "Trop de tentatives" not in shell                        # wrong password never locks
     docker = (ROOT / "tools" / "toolbox" / "Dockerfile").read_text()
-    assert "USER player" not in docker and "joueur" in docker and "tmux" in docker
+    assert "USER player" not in docker and "tmux" in docker
+    # Unix name = pseudo: passwd/group are rebuilt on the volume at run time
+    assert "ln -sf /work/.etc/passwd /etc/passwd" in docker
+    assert "player-shell --sync-users" in init
+    assert 'user="$pseudo"' in shell and "reserved_name" in shell
+    assert "seat_uid() { echo $((2000 + 10#$1)); }" in shell        # uid fixed per seat
     assert 'ENTRYPOINT ["/usr/local/bin/toolbox-init"]' in docker
     tmux = (ROOT / "tools" / "toolbox" / "tmux.conf").read_text()
     assert "--rcfile /etc/toolbox/bashrc" in tmux
@@ -111,3 +116,14 @@ def compose_offline():
         pytest.skip("docker compose plugin missing")
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
+
+
+def test_check_pi_script_flags_missing_memory_cgroup():
+    import subprocess
+    path = ROOT / "scripts" / "check-pi.sh"
+    assert subprocess.run(["bash", "-n", str(path)]).returncode == 0
+    text = path.read_text()
+    assert "cgroup_enable=memory cgroup_memory=1" in text            # the exact fix
+    assert "--force-recreate" in text                                # limits apply at creation
+    hosting = (ROOT / "handouts" / "HOSTING.md").read_text()
+    assert "## Turn on memory limits" in hosting and "./scripts/check-pi.sh" in hosting
