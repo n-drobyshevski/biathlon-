@@ -14,6 +14,80 @@
     f.addEventListener('submit', function (e) { if (!window.confirm(f.dataset.confirm)) e.preventDefault(); });
   });
 
+  // ---- the list: a notepad someone shares with you shows up without a reload
+  var list = document.getElementById('np-list'), incoming = document.getElementById('np-incoming');
+  if (list && incoming && window.fetch && window.JSON) {
+    var openId = list.dataset.open, known = {}, announced = {}, baseTitle = document.title;
+    list.querySelectorAll('a[href*="?n="]').forEach(function (a) { known[a.getAttribute('href').split('n=')[1]] = true; });
+    var meta = function (p) {
+      var m = p.shared ? p.n + ' membres' : 'Privé';
+      if (p.by) m += ', modifié par ' + p.by + ' à ' + hhmm(p.at);
+      return m;
+    };
+    var item = function (p) {
+      var a = document.createElement('a'), b = document.createElement('b'), s = document.createElement('small');
+      a.href = '/bloc-notes?n=' + p.id;
+      if (String(p.id) === openId) a.setAttribute('aria-current', 'true');
+      if (p.new && String(p.id) !== openId) {
+        var d = document.createElement('span');
+        d.className = 'np-dot'; d.setAttribute('aria-label', 'Nouveau');
+        b.appendChild(d);
+      }
+      b.appendChild(document.createTextNode(p.name));
+      s.textContent = meta(p);
+      a.appendChild(b); a.appendChild(s);
+      return a;
+    };
+    var announce = function (p) {
+      var el = document.createElement('p'), w = document.createElement('b'), a = document.createElement('a');
+      w.textContent = p.added_by || 'Quelqu\'un';
+      el.appendChild(w);
+      el.appendChild(document.createTextNode(' vous a ajouté au bloc-notes « ' + p.name + ' ».'));
+      a.href = '/bloc-notes?n=' + p.id; a.textContent = 'Ouvrir';
+      el.appendChild(a);
+      incoming.appendChild(el);
+    };
+    var refresh = function () {
+      if (document.hidden) return;
+      fetch('/bloc-notes/liste', {credentials: 'same-origin', cache: 'no-store'}).then(function (r) {
+        return r.ok ? r.json() : null;
+      }).then(function (d) {
+        if (!d) return;
+        var frag = document.createDocumentFragment(), waiting = 0;
+        d.pads.forEach(function (p) {
+          var id = String(p.id);
+          frag.appendChild(item(p));
+          if (p.new && id !== openId) {
+            waiting++;
+            if (!known[id] && !announced[id]) { announced[id] = true; announce(p); }
+          }
+          known[id] = true;
+        });
+        list.textContent = '';
+        list.appendChild(frag);
+        document.title = (waiting ? '(' + waiting + ') ' : '') + baseTitle;
+        // the header chip's count and the sheet tab's dot follow too
+        var chip = document.querySelector('.who:not(.out)'), tab = document.querySelector('.tabs a[href="/bloc-notes"]');
+        if (chip) {
+          var c = chip.querySelector('.who-new');
+          if (waiting && !c) { c = document.createElement('span'); c.className = 'who-new'; chip.appendChild(c); }
+          if (c) { if (waiting) c.textContent = String(waiting); else c.remove(); }
+        }
+        if (tab) {
+          var t = tab.querySelector('.tab-new');
+          if (waiting && !t) {
+            t = document.createElement('span'); t.className = 'tab-new';
+            t.setAttribute('aria-label', 'nouveau bloc-notes partagé');
+            tab.appendChild(t);
+          }
+          if (t && !waiting) t.remove();
+        }
+      }).catch(function () {});
+    };
+    setInterval(refresh, 6000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+  }
+
   var form = document.getElementById('np-edit');
   if (!form || !window.fetch || !window.JSON) return;
   var box = document.getElementById('np-text'), status = document.getElementById('np-status'),

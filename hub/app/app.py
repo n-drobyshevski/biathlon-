@@ -73,7 +73,8 @@ DOC = "suivi_incident_finale_2026.ods"
 
 def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
     here = ' aria-current="page"'
-    tabs = "".join(f'<a href="{h}"{here if h == tab else ""}>{t}</a>' for h, t in TABS)
+    tabs = "".join(f'<a href="{h}"{here if h == tab else ""}>{t}{notes.tab_badge() if h == "/bloc-notes" else ""}</a>'
+                   for h, t in TABS)
     board = scoreboard_url()
     score = (f'<a class="score" href="{escape(board)}scoreboard"{NEW_TAB}>Tableau des scores {EXT}</a>'
              if board else "")

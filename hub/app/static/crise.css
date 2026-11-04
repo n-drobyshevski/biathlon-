@@ -252,3 +252,11 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
   .np-act{margin-left:0}
   .who{padding:2px 8px 2px 3px}
 }
+/* new shares: count on the header chip, dot on the sheet tab, live note on the Bloc-notes page */
+.who-new{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e8590c;color:#fff;font-size:11px;font-weight:700;
+  display:inline-grid;place-items:center;margin-left:2px}
+.tab-new{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e8590c;margin-left:6px;vertical-align:2px}
+.np-incoming:empty{display:none}
+.np-incoming{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.np-incoming p{margin:0;padding:8px 10px;border-radius:6px;background:#e6f4ea;border:1px solid #b7dfc3;color:#0d652d;font-size:12.5px}
+.np-incoming a{font-weight:600;margin-left:4px}

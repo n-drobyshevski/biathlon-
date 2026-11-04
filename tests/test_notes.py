@@ -253,3 +253,47 @@ def test_admin_delete_hands_shared_pad_over(client, hub_module, notes):
     assert notes_admin.main(["supprimer", "lea"]) == 0
     page = max_.get(f"/bloc-notes?n={pid}").data.decode()
     assert "Partagé, créé par vous" in page                            # max owns it now
+
+
+# ------------------------------------------------------------------ the player receiving a share
+def test_recipient_sees_new_share_everywhere_until_opened(client, hub_module):
+    max_ = new_client(hub_module)
+    signin(client, "lea")
+    signin(max_, "max")
+    assert max_.get("/bloc-notes/liste").get_json()["pads"][0]["name"] == "Mes notes"
+    home = max_.get("/").data.decode()
+    assert 'class="who-new"' not in home and 'class="tab-new"' not in home
+    pid = make_pad(client, "Les Puces", "max")
+    # the list the page polls: the new share, who added max, marked new
+    pads = max_.get("/bloc-notes/liste")
+    assert pads.headers["Cache-Control"] == "no-store"
+    item = next(p for p in pads.get_json()["pads"] if p["id"] == pid)
+    assert item == {"id": pid, "name": "Les Puces", "shared": True, "n": 2, "by": "", "at": 0,
+                    "new": True, "added_by": "lea"}
+    # every hub sheet: a count on the header chip and a dot on the Bloc-notes tab
+    for path in ("/", "/outils", "/contacts"):
+        page = max_.get(path).data.decode()
+        assert '<span class="who-new">1</span>' in page and "1 nouveau bloc-notes partagé" in page, path
+        assert 'class="tab-new"' in page, path
+    creator = client.get("/").data.decode()                       # nothing new for the creator
+    assert 'class="who-new"' not in creator
+    max_.get(f"/bloc-notes?n={pid}")                                  # opening it clears everything
+    assert not any(p["new"] for p in max_.get("/bloc-notes/liste").get_json()["pads"])
+    assert 'class="who-new"' not in max_.get("/").data.decode()
+
+
+def test_listing_needs_signin_and_follows_the_setting(client, hub_module, monkeypatch):
+    assert client.get("/bloc-notes/liste").status_code == 403
+    max_ = new_client(hub_module)
+    signin(client, "lea")
+    signin(max_, "max")
+    make_pad(client, "Les Puces", "max")
+    monkeypatch.setenv("NOTES_SHARED", "0")
+    assert [p["name"] for p in max_.get("/bloc-notes/liste").get_json()["pads"]] == ["Mes notes"]
+    assert 'class="who-new"' not in max_.get("/").data.decode()
+
+
+def test_page_has_the_live_share_area(client):
+    signin(client, "lea")
+    page = client.get("/bloc-notes").data.decode()
+    assert 'id="np-incoming" role="status" aria-live="polite"' in page and 'id="np-list"' in page

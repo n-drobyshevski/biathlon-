@@ -179,16 +179,37 @@ def avatar(pseudo):
     return COLORS[sum(pseudo.encode()) % len(COLORS)]
 
 
+def unseen(pseudo):
+    """How many shared notepads `pseudo` was added to and has not opened yet."""
+    if not pseudo or not shared_on():
+        return 0
+    return db().execute("SELECT COUNT(*) FROM members m JOIN pads p ON p.id = m.pad_id "
+                        "WHERE m.pseudo = ? AND m.seen = 0 AND p.shared = 1", (pseudo,)).fetchone()[0]
+
+
+def new_label(n):
+    return f"{n} nouveau{'x' if n > 1 else ''} bloc-notes partagé{'s' if n > 1 else ''}"
+
+
 def header_chip():
-    """The sign-in chip in the hub's title bar."""
+    """The sign-in chip in the hub's title bar, with the count of new shares."""
     if not AVAILABLE:
         return ""
     p = current()
     if not p:
         return '<a class="who out" href="/bloc-notes">Se connecter</a>'
-    return (f'<a class="who" href="/bloc-notes" aria-label="Bloc-notes de {escape(p)}">'
+    n = unseen(p)
+    badge = f'<span class="who-new">{n}</span>' if n else ""
+    label = f"Bloc-notes de {p}" + (f", {new_label(n)}" if n else "")
+    return (f'<a class="who" href="/bloc-notes" aria-label="{escape(label)}">'
             f'<span class="av" style="background:{avatar(p)}" aria-hidden="true">{escape(p[0].upper())}</span>'
-            f'{escape(p)}</a>')
+            f'{escape(p)}{badge}</a>')
+
+
+def tab_badge():
+    """A dot on the Bloc-notes sheet tab while a share is waiting."""
+    n = unseen(current()) if AVAILABLE else 0
+    return f'<span class="tab-new" aria-label="{escape(new_label(n))}"></span>' if n else ""
 
 
 # ------------------------------------------------------------------ pads
@@ -323,7 +344,10 @@ def board_page(me, pad_id=None, conflict=None):
             '<p class="np-hint">Ils doivent s\'être connectés au hub au moins une fois. Vous pourrez en ajouter '
             'plus tard.</p>'
             '<button class="np-btn pri" type="submit">Créer</button></form></details>')
-    side = (f'<section class="np-card"><h2>Vos bloc-notes</h2><nav class="np-list" aria-label="Vos bloc-notes">'
+    # #np-incoming: notes.js announces shares that arrive while the page is open
+    side = (f'<section class="np-card"><h2>Vos bloc-notes</h2>'
+            '<div class="np-incoming" id="np-incoming" role="status" aria-live="polite"></div>'
+            f'<nav class="np-list" id="np-list" aria-label="Vos bloc-notes" data-open="{pad["id"]}">'
             f'{"".join(items)}</nav>{create}'
             f'<div class="np-me"><span>Connecté : <b>{escape(me)}</b></span>'
             f'{form("/bloc-notes/deconnexion", "Se déconnecter", "np-link")}</div></section>')
@@ -539,6 +563,21 @@ def delete(pad_id):
     flash("ok", f"« {pad['name']} » a été supprimé.")
     session.pop("np_last", None)
     return back()
+
+
+def list_item(r, me):
+    return {"id": r["id"], "name": r["name"], "shared": bool(r["shared"]), "n": r["n"],
+            "by": "vous" if r["by"] == me else r["by"], "at": r["at"],
+            "new": bool(r["shared"] and not r["seen"]), "added_by": r["added_by"]}
+
+
+@bp.get("/bloc-notes/liste")
+def listing():
+    """The player's notepads, for notes.js: new shares appear without a reload."""
+    me = need_player()
+    resp = jsonify({"pads": [list_item(r, me) for r in pads_of(me)]})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 def _state(pad):
