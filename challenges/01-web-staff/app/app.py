@@ -62,7 +62,7 @@ STAFF_BODY = """<h1 class="h1">Équipe événement de la finale 2026</h1>
    <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
   </dl>
   <p class="status">Le compte de service de l'équipe n'est plus affiché ici&#160;: il a fuité une fois de trop.
-   Il reste hélas chargé par les pages publiques du site DécaFlop — à sortir des ressources front.</p>
+   Il reste hélas chargé par les pages publiques du site DécaFlop, à sortir des ressources front.</p>
  </section>
  <section class="wp"><h2>Comptes et identifiants</h2>
   <p>Tous les comptes staff suivent la convention <code>initiale du prénom + nom</code> et sont répliqués

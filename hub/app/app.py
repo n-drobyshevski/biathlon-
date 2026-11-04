@@ -322,7 +322,7 @@ def context():
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
                             f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
-                            "se cache dans les ressources du site DécaFlop — commencez par la mission 01."),
+                            "se cache dans les ressources du site DécaFlop : commencez par la mission 01."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Un navigateur suffit, même sur un poste verrouillé. CyberChef et le terminal "
                    "d'équipe tournent sur le Pi, dans l'onglet <a href=\"/outils\">Outils</a>."),

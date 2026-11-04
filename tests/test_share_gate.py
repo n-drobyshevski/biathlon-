@@ -1,10 +1,12 @@
-"""Challenge 01's staff portal hands out the Intranet DécaFlop login (soft gate).
+"""Challenge 01 hides the Intranet DécaFlop login in the public site (soft gate).
 
-The share's own authentication is unchanged; only the source of the credentials
-moves (hub -> staff portal). docker-compose feeds the SAME env to both the staff
-(01) and share containers, so the login shown on the portal is exactly the one
-the share accepts.
+The share's own authentication is unchanged. The staff portal only gives the
+share's ADDRESS and a hint; the login itself ships base64-encoded ("user:pass")
+in /assets/site.config.js, which every public DécaFlop page loads. docker-compose
+feeds the SAME env to both the staff (01) and share containers, so the login
+hidden in the front-end is exactly the one the share accepts.
 """
+import base64
 import importlib.util
 import pathlib
 import re
@@ -23,7 +25,7 @@ def _load(name, path):
     return mod
 
 
-def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
+def test_site_front_end_hides_the_login_the_share_accepts(dist, monkeypatch):
     user, pw = "crew-test-07", "gate-pw-test-4821"
     monkeypatch.setenv("SHARE_USER", user)
     monkeypatch.setenv("SHARE_PASSWORD", pw)
@@ -32,16 +34,23 @@ def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
     monkeypatch.setenv("HANDOUT_DIR", str(dist))
     if str(STAFF_APP) not in sys.path:
         sys.path.insert(0, str(STAFF_APP))
-
-    # 01 staff portal (reached via robots.txt): shows the share URL + login
     staff = _load("staff_gate", STAFF_APP / "app.py")
-    page = staff.app.test_client().get("/staff-portal-7f3a9",
-                                       base_url="http://10.0.0.5:8001").data.decode()
+    c = staff.app.test_client()
+
+    # 01 staff portal (reached via robots.txt): share address + hint, NO login
+    page = c.get("/staff-portal-7f3a9", base_url="http://10.0.0.5:8001").data.decode()
     assert "http://10.0.0.5:8020" in page                       # host-relative share URL
     assert "TRIATHLON{staff_gate}" in page                      # 01's own flag kept
     assert "SAP DFlop ERP" in page                              # SAP-user note kept
-    shown_user = re.search(r"<dt>Identifiant</dt><dd><code>([^<]+)</code>", page).group(1)
-    shown_pass = re.search(r"<dt>Mot de passe</dt><dd><code>([^<]+)</code>", page).group(1)
+    assert "ressources front" in page                           # the hint
+    assert pw not in page and user not in page
+
+    # every public page loads the front config, which leaks user:pass in base64
+    assert "/assets/site.config.js" in c.get("/").data.decode()
+    js = c.get("/assets/site.config.js").data.decode()
+    assert pw not in js                                         # not in clear text
+    b64 = re.search(r'svc:\s*"([A-Za-z0-9+/=]+)"', js).group(1)
+    shown_user, shown_pass = base64.b64decode(b64).decode().split(":", 1)
     assert (shown_user, shown_pass) == (user, pw)
 
     # the share, from the SAME env, accepts exactly those creds and rejects others
