@@ -4,7 +4,7 @@ challenge). One page that briefs the emergency IT crew and lists every mission,
 with a link to each live service.
 
 - The hub itself serves NO handout files. The evidence files live on the
-  internal share "Partage DFlop" (:8020); the poster and race photo live on the
+  internal share "Intranet DécaFlop" (:8020); the poster and race photo live on the
   DécaFlop site (:8001). Every mission is reached through a live service.
 - Links to the live services reuse the host the player typed, with the default
   ports; override with <KEY>_URL (e.g. IDOR_URL, SHARE_URL) if needed.
@@ -128,7 +128,7 @@ def scoreboard_url():
     return ""
 
 # The hub no longer serves any files: the poster/photo are on the DécaFlop site
-# (:8001) and every evidence file is on the internal share "Partage DFlop"
+# (:8001) and every evidence file is on the internal share "Intranet DécaFlop"
 # (:8020). Each mission below is reached through a live service.
 
 # (number, title, category, level, points, brief, live service key, files)
@@ -233,7 +233,7 @@ def live_where(key):
 
 
 LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
-LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Partage DFlop", ":8020"),
+LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Intranet DécaFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
               "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
@@ -320,9 +320,9 @@ def context():
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
         ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
-        ("Partage interne", "Les fichiers de preuve sont sur « Partage DFlop », l'espace documentaire "
-                            f"interne ({live_where('share')}). L'identifiant de connexion est affiché sur le portail "
-                            "staff du site DécaFlop (mission 01)."),
+        ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
+                            f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
+                            "se cache dans les ressources du site DécaFlop — commencez par la mission 01."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Un navigateur suffit, même sur un poste verrouillé. CyberChef et le terminal "
                    "d'équipe tournent sur le Pi, dans l'onglet <a href=\"/outils\">Outils</a>."),
@@ -415,7 +415,7 @@ TOOLS_JS = """<script>
 def outils():
     ts = tools()
     tiles = "".join(tile(n, t) for n, t in enumerate(ts, 1))
-    share = (f'<a href="{escape(service_url("share"))}">Partage DFlop</a> '
+    share = (f'<a href="{escape(service_url("share"))}">Intranet DécaFlop</a> '
              f'<span class="mute">({escape(live_where("share"))})</span>')
     rows = [("", [(k, ' class="k"'), (v, ' class="desc"')]) for k, v in [
         ("Hors ligne", "Tout tourne sur le Pi de l'événement. Pas besoin d'internet."),

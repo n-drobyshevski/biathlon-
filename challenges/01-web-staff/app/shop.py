@@ -1,14 +1,17 @@
 """
-DécaFlop public storefront for challenge 01 (decor only: nothing here is part
-of the challenge). The challenge itself (robots.txt + the staff portal) lives
-in app.py.
+DécaFlop public storefront for challenge 01. The challenge itself (robots.txt +
+the staff portal) lives in app.py.
 
-The site follows the layout of a large sports retailer: announcement bar,
-header with search, product rails, filterable category pages and detailed
-product pages. It is read-only on purpose. Online sales are "suspended during
-the race", so there is no cart, account or checkout to poke at, and the only
-form is the search box, which never echoes what was typed. Filter and sort
-parameters are mapped to known values and never echoed either.
+The site follows the layout of a large sports retailer: announcement bar, header
+with search, product rails, filterable category pages and detailed product pages.
+It is read-only on purpose: online sales are "suspended during the race", so there
+is no cart, account or checkout to poke at, and the only form is the search box,
+which never echoes what was typed. Filter and sort parameters are mapped to known
+values and never echoed either.
+
+The one deliberate recon artifact: every page loads /assets/site.config.js (served
+by app.py), which ships the team service account (base64) — the path to the
+Intranet DécaFlop login that gates the share-hosted challenges.
 """
 import os
 import zlib
@@ -454,7 +457,8 @@ def layout(title, body, current="", notice=""):
     nav = "".join(f'<a href="{h}"{CUR if h == current else ""}>{label}</a>' for h, label in NAV)
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css"></head><body>
+<title>{title}</title><link rel="stylesheet" href="/static/decaflop.css">
+<script src="/assets/site.config.js" defer></script></head><body>
 <a class="skip" href="#main">Aller au contenu</a>
 <header class="hd"><div class="in">
 <a class="mark" href="/">DÉCA<i>FLOP</i></a>

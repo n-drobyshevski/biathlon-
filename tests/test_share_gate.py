@@ -1,4 +1,4 @@
-"""Challenge 01's staff portal hands out the Partage DFlop login (soft gate).
+"""Challenge 01's staff portal hands out the Intranet DécaFlop login (soft gate).
 
 The share's own authentication is unchanged; only the source of the credentials
 moves (hub -> staff portal). docker-compose feeds the SAME env to both the staff

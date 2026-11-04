@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Partage DFlop — DécaFlop's intranet site with the internal document library.
+Intranet DécaFlop — DécaFlop's intranet site with the internal document library.
 Its own container, not a challenge: players log in with the crew account the
 staff portal (challenge 01) hands out, then browse department folders to find
 the evidence files instead of downloading them from the hub.
@@ -43,8 +43,8 @@ SHARE_PASSWORD = os.environ.get("SHARE_PASSWORD", "transition2026")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SHARE_SECRET_KEY") or os.urandom(32)
 
-PRODUCT = "Partage DFlop 16.0.4351"
-SITE = "Partage DFlop"
+PRODUCT = "Intranet DécaFlop 16.0.4351"
+SITE = "Intranet DécaFlop"
 LAST_LOGIN = "01/11/2026 à 22:41 depuis 10.20.0.14"
 
 
