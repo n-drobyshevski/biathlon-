@@ -1,0 +1,8 @@
+# Read-only shell setup for every toolbox seat (root-owned, see Dockerfile).
+# Loaded with --rcfile, so nothing a player writes in their home can change
+# what the next player's shell runs.
+[ -f /etc/bash.bashrc ] && . /etc/bash.bashrc
+PS1='\u@boite:\w\$ '
+alias ls='ls --color=auto'
+alias ll='ls -la'
+cd "$HOME" 2>/dev/null

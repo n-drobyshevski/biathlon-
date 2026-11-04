@@ -26,7 +26,11 @@ if printf '%s' "$url" | grep -q ':8020/'; then
   [ -n "$user" ] || read -rp "Identifiant Intranet : " user
   [ -n "$pass" ] || { read -rsp "Mot de passe : " pass; echo; }
   jar="$(mktemp)"; trap 'rm -f "$jar"' EXIT
-  curl -s -c "$jar" \
+  # Open the login page first: the share hands this browser its own lockout
+  # bucket in the session cookie, so a typo here never locks out other players
+  # of this terminal (they all reach the share from the same IP).
+  curl -s -c "$jar" -b "$jar" -o /dev/null "$base/login" || true
+  curl -s -c "$jar" -b "$jar" \
        --data-urlencode "identifiant=$user" \
        --data-urlencode "motdepasse=$pass" \
        "$base/login" >/dev/null || true

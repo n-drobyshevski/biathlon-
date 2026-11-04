@@ -59,10 +59,17 @@ run **on the Pi** and are driven entirely from a browser.
 - **Terminal d'équipe (ttyd)** — `http://<PiIP>:8091`. A Linux shell in the
   browser with `git-dumper`, `john`, `binwalk`, `foremost`, `exiftool`, `curl`,
   `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
-  a shell. Each browser connection gets its own scratch workspace, the container
-  runs as a **non-root** user with **no repository, flags or challenge source
-  mounted**, and it's capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`), so one
-  player can't starve the others or read another challenge's answers.
+  a shell. **Every browser tab gets its own Unix user** (seat `joueur01` to
+  `joueur24`) with a private home `/work/joueurNN`: players cannot read each
+  other's files, kill each other's processes, or plant commands in a shared
+  `~/.bashrc` or history. When the tab closes, everything that seat started is
+  killed and its home wiped before the seat is reused. Each seat is capped at
+  64 processes, so a fork bomb only stalls its own terminal. The container has
+  **no repository, flags or challenge source mounted**, a read-only image,
+  scratch space in RAM (tmpfs, never the SD card), and the whole thing is
+  capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`, at most 20 terminals).
+  One limit remains: a player can still see the command lines of others'
+  running programs (`/proc`). Their files and output stay private.
 
 Both link from the cellule de crise's **Outils** tab and auto-point at the Pi's
 IP. Override the addresses with `CYBERCHEF_URL` / `TERMINAL_URL` on the `hub`
@@ -92,8 +99,20 @@ so build it while you still have internet, same as the challenge images.
 | OS + Docker | ~0.5–0.8 GB |
 
 Each container is capped in `docker-compose.yml`. One shared instance per
-challenge is fine for 6 players — these apps are stateless, so there's nothing
-for players to corrupt for each other. With CTFd and the browser toolbox, the
+challenge is fine for 6 players, and players can't spoil it for each other:
+
+- **04, 06, 10, 11, 14** and the sites keep no state between requests (06 even
+  rebuilds its SQLite database in memory for every login attempt).
+- **12 (SSTI)** is code execution by design, so each certificate is rendered
+  in a throwaway child process: `config.update(FLAG=...)`, swapped pages or a
+  background `yes` die with that request (CPU-limited, killed after 3 s).
+- Every Flask app runs as `nobody` with no capabilities on a **read-only
+  image**, with `pids`/`cpu` caps and an init that reaps orphans. A popped app
+  cannot rewrite its code or files, and `docker compose restart <service>`
+  always brings it back pristine.
+- The Intranet share counts failed logins **per browser**, not per IP, so one
+  player's typos (in the browser terminal everyone shares one IP) never lock
+  out the others. With CTFd and the browser toolbox, the
 full stack is ~2–2.5 GB in practice: comfortable on 4 GB, but test it before the
 event.
 
