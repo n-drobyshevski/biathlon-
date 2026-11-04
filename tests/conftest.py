@@ -71,8 +71,11 @@ def shop(shop_module):
 
 
 @pytest.fixture(scope="session")
-def hub_module(dist):
+def hub_module(dist, tmp_path_factory):
     os.environ["HANDOUT_DIR"] = str(dist)
+    os.environ["NOTES_DB"] = str(tmp_path_factory.mktemp("notes") / "notes.db")   # Bloc-notes store
+    if str(HUB_APP) not in sys.path:
+        sys.path.insert(0, str(HUB_APP))
     return _load("hub_app", HUB_APP / "app.py")
 
 

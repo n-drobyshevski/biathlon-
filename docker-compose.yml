@@ -48,8 +48,11 @@ services:
       CYBERCHEF_URL: "${CYBERCHEF_URL:-}"     # optional override if hosted elsewhere
       TERMINAL_URL: "${TERMINAL_URL:-}"       # optional override if hosted elsewhere
       GUIDE_PASSWORD: "${GUIDE_PASSWORD:-debutant}"  # unlocks the optional "Mode guidé" walkthrough
+      NOTES_DB: /data/notes.db                # Bloc-notes tab: pseudos and notepads (hub-data volume)
+      NOTES_SHARED: "${NOTES_SHARED:-1}"      # 0 = private notepads only, no shared ones
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
+      - hub-data:/data                        # Bloc-notes; wipe: docker compose exec hub python notes_admin.py vider --oui
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8080:5000"]
     mem_limit: 96m
     restart: unless-stopped
@@ -238,4 +241,5 @@ services:
 
 volumes:
   ctfd-data:
+  hub-data:
   toolbox-data:

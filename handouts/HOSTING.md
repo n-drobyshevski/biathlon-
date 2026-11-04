@@ -229,6 +229,9 @@ drift. If a team is stuck on 01, an organizer can just read them the login — i
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
+- [ ] Hub **Bloc-notes**: sign in with a test pseudo, type a line, `docker compose
+      restart hub`, reload: the line is still there. Then
+      `docker compose exec hub python notes_admin.py vider --oui`
 - [ ] `./scripts/check-pi.sh` (lab running) prints no FIX line: memory
       limits are enforced (see "Turn on memory limits" above)
 - [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
@@ -268,6 +271,27 @@ Run through this once, ideally the day before:
 - [ ] The cellule de crise's "Tableau des scores" and "Soumettre le flag" links
       open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
+
+## Bloc-notes (hub)
+
+The hub's **Bloc-notes** tab replaces the shared docs players don't have
+offline. A player signs in with a pseudo and a password (created the first
+time, same rules as the terminal; it's the hub's own list, so ask players to
+reuse their scoreboard pseudo). Everyone gets a private **Mes notes**; anyone
+can create a shared notepad and add players who have signed in once. Notes save
+as players type, teammates' changes show up within a few seconds, and if two
+people save at once the second is asked which version to keep.
+
+- Stored in SQLite on the `hub-data` volume (`/data/notes.db`), so notes survive
+  `docker compose restart hub`. `docker compose down -v` deletes them (and CTFd's data).
+- `NOTES_SHARED=0` in `.env` turns shared notepads off (private notes only).
+- Organizer commands:
+  ```bash
+  docker compose exec hub python notes_admin.py liste               # pseudos and notepads
+  docker compose exec hub python notes_admin.py mdp <pseudo>        # forgotten password (notes kept)
+  docker compose exec hub python notes_admin.py supprimer <pseudo>  # delete an account
+  docker compose exec hub python notes_admin.py vider --oui         # wipe everything between events
+  ```
 
 ## During the event
 

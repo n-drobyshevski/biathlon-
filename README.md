@@ -103,6 +103,12 @@ gated by a simple password (`GUIDE_PASSWORD`, default `debutant`) so ordinary
 players don't hit spoilers — hand the word only to players who want the training
 wheels.
 
+Offline there's no Google Docs, so the hub also has a **Bloc-notes** tab: players
+sign in with a pseudo (created the first time), get a private notepad, and can
+create shared notepads with other players added by pseudo, in solo or team mode.
+Notes live on the Pi (the `hub-data` volume). `NOTES_SHARED=0` keeps them private;
+organizer commands are in [handouts/HOSTING.md](handouts/HOSTING.md).
+
 Live services after step 2:
 
 | Port | Service |

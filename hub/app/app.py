@@ -14,6 +14,8 @@ with a link to each live service.
 - ctfd_ids.json is still read from HANDOUT_DIR (written by ctfd-setup.py) for
   the "Soumettre le flag" deep links.
 - Nothing here mentions or links to the staff portal (challenge 01 itself).
+- Bloc-notes (notes.py, its own sheet tab): pseudo sign-in, a private notepad
+  per player and shared notepads with members added by pseudo.
 - Floating shortcuts (fab.py, bottom right): the DécaFlop site, Outils and,
   once the player has logged in to the share, the Intranet DécaFlop.
 """
@@ -29,12 +31,13 @@ from flask import Flask, Response, redirect, request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling fab.py
 import fab  # noqa: E402
+import notes  # noqa: E402
 
 app = Flask(__name__)
 
 
 TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"),
-        ("/guide", "Mode guidé"), ("/contacts", "Contacts")]
+        ("/guide", "Mode guidé"), ("/bloc-notes", "Bloc-notes"), ("/contacts", "Contacts")]
 
 # Formula bar follows the clicked cell; "Statut" choices are kept in the
 # player's own browser (localStorage), never sent anywhere.
@@ -74,12 +77,13 @@ def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
     board = scoreboard_url()
     score = (f'<a class="score" href="{escape(board)}scoreboard"{NEW_TAB}>Tableau des scores {EXT}</a>'
              if board else "")
+    right = f'<span class="right">{score}{notes.header_chip()}</span>'
     return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{DOC} - {title}</title><link rel="stylesheet" href="/static/crise.css">{fab.CSS}</head><body>
 <header class="title"><span class="doc" aria-hidden="true"></span>
  <div><b>{DOC}</b> <span class="share">partagé avec l'équipe IT d'urgence</span></div>
- {score}</header>
+ {right}</header>
 <div class="menu" aria-hidden="true"><span>Fichier</span><span>Édition</span><span>Affichage</span><span>Insertion</span><span>Format</span><span>Outils</span></div>
 {note}
 <div class="fx"><span class="ref" id="ref">{cell}</span><span class="f">fx</span><span class="v" id="val">{formula}</span></div>
@@ -99,6 +103,9 @@ def shortcuts():
 
 def html(page, status=200):
     return Response(page, status=status, mimetype="text/html")
+
+
+notes.bind(app, layout, html)     # Bloc-notes tab: signing key, session cookie, routes
 
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()

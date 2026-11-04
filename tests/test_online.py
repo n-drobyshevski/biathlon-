@@ -217,8 +217,8 @@ def test_online_overlay_isolates_every_service():
         cap = 1024 if name == "toolbox" else 256     # toolbox: 64 per player, in shell.sh
         assert 0 < svc.get("pids_limit", 0) <= cap, name               # no fork bomb
         for v in svc.get("volumes", []):
-            if v["type"] == "volume":            # CTFd's data, the players' terminal homes
-                assert (name, v["source"]) in (("ctfd", "ctfd-data"),
+            if v["type"] == "volume":            # CTFd's data, the terminal homes, the hub's notepads
+                assert (name, v["source"]) in (("ctfd", "ctfd-data"), ("hub", "hub-data"),
                                                ("toolbox", "toolbox-data")), name
                 continue
             # the only host path mounted anywhere: the read-only player evidence
