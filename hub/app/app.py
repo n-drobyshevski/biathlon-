@@ -415,12 +415,10 @@ TOOLS_JS = """<script>
 def outils():
     ts = tools()
     tiles = "".join(tile(n, t) for n, t in enumerate(ts, 1))
-    share = (f'<a href="{escape(service_url("share"))}">Intranet DécaFlop</a> '
-             f'<span class="mute">({escape(live_where("share"))})</span>')
     rows = [("", [(k, ' class="k"'), (v, ' class="desc"')]) for k, v in [
         ("Hors ligne", "Tout tourne sur le Pi de l'événement. Pas besoin d'internet."),
         ("Rien à installer", "Un navigateur suffit, même sur un poste verrouillé."),
-        ("Fichiers de preuve", f"Ils sont sur {share}. Glissez un fichier téléchargé dans la zone "
+        ("Fichiers de preuve", "Glissez un fichier que vous avez téléchargé dans la zone "
                                "Input de CyberChef pour l'analyser."),
         ("Espace de travail", "Le terminal donne à chaque connexion son propre dossier, sur le Pi. "
                               "Il ne voit pas les fichiers de votre ordinateur."),
