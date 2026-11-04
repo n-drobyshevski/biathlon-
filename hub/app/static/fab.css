@@ -2,14 +2,15 @@
    the hub, the DécaFlop site and the Intranet DécaFlop share.
    IDENTICAL copies live next to fab.py in hub/app/static,
    challenges/01-web-staff/app/static and share/app/static; tests/test_fab.py
-   fails if they drift. An app lifts the buttons above its own bottom bar with
-   --dfab-lift on :root (the hub does, for its sheet tabs). */
+   fails if they drift. An app moves the buttons with --dfab-gap (distance from
+   the bottom edge, 16px) and --dfab-lift (room for its own bottom bar) on :root;
+   the hub sets both, for its sheet tabs. */
 .dfab{
   --dfab-ink:#16181d; --dfab-paper:#fff; --dfab-hot:#e8590c; --dfab-warm:#fff4ec; --dfab-mute:#5f6368;
   --dfab-line:#e2e3e5; --dfab-focus:#1a73e8;
   position:fixed;z-index:900;
   right:calc(16px + env(safe-area-inset-right,0px));
-  bottom:calc(16px + var(--dfab-lift,0px) + env(safe-area-inset-bottom,0px));
+  bottom:calc(var(--dfab-gap,16px) + var(--dfab-lift,0px) + env(safe-area-inset-bottom,0px));
   display:flex;align-items:center;gap:10px;
   font:700 15px/1 "Barlow Condensed","Roboto Condensed","Arial Narrow",sans-serif;
 }

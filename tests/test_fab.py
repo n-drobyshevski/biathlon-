@@ -35,6 +35,7 @@ def test_fab_copies_identical():
 def test_hub_links_site_and_tools_not_intranet(hub, hub_module, monkeypatch):
     monkeypatch.setattr(hub_module, "CYBERCHEF_PORT", "8090")
     monkeypatch.setattr(hub_module, "TERMINAL_PORT", "8091")
+    monkeypatch.setattr(hub_module, "CTFD_PORT", "8000")
     for path, code in (("/", 200), ("/outils", 200), ("/nope", 404)):
         r = hub.get(path)
         assert r.status_code == code
@@ -43,6 +44,7 @@ def test_hub_links_site_and_tools_not_intranet(hub, hub_module, monkeypatch):
         assert "http://localhost:8001/" in links                 # main button: the site
         assert "/outils" in links                                # Outils, and its menu's last entry
         assert "http://localhost:8090/" in links and "http://localhost:8091/" in links
+        assert "http://localhost:8000/" in links and "Tableau des scores" in nav
         assert "8020" not in nav and "Intranet" not in nav       # locked before the first login
     assert '/static/fab.css' in hub.get("/").data.decode()
 
@@ -58,8 +60,10 @@ def test_hub_shows_intranet_once_unlocked(hub, monkeypatch):
 def test_hub_shortcuts_skip_unconfigured_tools(hub, hub_module, monkeypatch):
     monkeypatch.setattr(hub_module, "CYBERCHEF_PORT", "")
     monkeypatch.setattr(hub_module, "TERMINAL_PORT", "")
+    monkeypatch.setattr(hub_module, "CTFD_PORT", "")
+    monkeypatch.setattr(hub_module, "SCOREBOARD_URL", "")
     nav = fab_html(hub.get("/").data.decode())
-    assert "CyberChef" not in nav and "Terminal" not in nav
+    assert "CyberChef" not in nav and "Terminal" not in nav and "Tableau des scores" not in nav
     assert 'href="/outils"' in nav                               # still reaches the Outils tab
 
 
@@ -73,6 +77,7 @@ def test_site_links_hub_and_tools(shop):
         assert "http://10.0.0.5:8080/" in links                  # main button: the hub
         assert "http://10.0.0.5:8080/outils" in links
         assert "http://10.0.0.5:8090/" in links and "http://10.0.0.5:8091/" in links
+        assert "http://10.0.0.5:8000/" in links                  # scoreboard (CTFd)
         assert "8020" not in nav
 
 
@@ -83,7 +88,7 @@ def test_site_intranet_after_login_and_online(shop, monkeypatch):
     unlock(shop, f"site.{DOMAIN}")      # browsers send the share's Domain= cookie here
     online = fab_html(shop.get("/", base_url=f"http://site.{DOMAIN}",
                                headers={"X-Forwarded-Proto": "https"}).data.decode())
-    for sub in ("hub", "share", "cyberchef", "terminal"):
+    for sub in ("hub", "share", "cyberchef", "terminal", "ctfd"):
         assert f'href="https://{sub}.{DOMAIN}/' in online, sub
     monkeypatch.setenv("HUB_URL", "http://pi.lan:9000")
     assert 'href="http://pi.lan:9000/"' in fab_html(shop.get("/").data.decode())
@@ -129,3 +134,10 @@ def test_share_pages_link_hub_site_and_tools(share, share_anon):
         assert "data-dfab-new" not in nav                        # nothing to unlock here
         assert page.index("/static/fab.css") < page.index("</head>")
     assert share_anon.get("/static/fab.css").status_code == 200  # styled on the login page too
+
+
+def test_hub_buttons_sit_in_the_tabs_bar_corner():
+    css = (ROOT / "hub" / "app" / "static" / "crise.css").read_text()
+    assert "--dfab-gap:8px; --dfab-lift:0px;" in css                 # desktop: bottom-right corner
+    assert ":root{--dfab-lift:35px;--dfab-gap:8px}" in css            # phone: just above the tabs
+    assert "padding:0 184px 0 12px" in css                           # tabs never run under them

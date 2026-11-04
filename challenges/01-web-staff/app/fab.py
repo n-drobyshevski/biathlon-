@@ -18,8 +18,8 @@ and the site (:8001) read the cookie the share (:8020) set on the same host.
 Online (Cloudflare Tunnel) the share sets it on the parent domain, so
 hub.<domain> and site.<domain> get it too. Logging out keeps it.
 
-Outils opens a small menu: CyberChef, the team terminal and the hub's Outils
-tab. Without JavaScript the button is a plain link to that tab.
+Outils opens a small menu: CyberChef, the team terminal, the scoreboard
+(CTFd) and the hub's Outils tab. Without JavaScript the button is a plain link to that tab.
 
 Addresses follow the hub's rule: <KEY>_URL if set, else the player's host on
 the service's port; online, <subdomain>.<domain> when the player came in on a
@@ -41,6 +41,7 @@ SERVICES = {
     "share": ("SHARE_URL", 8020, "share"),
     "cyberchef": ("CYBERCHEF_URL", 8090, "cyberchef"),
     "terminal": ("TERMINAL_URL", 8091, "terminal"),
+    "ctfd": ("SCOREBOARD_URL", 8000, "ctfd"),
 }
 LAB_LABELS = {"site", "share", "idor", "sqli", "jwt", "git", "ssti", "sapgw",
               "hub", "ctfd", "cyberchef", "terminal"}
@@ -62,6 +63,8 @@ _PATHS = {
     "terminal": '<rect x="3" y="4.5" width="18" height="15" rx="2" fill="none" stroke="currentColor" '
                 'stroke-width="1.9"/><path d="M7 9.5l3 2.5-3 2.5M12 15h5" fill="none" stroke="currentColor" '
                 'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
+    "ctfd": '<path d="M4 20V13h4.5v7M9.75 20V8h4.5v12M15.5 20v-9.5H20V20" fill="none" stroke="currentColor" '
+            'stroke-width="1.9" stroke-linejoin="round"/><path d="M3 20h18" stroke="currentColor" stroke-width="1.9"/>',
     "ext": '<path d="M9 4.5H4.5v15h15V15M13.5 3.8h6.7v6.7M20.2 3.8l-9 9" fill="none" stroke="currentColor" '
            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
 }
@@ -73,7 +76,8 @@ LABELS = {
     "share": ("Intranet DécaFlop", "Ouvrir l'Intranet DécaFlop"),
 }
 TOOLS = [("cyberchef", "CyberChef", "Décoder, convertir, analyser"),
-         ("terminal", "Terminal d'équipe", "Shell Linux, outils installés")]
+         ("terminal", "Terminal d'équipe", "Shell Linux, outils installés"),
+         ("ctfd", "Tableau des scores", "Équipes, flags, classement")]
 # here: (main button, small button, small button needs the intranet cookie)
 LAYOUT = {"hub": ("site", "share", True), "site": ("hub", "share", True), "share": ("hub", "site", False)}
 

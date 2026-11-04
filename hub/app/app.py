@@ -93,7 +93,8 @@ def shortcuts():
     return fab.render("hub", {
         "site": service_url("site"), "share": service_url("share"),
         "cyberchef": tool_url(CYBERCHEF_URL, CYBERCHEF_PORT),
-        "terminal": tool_url(TERMINAL_URL, TERMINAL_PORT)})
+        "terminal": tool_url(TERMINAL_URL, TERMINAL_PORT),
+        "ctfd": scoreboard_url()})
 
 
 def html(page, status=200):
