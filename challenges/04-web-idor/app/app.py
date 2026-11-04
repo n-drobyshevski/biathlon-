@@ -13,8 +13,8 @@ from html import escape
 
 from flask import Flask, Response, redirect, make_response, request
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
-import intranet  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling vitrine.py, fab.py
+import vitrine  # noqa: E402  (public DécaFlop site look: athletes are not staff)
 import fab  # noqa: E402
 
 app = Flask(__name__)
@@ -56,100 +56,103 @@ RACE = {
 }
 
 ROLE_FR = {"admin": "admin", "crew": "staff", "athlete": "athlète"}
-PRODUCT = "Espace athlètes 5.4.2"
 
 
 def shell(title, body, section="home"):
     signed_in = request.cookies.get("bib")
-    topnav = [("/", "Accueil", section == "home")]
+    tabs = [("/", "Accueil", section == "home")]
     if signed_in:
-        topnav.append((f"/profile/{signed_in}", "Mon dossier", section == "profile"))   # escaped by intranet
-    topnav.append(("/infos", "Infos pratiques", section == "infos"))
+        tabs.append((f"/profile/{signed_in}", "Mon dossier", section == "profile"))   # escaped by vitrine
+    tabs.append(("/infos", "Infos pratiques", section == "infos"))
     user = f"Dossard {signed_in}" if signed_in else None
-    return intranet.page(f"{title} - Espace athlètes", body, app="athletes",
-                         site_title="Espace athlètes", site_href="/", logo="EA", topnav=topnav,
-                         user=user, logout="/logout" if signed_in else None,
-                         product=PRODUCT, foot_extra="Championnat régional de triathlon, finale 2026",
-                         scripts=intranet.COPY_JS)
+    return vitrine.page(f"{title} - Espace athlètes - DécaFlop", body, portal="Espace athlètes",
+                        tabs=tabs, user=user, logout="/logout" if signed_in else None,
+                        scripts=vitrine.COPY_JS)
 
 
-LOGIN = """<h1 class="h1">Connexion à l'espace athlètes</h1>
-<p class="status ok">Lien de connexion valide pour le dossard n°&#160;1042 (finale régionale 2026).</p>
-<div class="cols"><div>
- <section class="wp"><h2>Continuer</h2>
+def account(head, inner):
+    """The page header (breadcrumb from the DécaFlop site) then the content."""
+    return head + f'<section class="acc"><div class="in">{inner}</div></section>'
+
+
+ESPACE = ("/", "Espace athlètes")
+def login_body():   # per request: links follow the player's host
+    return account(vitrine.page_head("Connexion à l'espace athlètes",
+                                  "Championnat régional de triathlon, finale 2026.", (ESPACE,)), """
+<p class="notice ok" role="status">Lien de connexion valide pour le dossard n°&#160;1042 (finale régionale 2026).</p>
+<div class="cols2">
+ <div class="panel"><h2>Continuer</h2>
   <p>Ce lien vous a été envoyé par SMS au numéro enregistré lors de votre inscription.
    Il reste valable 24 h après son envoi.</p>
-  <p><a class="btn" href="/login">Continuer avec le dossard n°&#160;1042</a></p>
-  <p class="mute" style="font-size:12px">Ce n'est pas votre dossard&#160;? Présentez-vous au bureau de course.</p>
- </section>
-</div><div>
- <section class="wp"><h2>Dans votre dossier</h2><ul class="links">
+  <div class="btns"><a class="btn" href="/login">Continuer avec le dossard n°&#160;1042</a></div>
+  <p class="small mute" style="margin-top:12px">Ce n'est pas votre dossard&#160;? Présentez-vous au bureau de course.</p>
+ </div>
+ <div class="panel"><h2>Dans votre dossier</h2><ul class="ticks">
   <li>Vague et heure de départ</li><li>Emplacement au parc à vélos</li>
-  <li>Documents (certificat, licence)</li><li>Consignes de course</li></ul></section>
-</div></div>"""
+  <li>Documents (certificat, licence)</li><li>Consignes de course</li></ul></div>
+</div>""")
 
-INFOS = """<h1 class="h1">Infos pratiques</h1>
-<table class="list data"><tbody>
-<tr><td style="width:220px">Bureau de course</td><td class="wrap">Ouvert dès 7 h 30 en mairie, salle B, poste 214</td></tr>
-<tr><td>Retrait des dossards</td><td class="wrap">Samedi de 14 h à 19 h, dimanche de 6 h 30 à 7 h 30</td></tr>
-<tr><td>Parc à vélos</td><td class="wrap">Ouverture 6 h 30, fermeture 7 h 50. Casque attaché pour entrer.</td></tr>
-<tr><td>Briefing</td><td class="wrap">Dimanche 7 h 45, ponton du port</td></tr>
-<tr><td>Résultats</td><td class="wrap">Figés à 16 h 00, publiés sur le site de chronométrage</td></tr>
-</tbody></table>"""
+def infos_body():
+    return account(vitrine.page_head("Infos pratiques", "", (ESPACE,)), """
+<div class="panel narrow"><table class="std"><tbody>
+<tr><td class="k">Bureau de course</td><td>Ouvert dès 7 h 30 en mairie, salle B, poste 214</td></tr>
+<tr><td class="k">Retrait des dossards</td><td>Samedi de 14 h à 19 h, dimanche de 6 h 30 à 7 h 30</td></tr>
+<tr><td class="k">Parc à vélos</td><td>Ouverture 6 h 30, fermeture 7 h 50. Casque attaché pour entrer.</td></tr>
+<tr><td class="k">Briefing</td><td>Dimanche 7 h 45, ponton du port</td></tr>
+<tr><td class="k">Résultats</td><td>Figés à 16 h 00, publiés sur le site de chronométrage</td></tr>
+</tbody></table></div>""")
 
 
 def page(aid):
+    trail = (ESPACE, (None, f"Dossier n°&#160;{aid}"))
     if aid not in ATHLETES:
-        return shell("Dossier introuvable", f"""<p class="crumbs">Dossiers<span class="sep">›</span>n°&#160;{aid}</p>
-<h1 class="h1">Aucun dossier n°&#160;{aid}</h1>
-<p class="lead">Aucun concurrent ni compte ne correspond à ce numéro.</p>
-<p><a href="/profile/1042">Retour à mon dossier</a></p>""", "profile"), 404
+        return shell("Dossier introuvable", account(
+            vitrine.page_head(f"Aucun dossier n°&#160;{aid}",
+                              "Aucun concurrent ni compte ne correspond à ce numéro.", trail[:1]),
+            '<p><a class="txt" href="/profile/1042">Retour à mon dossier</a></p>'), "profile"), 404
     name, role, note = ATHLETES[aid]
-    crumbs = f'<p class="crumbs">Dossiers<span class="sep">›</span>n°&#160;{aid}</p>'
-    title = f'<h1 class="h1">{escape(name)} <span class="tag {role}">{ROLE_FR[role]}</span></h1>'
+    title = f'{escape(name)} <span class="tag {role}">{ROLE_FR[role]}</span>'
+    head = vitrine.page_head(title, "", trail[:1], crumb=escape(name))
     if role == "athlete":
         cat, wave, rack, lic = RACE[aid]
         rows = [("Dossard", f"n°&#160;{aid}"), ("Catégorie", cat), ("Départ", wave),
                 ("Parc à vélos", rack), ("Justificatif", lic), ("Statut", "Inscription validée")]
-        trs = "".join(f'<tr><td style="width:180px" class="mute">{k}</td><td class="wrap">{v}</td></tr>'
-                      for k, v in rows)
-        extra = (f'<section class="wp"><h2>Note de l\'organisation</h2><p>{escape(note)}</p></section>'
+        trs = "".join(f'<tr><td class="k">{k}</td><td>{v}</td></tr>' for k, v in rows)
+        extra = (f'<div class="panel"><h2>Note de l\'organisation</h2><p>{escape(note)}</p></div>'
                  if note else "")
-        body = (crumbs + title +
-                '<div class="cols"><div>'
-                f'<section class="wp"><h2>Dossier de course</h2><table class="list data"><tbody>{trs}</tbody></table></section>'
-                + extra +
-                '</div><div><section class="wp"><h2>Documents</h2><ul class="links">'
-                '<li>Certificat médical reçu</li><li>Autorisation parentale non requise</li>'
-                '<li>Décharge de responsabilité signée</li></ul></section></div></div>')
-        return shell(f"Dossier n° {aid}", body, "profile"), 200
+        inner = ('<div class="cols2"><div>'
+                 f'<div class="panel"><h2>Dossier de course</h2><table class="std"><tbody>{trs}</tbody></table></div>'
+                 + extra +
+                 '</div><div><div class="panel"><h2>Documents</h2><ul class="ticks">'
+                 '<li>Certificat médical reçu</li><li>Autorisation parentale non requise</li>'
+                 '<li>Décharge de responsabilité signée</li></ul></div></div></div>')
+        return shell(f"Dossier n° {aid}", account(head, inner), "profile"), 200
     flag = ""
     if aid == 1000:
-        flag = ('<section class="wp"><h2>Jeton d\'audit</h2>'
+        flag = ('<div class="panel"><h2>Jeton d\'audit</h2>'
                 '<p class="mute">Empreinte de la dernière exportation du journal.</p>' +
-                intranet.codebox(FLAG) + '</section>')
+                vitrine.codebox(FLAG) + '</div>')
     if role == "admin":
-        trs = "".join(f'<tr><td class="num">{d}</td><td><code>{u}</code></td><td class="wrap">{o}</td>'
-                      f'<td class="wrap">{a}</td></tr>' for d, u, o, a in AUDIT)
-        notes = (f'<section class="wp"><h2>Journal d\'audit</h2><div class="scroll"><table class="list data">'
+        trs = "".join(f'<tr><td>{d}</td><td><code>{u}</code></td><td>{o}</td>'
+                      f'<td>{a}</td></tr>' for d, u, o, a in AUDIT)
+        notes = (f'<div class="panel"><h2>Journal d\'audit</h2><div class="scroll"><table class="std">'
                  f'<thead><tr><th style="width:160px">Date</th><th style="width:110px">Compte</th><th>Objet</th>'
                  f'<th>Action</th></tr></thead><tbody>{trs}</tbody></table></div>'
-                 f'<p class="status" style="margin:12px 0 0">{escape(note)}</p></section>')
+                 f'<p class="notice warn" style="margin:16px 0 0">{escape(note)}</p></div>')
     else:
-        notes = f'<section class="wp"><h2>Note interne</h2><div class="log"><pre>{escape(note)}</pre></div></section>'
-    body = (crumbs + title +
-            f'<table class="list data" style="max-width:620px;margin-bottom:16px"><tbody>'
-            f'<tr><td style="width:180px" class="mute">Compte</td><td>n°&#160;{aid}</td></tr>'
-            f'<tr><td class="mute">Type</td><td>Compte {ROLE_FR[role]} (organisation)</td></tr></tbody></table>'
-            + notes + flag)
-    return shell(f"Compte n° {aid}", body, "profile"), 200
+        notes = f'<div class="panel"><h2>Note interne</h2><pre class="log">{escape(note)}</pre></div>'
+    inner = (f'<div class="panel narrow"><table class="std"><tbody>'
+             f'<tr><td class="k">Compte</td><td>n°&#160;{aid}</td></tr>'
+             f'<tr><td class="k">Type</td><td>Compte {ROLE_FR[role]} (organisation)</td></tr></tbody></table></div>'
+             + notes + flag)
+    return shell(f"Compte n° {aid}", account(head, inner), "profile"), 200
 
 
 @app.errorhandler(404)
 def not_found(_e):
-    return Response(shell("Page introuvable", '<h1 class="h1">Page introuvable</h1>'
-                          '<p class="lead">Cette page n\'existe pas ou a été déplacée.</p>'
-                          '<p><a href="/">Retour à l\'accueil</a></p>'), status=404, mimetype="text/html")
+    return Response(shell("Page introuvable", account(
+        vitrine.page_head("Page introuvable", "Cette page n'existe pas ou a été déplacée.", (ESPACE,)),
+        '<p><a class="txt" href="/">Retour à l\'accueil</a></p>')), status=404, mimetype="text/html")
 
 
 @app.get("/")
@@ -157,12 +160,12 @@ def home():
     signed_in = request.cookies.get("bib")
     if signed_in:
         return redirect(f"/profile/{signed_in}") if signed_in.isdigit() else redirect("/logout")
-    return Response(shell("Connexion", LOGIN), mimetype="text/html")
+    return Response(shell("Connexion", login_body()), mimetype="text/html")
 
 
 @app.get("/infos")
 def infos():
-    return Response(shell("Infos pratiques", INFOS, "infos"), mimetype="text/html")
+    return Response(shell("Infos pratiques", infos_body(), "infos"), mimetype="text/html")
 
 
 @app.get("/login")

@@ -22,6 +22,9 @@ APPS = {
     "14": ROOT / "challenges" / "14-sap-gateway" / "app",
 }
 HOST = "http://10.0.0.5:9999"
+# 04 and 12 face athletes: they wear the public DécaFlop site look (vitrine.py,
+# see tests/test_vitrine.py), not the intranet chrome.
+INTRANET = [k for k in APPS if k not in ("04", "12")]
 
 
 def _load(name, path):
@@ -40,13 +43,13 @@ def _client(key, monkeypatch, **env):
 
 # ---------------------------------------------------------------- shared copies
 def test_intranet_css_copies_identical():
-    copies = {k: (p / "static" / "intranet.css").read_bytes() for k, p in APPS.items()}
+    copies = {k: (APPS[k] / "static" / "intranet.css").read_bytes() for k in INTRANET}
     ref = copies["share"]
     assert all(v == ref for v in copies.values()), [k for k, v in copies.items() if v != ref]
 
 
 def test_intranet_py_copies_identical():
-    copies = {k: (p / "intranet.py").read_bytes() for k, p in APPS.items() if k != "11"}
+    copies = {k: (APPS[k] / "intranet.py").read_bytes() for k in INTRANET if k != "11"}
     ref = copies["share"]
     assert all(v == ref for v in copies.values()), [k for k, v in copies.items() if v != ref]
 

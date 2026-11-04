@@ -93,14 +93,14 @@ def test_dry_run_domain_from_env_and_host_wins(setup_mod):
 
 # -------------------------------------------------- intranet cross-links
 def test_intranet_menu_follows_subdomains_online(monkeypatch):
-    monkeypatch.setenv("FLAG", "TRIATHLON{idor_online}")
-    c = _load("intra_idor_online", ROOT / "challenges" / "04-web-idor" / "app" / "app.py").app.test_client()
-    online = c.get("/", base_url=f"http://idor.{DOMAIN}", headers={"X-Forwarded-Proto": "https"}).data.decode()
-    for sub in ("share", "sqli", "jwt", "git", "ssti", "sapgw"):
+    monkeypatch.setenv("FLAG", "TRIATHLON{sqli_online}")
+    c = _load("intra_sqli_online", ROOT / "challenges" / "06-web-sqli" / "app" / "app.py").app.test_client()
+    online = c.get("/", base_url=f"http://sqli.{DOMAIN}", headers={"X-Forwarded-Proto": "https"}).data.decode()
+    for sub in ("share", "idor", "jwt", "git", "ssti", "sapgw"):
         assert f'href="https://{sub}.{DOMAIN}/"' in online, sub
     assert not re.search(r'href="https?://[^"]*:\d+', online)
-    offline = c.get("/", base_url="http://10.0.0.5:8004").data.decode()
-    for port in (8020, 8006, 8010, 8011, 8012, 8014):
+    offline = c.get("/", base_url="http://10.0.0.5:8006").data.decode()
+    for port in (8020, 8004, 8010, 8011, 8012, 8014):
         assert f'href="http://10.0.0.5:{port}/"' in offline, port
     assert DOMAIN not in offline
 

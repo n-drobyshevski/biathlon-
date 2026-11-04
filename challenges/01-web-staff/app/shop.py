@@ -857,6 +857,8 @@ def championship():
  <p>Votre dossier de course (vague de départ, emplacement au parc à vélos, documents) est consultable dans
   l'Espace athlètes. Le lien de connexion vous a été envoyé par SMS lors de votre inscription.</p>
  <div class="btns"><a class="btn" href="{intranet.app_url('athletes')}">Accéder à l'Espace athlètes</a></div>
+ <p class="small mute" style="margin-top:12px">Vous avez passé la ligne&#160;? Imprimez votre
+  <a href="{intranet.app_url('certificats')}">certificat de finaliste</a> au village partenaires.</p>
 </div></div></section>
 <section class="sec grey"><div class="in"><div class="sec-hd"><h2>Venir en spectateur</h2></div><div class="cols2">
  <div class="panel"><h2>Accès</h2><p>Navettes gratuites depuis le centre-ville toutes les 15 minutes. Parking vélo
