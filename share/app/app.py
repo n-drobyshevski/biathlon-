@@ -21,6 +21,7 @@ the shared intranet chrome (intranet.py + static/intranet.css).
 import csv
 import hmac
 import io
+import json
 import os
 import sys
 import time
@@ -860,9 +861,23 @@ def csv_view(f, data):
     head = '<tr><th class="corner"></th>' + "".join(f"<th>{col_name(i)}</th>" for i in range(ncol)) + "</tr>"
     body = "".join(f"<tr><th>{n}</th>" + "".join(f"<td>{esc(c)}</td>" for c in r + [""] * (ncol - len(r)))
                    + "</tr>" for n, r in enumerate(shown, 1))
+    # The static grid is the fallback; static/classeur.js reads the same rows from
+    # #csv-data and turns #csv-sheet into the sortable, filterable "Classeur".
     return (cut_note(min(len(rows), PREVIEW_ROWS), len(rows), "lignes") +
-            f'<div class="sheet wide"><div class="gridwrap"><table class="grid"><thead>{head}</thead>'
-            f'<tbody>{body}</tbody></table></div></div>')
+            f'<div class="sheet wide" id="csv-sheet"><div class="gridwrap"><table class="grid"><thead>{head}</thead>'
+            f'<tbody>{body}</tbody></table></div></div>' + csv_data(rows[:PREVIEW_ROWS], len(rows)))
+
+
+def csv_data(rows, total):
+    """The rows as JSON for classeur.js. Cells are file content: <, > and & are
+    escaped so nothing in a cell can close the script element."""
+    data = json.dumps({"rows": rows, "total": total, "cut": total > len(rows)}, ensure_ascii=False)
+    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return f'<script type="application/json" id="csv-data">{data}</script>'
+
+
+CLASSEUR_CSS = '<link rel="stylesheet" href="/static/classeur.css">'
+CLASSEUR_JS = '<script src="/static/classeur.js" defer></script>'
 
 
 def zip_view(f, data):
@@ -920,7 +935,7 @@ def hint_warning(f):
         '</div>')
 
 
-def viewer_page(f, content, wide=False):
+def viewer_page(f, content, wide=False, classeur=False):
     folder = f["path"][:-1]
     crumbs = ['<a href="/documents">Documents</a>'] + [
         f'<a href="{folder_href(folder[:i + 1])}">{esc(s)}</a>' for i, s in enumerate(folder)]
@@ -933,10 +948,13 @@ def viewer_page(f, content, wide=False):
            f'<h1>{esc(f["name"])}</h1><small>{" / ".join(crumbs)}</small></div></div>'
            f'<nav class="vacts" aria-label="Fichier">{dl}<a href="{details_href(f)}">Détails</a>'
            f'<a class="x" href="{folder_href(folder)}" title="Fermer l\'aperçu">Fermer</a></nav></div>')
-    return (intranet.head(f'{f["name"]} - {SITE}') + intranet.SPRITE +
+    head = intranet.head(f'{f["name"]} - {SITE}')
+    if classeur:                       # interactive CSV preview (static/classeur.*)
+        head = head.replace("</head>", CLASSEUR_CSS + "</head>", 1)
+    return (head + intranet.SPRITE +
             intranet.suite("intranet", "docs", display_user(), "/logout") + bar +
             f'<main class="viewer{" wide" if wide else ""}" id="main"><p class="vmeta">{meta}</p>{content}</main>'
-            '</body></html>')
+            + (CLASSEUR_JS if classeur else "") + '</body></html>')
 
 
 @app.get("/apercu/<path:filepath>")
@@ -960,7 +978,8 @@ def preview(filepath):
         content = zip_view(f, read_bytes(f, 50_000_000))
     else:
         content = no_preview(f)
-    return html(viewer_page(f, content, wide=f["kind"] == "csv" and data is not None))
+    grid = f["kind"] == "csv" and data is not None
+    return html(viewer_page(f, content, wide=grid, classeur=grid))
 
 
 @app.get("/telecharger/<path:filepath>")
