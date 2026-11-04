@@ -247,8 +247,9 @@ Run through this once, ideally the day before:
       `:8001/actualites` and the `:8020` share show "pas encore disponible" and
       the files 404. (No restart needed afterwards — the mount is read-only.)
 - [ ] `curl -s localhost:8001/robots.txt` shows the staff path; opening that
-      staff portal shows the Intranet DécaFlop address (`:8020`) and the share login
-      (the same one the share accepts)
+      staff portal shows the Intranet DécaFlop address (`:8020`) and a hint, but
+      NOT the password; `curl -s localhost:8001/assets/site.config.js` carries the
+      login base64-encoded (`svc`), and it decodes to the one the share accepts
 - [ ] `curl -s localhost:8001/presse` and `:8001/actualites` load; the poster
       downloads at `:8001/medias/decaflop_poster.png` and the race photo at
       `:8001/medias/transition_shot.jpg` (both byte-identical to `handouts/dist/`)
