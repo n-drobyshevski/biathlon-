@@ -229,9 +229,12 @@ drift. If a team is stuck on 01, an organizer can just read them the login — i
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] Hub **Bloc-notes**: sign in with a test pseudo, type a line, `docker compose
-      restart hub`, reload: the line is still there. Then
-      `docker compose exec hub python notes_admin.py vider --oui`
+- [ ] Hub sign-in: create a test account on CTFd, open the hub: it asks to sign
+      in; sign in with that account, set a mission to "En cours", open the hub in
+      another browser, sign in: the status is there. Type a line in Bloc-notes,
+      `docker compose restart hub`, reload: still there. Then
+      `docker compose exec hub python notes_admin.py vider --oui` and delete the
+      test account in CTFd
 - [ ] `./scripts/check-pi.sh` (lab running) prints no FIX line: memory
       limits are enforced (see "Turn on memory limits" above)
 - [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
@@ -272,23 +275,36 @@ Run through this once, ideally the day before:
       open CTFd
 - [ ] Decide whether the router's WAN stays off (recommended)
 
-## Bloc-notes (hub)
+## Hub accounts, mission statuses and Bloc-notes
 
-The hub's **Bloc-notes** tab replaces the shared docs players don't have
-offline. A player signs in with a pseudo and a password (created the first
-time, same rules as the terminal; it's the hub's own list, so ask players to
-reuse their scoreboard pseudo). Everyone gets a private **Mes notes**; anyone
-can create a shared notepad and add players who have signed in once. Notes save
-as players type, teammates' changes show up within a few seconds, and if two
-people save at once the second is asked which version to keep.
+**Players sign in to the hub with their scoreboard (CTFd) account**, before
+any sheet: one name and one password for the scoreboard and the hub. So
+**finish CTFd's setup before players arrive**, and tell them to create their
+CTFd account first (the hub's sign-in page links to CTFd's registration). The
+hub checks the name (or e-mail) and password with CTFd over the internal
+Docker network (`CTFD_INTERNAL_URL`, default `http://ctfd:8000`) and keeps a
+hash of the last password that worked, so players can still sign in while CTFd
+is down or restarting. The terminal keeps its own accounts.
 
-- Stored in SQLite on the `hub-data` volume (`/data/notes.db`), so notes survive
-  `docker compose restart hub`. `docker compose down -v` deletes them (and CTFd's data).
-- `NOTES_SHARED=0` in `.env` turns shared notepads off (private notes only).
+- **Statut column:** each player's choices on the Missions sheet are saved on
+  the Pi under their name, so they follow them to another device and stay
+  theirs on a shared laptop. On first sign-in, the statuses already in that
+  browser are moved over, then cleared from the browser.
+- **Bloc-notes tab:** everyone gets a private **Mes notes**; anyone can create a
+  shared notepad and add players who have signed in once (names separated by
+  commas). Notes save as players type, teammates' changes show up within a few
+  seconds, and if two people save at once the second is asked which version to
+  keep. A player who is added sees it live, with a count on the header.
+- Stored in SQLite on the `hub-data` volume (`/data/notes.db`), so it survives
+  `docker compose restart hub`. `docker compose down -v` deletes it (and CTFd's data).
+- `.env` switches: `NOTES_SHARED=0` (private notes only), `HUB_LOGIN=0` (open
+  hub as before: statuses stay in each browser), `CTFD_INTERNAL_URL=` (empty:
+  the hub keeps its own pseudos, created on first sign-in).
+- Forgotten password: reset it in CTFd (Admin > Users).
 - Organizer commands:
   ```bash
-  docker compose exec hub python notes_admin.py liste               # pseudos and notepads
-  docker compose exec hub python notes_admin.py mdp <pseudo>        # forgotten password (notes kept)
+  docker compose exec hub python notes_admin.py liste               # accounts and notepads
+  docker compose exec hub python notes_admin.py mdp <pseudo>        # forget the hub's copy of a password
   docker compose exec hub python notes_admin.py supprimer <pseudo>  # delete an account
   docker compose exec hub python notes_admin.py vider --oui         # wipe everything between events
   ```

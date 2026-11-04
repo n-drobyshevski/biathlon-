@@ -48,7 +48,9 @@ services:
       CYBERCHEF_URL: "${CYBERCHEF_URL:-}"     # optional override if hosted elsewhere
       TERMINAL_URL: "${TERMINAL_URL:-}"       # optional override if hosted elsewhere
       GUIDE_PASSWORD: "${GUIDE_PASSWORD:-debutant}"  # unlocks the optional "Mode guidé" walkthrough
-      NOTES_DB: /data/notes.db                # Bloc-notes tab: pseudos and notepads (hub-data volume)
+      NOTES_DB: /data/notes.db                # accounts, mission statuses, Bloc-notes (hub-data volume)
+      CTFD_INTERNAL_URL: "${CTFD_INTERNAL_URL:-http://ctfd:8000}"  # sign in with the scoreboard account; "" = hub's own pseudos
+      HUB_LOGIN: "${HUB_LOGIN:-1}"            # 1 = sign in before any sheet (statuses per player); 0 = open hub
       NOTES_SHARED: "${NOTES_SHARED:-1}"      # 0 = private notepads only, no shared ones
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh

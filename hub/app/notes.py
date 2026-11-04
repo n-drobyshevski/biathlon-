@@ -18,9 +18,18 @@ NOTES_SHARED=0 hides the shared ones and leaves only "Mes notes".
   and the conflict notice. Saving sends the revision the text was based on: a
   stale one gets 409 and the other version, nothing is overwritten silently.
 - Organizer commands: notes_admin.py (list, reset a password, wipe).
+
+Accounts (also used for the Missions sheet's per-player statuses):
+- With CTFD_INTERNAL_URL set (http://ctfd:8000 in docker-compose.yml), players
+  sign in with their scoreboard account, checked by ctfd_auth.py. A hash of
+  the password is kept so they can still sign in while CTFd is down.
+- Without it, the hub keeps its own pseudos (created on first sign-in).
+- HUB_LOGIN=1 (default) puts every hub sheet behind the sign-in; 0 = only the
+  Bloc-notes tab asks, and the Statut column stays in the browser as before.
 """
 import hmac
 import os
+import urllib.parse
 import re
 import secrets
 import sqlite3
@@ -29,6 +38,8 @@ from html import escape
 
 from flask import Blueprint, abort, g, jsonify, redirect, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import ctfd_auth
 
 bp = Blueprint("notes", __name__)
 
@@ -54,9 +65,15 @@ CREATE TABLE IF NOT EXISTS members (
   pad_id INTEGER NOT NULL REFERENCES pads(id) ON DELETE CASCADE, pseudo TEXT NOT NULL,
   added_by TEXT NOT NULL DEFAULT '', seen INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (pad_id, pseudo));
 CREATE INDEX IF NOT EXISTS members_pseudo ON members (pseudo);
+CREATE TABLE IF NOT EXISTS statuses (
+  pseudo TEXT NOT NULL, mission TEXT NOT NULL, state TEXT NOT NULL, at INTEGER NOT NULL,
+  PRIMARY KEY (pseudo, mission));
 """
+STATES = ("À faire", "En cours", "Résolu")
+MISSION_RE = re.compile(r"^\d{2}$")
+MAX_NAME_CTFD = 128
 
-_render = {}        # layout() and html() from app.py, set by bind()
+_render = {}        # layout(), html() and scoreboard() from app.py, set by bind()
 AVAILABLE = True    # False when the database cannot be opened (no volume): the tab says so
 
 
@@ -114,6 +131,15 @@ def now():
     return int(time.time())
 
 
+def ctfd_base():
+    """CTFd's internal address when accounts come from the scoreboard, else ""."""
+    return os.environ.get("CTFD_INTERNAL_URL", "").strip()
+
+
+def login_required():
+    return os.environ.get("HUB_LOGIN", "1").strip() != "0"
+
+
 # ------------------------------------------------------------------ accounts
 def norm(pseudo):
     return (pseudo or "").strip().lower()
@@ -129,6 +155,22 @@ def pseudo_error(pseudo):
 
 def exists(pseudo):
     return db().execute("SELECT 1 FROM players WHERE pseudo = ?", (pseudo,)).fetchone() is not None
+
+
+def resolve(typed, con=None):
+    """The account a typed pseudo means: exact match, else the only one that
+    matches without regard to capitals, else None."""
+    con = con or db()
+    typed = (typed or "").strip()
+    if not typed:
+        return None
+    if not ctfd_base():
+        typed = typed.lower()
+    row = con.execute("SELECT pseudo FROM players WHERE pseudo = ?", (typed,)).fetchone()
+    if row:
+        return row["pseudo"]
+    rows = con.execute("SELECT pseudo FROM players WHERE pseudo = ? COLLATE NOCASE LIMIT 2", (typed,)).fetchall()
+    return rows[0]["pseudo"] if len(rows) == 1 else None
 
 
 def ensure_personal(con, pseudo):
@@ -274,23 +316,47 @@ def page(body, me=None, status=200):
                        scripts='<script src="/static/notes.js" defer></script>'), status)
 
 
-def signin_page(error="", pseudo="", status=200):
+def safe_next(target):
+    """A local path to go back to after signing in (no other host)."""
+    target = target or "/"
+    if not target.startswith("/") or target.startswith("//") or target.startswith("/\\"):
+        return "/"
+    return target
+
+
+SIGNIN_JS = """<script>
+(function(){var f=document.getElementById('np-suite');if(f&&location.hash&&f.value.indexOf('#')<0)f.value+=location.hash})();
+</script>"""
+
+
+def signin_page(error="", pseudo="", status=200, suite=""):
     err = f'<p class="np-err" role="alert">{escape(error)}</p>' if error else ""
+    board = _render["scoreboard"]() if "scoreboard" in _render else ""
+    if ctfd_base():
+        intro = ('<p>Connectez-vous avec votre compte du <b>tableau des scores</b> : même pseudo, même mot de '
+                 'passe. Il sert ici pour suivre vos missions et pour le bloc-notes.</p>')
+        intro += (f'<p>Pas encore de compte ? <a href="{escape(board)}register" target="_blank" rel="noopener">'
+                  'Créez-le sur le tableau des scores</a>, puis revenez ici.</p>' if board else
+                  '<p>Pas encore de compte ? Créez-le d\'abord sur le tableau des scores.</p>')
+        label, maxlen, minlen = "Pseudo ou e-mail du tableau des scores", MAX_NAME_CTFD, 1
+    else:
+        intro = ('<p>Votre pseudo garde votre suivi des missions et vos notes sur tous vos appareils.</p>'
+                 '<p>La première fois, votre pseudo est créé avec ce mot de passe. Prenez le même pseudo que sur '
+                 'le tableau des scores et le terminal.</p>')
+        label, maxlen, minlen = "Pseudo", 24, MIN_PASSWORD
     body = (
-        '<div class="lock"><h1>Bloc-notes</h1>'
-        '<p>Gardez vos notes de l\'enquête sur tous vos appareils et partagez un bloc-notes avec '
-        'd\'autres joueurs.</p>'
-        '<p>La première fois, votre pseudo est créé avec ce mot de passe. Prenez le même pseudo que sur '
-        'le tableau des scores et le terminal.</p>'
-        f'<form method="post" action="/bloc-notes/connexion">{csrf_field()}{err}'
-        '<label for="np-pseudo">Pseudo</label>'
-        f'<input class="in" id="np-pseudo" name="pseudo" value="{escape(pseudo)}" maxlength="24" '
-        'autocomplete="username" autocapitalize="none" spellcheck="false" required>'
+        '<div class="lock"><h1>Connexion</h1>' + intro +
+        f'<form method="post" action="/connexion">{csrf_field()}{err}'
+        f'<input type="hidden" name="suite" id="np-suite" value="{escape(safe_next(suite))}">'
+        f'<label for="np-pseudo">{label}</label>'
+        f'<input class="in" id="np-pseudo" name="pseudo" value="{escape(pseudo)}" maxlength="{maxlen}" '
+        'autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>'
         '<label for="np-mdp">Mot de passe</label>'
-        f'<input class="in" id="np-mdp" name="motdepasse" type="password" minlength="{MIN_PASSWORD}" '
+        f'<input class="in" id="np-mdp" name="motdepasse" type="password" minlength="{minlen}" '
         'autocomplete="current-password" required>'
         '<button class="go" type="submit">Se connecter</button></form></div>')
-    return page(body, status=status)
+    layout, html = _render["layout"], _render["html"]
+    return html(layout("Connexion", body, "", "A1", "Connexion", scripts=SIGNIN_JS), status)
 
 
 def unavailable_page():
@@ -340,7 +406,7 @@ def board_page(me, pad_id=None, conflict=None):
             f'<input class="np-in" id="np-nom" name="nom" maxlength="{MAX_NAME}" required>'
             '<label for="np-membres">Joueurs à ajouter</label>'
             '<input class="np-in" id="np-membres" name="membres" autocapitalize="none" spellcheck="false" '
-            'placeholder="pseudos, séparés par des espaces">'
+            'placeholder="pseudos, séparés par des virgules">'
             '<p class="np-hint">Ils doivent s\'être connectés au hub au moins une fois. Vous pourrez en ajouter '
             'plus tard.</p>'
             '<button class="np-btn pri" type="submit">Créer</button></form></details>')
@@ -401,7 +467,7 @@ def board_page(me, pad_id=None, conflict=None):
             f'<div class="np-members"><div class="np-chips">{"".join(chips)}</div>'
             f'<form method="post" action="/bloc-notes/{pad["id"]}/ajouter" class="np-add">{csrf_field()}'
             '<label class="sr" for="np-ajout">Ajouter un joueur par son pseudo</label>'
-            '<input class="np-in" id="np-ajout" name="pseudo" maxlength="24" placeholder="Ajouter un joueur par son pseudo" '
+            '<input class="np-in" id="np-ajout" name="pseudo" maxlength="128" placeholder="Ajouter un joueur par son pseudo" '
             'autocapitalize="none" spellcheck="false" required>'
             '<button class="np-btn" type="submit">Ajouter</button></form></div>')
     main = (f'<section class="np-card np-ed">{banner}{notice}'
@@ -417,56 +483,100 @@ def index():
         return unavailable_page()
     me = current()
     if not me:
-        return signin_page()
+        return signin_page(suite="/bloc-notes")
     n = request.args.get("n", "")
     return board_page(me, int(n) if n.isdigit() else None)
 
 
-@bp.post("/bloc-notes/connexion")
-def signin():
+@bp.get("/connexion")
+def signin_form():
     if not AVAILABLE:
         return unavailable_page()
-    pseudo = norm(request.form.get("pseudo"))
-    pw = request.form.get("motdepasse", "")
-    err = pseudo_error(pseudo)
-    if err:
-        return signin_page(err, request.form.get("pseudo", "")[:24], 400)
-    if len(pw) < MIN_PASSWORD:
-        return signin_page(f"Mot de passe : au moins {MIN_PASSWORD} caractères.", pseudo, 400)
-    con = db()
-    row = con.execute("SELECT pw_hash FROM players WHERE pseudo = ?", (pseudo,)).fetchone()
-    con.execute("BEGIN IMMEDIATE")
-    try:
-        if row is None:                                  # first time: create the account
-            con.execute("INSERT INTO players (pseudo, pw_hash, created) VALUES (?, ?, ?)",
-                        (pseudo, generate_password_hash(pw), now()))
-        elif not row["pw_hash"]:                         # reset by the organizer: set a new one
-            con.execute("UPDATE players SET pw_hash = ? WHERE pseudo = ?", (generate_password_hash(pw), pseudo))
-        elif not check_password_hash(row["pw_hash"], pw):
-            con.execute("ROLLBACK")
-            return signin_page("Mot de passe incorrect pour ce pseudo. Oublié ? Demandez à l'organisation.",
-                               pseudo, 401)
-        ensure_personal(con, pseudo)
-        con.execute("COMMIT")
-    except sqlite3.IntegrityError:                       # created by a parallel request
-        con.execute("ROLLBACK")
-        return signin_page("Réessayez.", pseudo, 409)
+    suite = safe_next(request.args.get("suite"))
+    if current():
+        return redirect(suite)
+    return signin_page(suite=suite)
+
+
+def _start_session(pseudo, suite):
     session.clear()
     session.permanent = True
     session["p"] = pseudo
     csrf_token()
-    return back()
+    return redirect(safe_next(suite))
 
 
+def _store_account(con, pseudo, pw):
+    """Create or refresh the hub's record of an account (and its private pad)."""
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        con.execute("INSERT INTO players (pseudo, pw_hash, created) VALUES (?, ?, ?) "
+                    "ON CONFLICT(pseudo) DO UPDATE SET pw_hash = excluded.pw_hash",
+                    (pseudo, generate_password_hash(pw), now()))
+        ensure_personal(con, pseudo)
+        con.execute("COMMIT")
+    except sqlite3.Error:
+        con.execute("ROLLBACK")
+        raise
+
+
+@bp.post("/connexion")
+@bp.post("/bloc-notes/connexion")
+def signin():
+    if not AVAILABLE:
+        return unavailable_page()
+    typed = request.form.get("pseudo", "").strip()
+    pw = request.form.get("motdepasse", "")
+    suite = request.form.get("suite", "/")
+    con = db()
+    if ctfd_base():                                    # the scoreboard account decides
+        if not typed or len(typed) > MAX_NAME_CTFD or not pw or not typed.isprintable():
+            return signin_page("Indiquez votre pseudo et votre mot de passe du tableau des scores.", typed[:MAX_NAME_CTFD], 400, suite)
+        result, exact = ctfd_auth.check(ctfd_base(), typed, pw)
+        if result == ctfd_auth.OK:
+            _store_account(con, exact, pw)
+            return _start_session(exact, suite)
+        if result == ctfd_auth.BAD:
+            return signin_page("Pseudo ou mot de passe incorrect. Ce sont ceux de votre compte du tableau des "
+                               "scores.", typed, 401, suite)
+        # CTFd unreachable or busy: a password that already worked here still does
+        known = resolve(typed, con)
+        row = con.execute("SELECT pw_hash FROM players WHERE pseudo = ?", (known,)).fetchone() if known else None
+        if row and row["pw_hash"] and check_password_hash(row["pw_hash"], pw):
+            return _start_session(known, suite)
+        msg = ("Trop de connexions en même temps. Réessayez dans quelques secondes." if result == ctfd_auth.BUSY
+               else "Le tableau des scores ne répond pas, votre compte ne peut pas être vérifié. Réessayez dans "
+                    "un instant, ou prévenez l'organisation.")
+        return signin_page(msg, typed, 503, suite)
+    pseudo = norm(typed)
+    err = pseudo_error(pseudo)
+    if err:
+        return signin_page(err, typed[:24], 400, suite)
+    if len(pw) < MIN_PASSWORD:
+        return signin_page(f"Mot de passe : au moins {MIN_PASSWORD} caractères.", pseudo, 400, suite)
+    row = con.execute("SELECT pw_hash FROM players WHERE pseudo = ?", (pseudo,)).fetchone()
+    if row is not None and row["pw_hash"] and not check_password_hash(row["pw_hash"], pw):
+        return signin_page("Mot de passe incorrect pour ce pseudo. Oublié ? Demandez à l'organisation.",
+                           pseudo, 401, suite)
+    if row is None or not row["pw_hash"]:              # first time, or reset by the organizer
+        _store_account(con, pseudo, pw)
+    else:
+        ensure_personal(con, pseudo)
+    return _start_session(pseudo, suite)
+
+
+@bp.post("/deconnexion")
 @bp.post("/bloc-notes/deconnexion")
 def signout():
     session.clear()
-    return back()
+    return redirect("/connexion" if login_required() else "/bloc-notes")
 
 
 def _parse_pseudos(raw):
+    """Pseudos typed in one field, separated by commas (a scoreboard name may hold spaces)."""
     out = []
-    for p in re.split(r"[\s,;]+", (raw or "").lower()):
+    for p in re.split(r"[,;\n]+", raw or ""):
+        p = " ".join(p.split())
         if p and p not in out:
             out.append(p)
     return out
@@ -481,8 +591,13 @@ def create():
     if not name:
         flash("err", "Donnez un nom au bloc-notes.")
         return back()
-    wanted = [p for p in _parse_pseudos(request.form.get("membres")) if p != me]
-    unknown = [p for p in wanted if not exists(p)]
+    typed = _parse_pseudos(request.form.get("membres"))
+    found = {t: resolve(t) for t in typed}
+    unknown = [t for t, p in found.items() if p is None]
+    wanted = []
+    for p in found.values():
+        if p and p != me and p not in wanted:
+            wanted.append(p)
     if unknown:
         flash("err", "Pseudo inconnu : " + ", ".join(unknown) +
               ". Chaque joueur doit d'abord se connecter une fois au hub. Rien n'a été créé.")
@@ -512,14 +627,15 @@ def _shared_pad(pad_id, me):
 def add_member(pad_id):
     me = need_player()
     pad = _shared_pad(pad_id, me)
-    p = norm(request.form.get("pseudo"))
+    typed = " ".join(request.form.get("pseudo", "").split())
+    p = resolve(typed)
     members = members_of(pad_id)
-    if not p:
+    if not typed:
         return back(pad_id)
     if p in members:
         flash("err", f"« {p} » est déjà dans ce bloc-notes.")
-    elif pseudo_error(p) or not exists(p):
-        flash("err", f"Pseudo inconnu : « {p[:24]} » doit d'abord se connecter une fois au hub.")
+    elif p is None:
+        flash("err", f"Pseudo inconnu : « {typed[:MAX_NAME_CTFD]} » doit d'abord se connecter une fois au hub.")
     elif len(members) >= MAX_MEMBERS:
         flash("err", f"{MAX_MEMBERS} membres au plus.")
     else:
@@ -533,7 +649,7 @@ def add_member(pad_id):
 def remove_member(pad_id):
     me = need_player()
     pad = _shared_pad(pad_id, me)
-    p = norm(request.form.get("pseudo"))
+    p = request.form.get("pseudo", "")                 # exact: the value comes from the member chip
     if pad["owner"] != me:
         abort(403)
     if p and p != me:
@@ -624,10 +740,64 @@ def save(pad_id):
     return jsonify(_state(pad)) if as_json else back(pad_id)
 
 
-def bind(app, layout, html):
-    """Plug the notepads into the hub: signing key, cookie, page chrome."""
+# ------------------------------------------------------------------ mission statuses (Missions sheet)
+def statuses(pseudo):
+    """{mission: state} saved for `pseudo` ("À faire" is the absence of a row)."""
+    if not pseudo:
+        return {}
+    return {r["mission"]: r["state"] for r in db().execute(
+        "SELECT mission, state FROM statuses WHERE pseudo = ?", (pseudo,))}
+
+
+def status_config(pseudo):
+    """What the Missions sheet's script needs to save statuses on the Pi."""
+    return {"csrf": csrf_token(), "empty": not statuses(pseudo)}
+
+
+@bp.get("/statut")
+def status_get():
+    resp = jsonify(statuses(need_player()))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.post("/statut")
+def status_set():
+    me = need_player()
+    data = request.get_json(silent=True) or {}
+    mission, state = data.get("mission"), data.get("state")
+    if not isinstance(mission, str) or not MISSION_RE.match(mission) or state not in STATES:
+        abort(400)
+    if state == STATES[0]:
+        db().execute("DELETE FROM statuses WHERE pseudo = ? AND mission = ?", (me, mission))
+    else:
+        db().execute("INSERT INTO statuses (pseudo, mission, state, at) VALUES (?, ?, ?, ?) "
+                     "ON CONFLICT(pseudo, mission) DO UPDATE SET state = excluded.state, at = excluded.at",
+                     (me, mission, state, now()))
+    return jsonify({"mission": mission, "state": state})
+
+
+# ------------------------------------------------------------------ sign-in first
+OPEN_ENDPOINTS = {"static", "notes.signin_form", "notes.signin", "notes.signout"}
+
+
+def _gate():
+    """Every hub page needs a signed-in player (HUB_LOGIN=1)."""
+    if not login_required() or not AVAILABLE or request.endpoint in OPEN_ENDPOINTS or current():
+        return None
+    if request.method == "GET" and not request.path.startswith(("/bloc-notes/", "/statut")):
+        target = request.full_path.rstrip("?") if request.query_string else request.path
+        return redirect("/connexion?suite=" + urllib.parse.quote(target, safe="/"))
+    abort(403)
+
+
+def bind(app, layout, html, scoreboard=None):
+    """Plug the accounts and notepads into the hub: signing key, cookie, page chrome."""
     global AVAILABLE
     _render.update(layout=layout, html=html)
+    if scoreboard:
+        _render["scoreboard"] = scoreboard
+    app.before_request(_gate)
     try:
         app.secret_key = secret()
     except (sqlite3.Error, OSError) as exc:      # no writable volume: the rest of the hub still works

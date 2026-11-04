@@ -28,10 +28,13 @@ def new_client(hub_module):
     return hub_module.app.test_client()
 
 
-def csrf(c, path="/bloc-notes"):
-    m = re.search(r'name="csrf" value="([^"]+)"', c.get(path).data.decode())
-    assert m, "no CSRF field"
-    return m.group(1)
+def csrf(c):
+    """The session's CSRF token: on the sign-in form, or on the Bloc-notes page once signed in."""
+    for path in ("/connexion", "/bloc-notes"):
+        m = re.search(r'name="csrf" value="([^"]+)"', c.get(path).data.decode())
+        if m:
+            return m.group(1)
+    raise AssertionError("no CSRF field")
 
 
 def signin(c, pseudo, pw=PW):
@@ -56,8 +59,10 @@ def editor(c, pad_id):
 
 # ------------------------------------------------------------------ accounts
 def test_signin_creates_pseudo_and_private_pad(client, hub_module):
-    page = client.get("/bloc-notes").data.decode()
-    assert 'action="/bloc-notes/connexion"' in page and "Se connecter" in page
+    r = client.get("/bloc-notes")                                  # everything waits for the sign-in
+    assert r.status_code == 302 and r.headers["Location"] == "/connexion?suite=/bloc-notes"
+    page = client.get("/connexion?suite=/bloc-notes").data.decode()
+    assert 'action="/connexion"' in page and 'name="suite" id="np-suite" value="/bloc-notes"' in page
     r = signin(client, "Lea")                                     # normalized to lower case
     assert r.status_code == 302
     cookie = r.headers.get("Set-Cookie", "")
@@ -109,7 +114,7 @@ def test_create_shared_pad_add_remove_leave(client, hub_module):
         signin(c, p)
     assert make_pad(client, "Les Puces", "max, inconnu") is None      # unknown pseudo: nothing created
     assert "Pseudo inconnu : inconnu" in unescape(client.get("/bloc-notes").data.decode())
-    pid = make_pad(client, "Les Puces", "max sam")
+    pid = make_pad(client, "Les Puces", "max, sam")
     assert pid
     # max sees it, marked new, with the one-time message
     assert pid in pad_ids(max_)
@@ -241,7 +246,7 @@ def test_admin_reset_password_and_wipe(client, hub_module, notes, capsys):
     assert notes_admin.main(["liste"]) == 0 and "lea" in capsys.readouterr().out
     assert notes_admin.main(["vider"]) == 2                            # needs --oui
     assert notes_admin.main(["vider", "--oui"]) == 0
-    assert client.get("/bloc-notes").data.decode().count("Se connecter") >= 1   # account gone
+    assert client.get("/bloc-notes").headers["Location"].startswith("/connexion")   # account gone
 
 
 def test_admin_delete_hands_shared_pad_over(client, hub_module, notes):

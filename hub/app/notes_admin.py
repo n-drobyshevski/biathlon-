@@ -3,7 +3,9 @@ Organizer commands for the hub's Bloc-notes (notes.py), run inside the hub:
 
   docker compose exec hub python notes_admin.py liste             pseudos and notepads
   docker compose exec hub python notes_admin.py mdp <pseudo>      forget the password (notes kept);
-                                                                   the next sign-in sets a new one
+                                                                   the next sign-in sets a new one.
+                                                                   With scoreboard accounts, reset it
+                                                                   in CTFd instead (Admin > Users)
   docker compose exec hub python notes_admin.py supprimer <pseudo>  delete the account, its private
                                                                    notepad and its memberships
   docker compose exec hub python notes_admin.py vider --oui       wipe every account and notepad
@@ -31,15 +33,22 @@ def liste(con):
 
 
 def mdp(con, pseudo):
-    cur = con.execute("UPDATE players SET pw_hash = NULL WHERE pseudo = ?", (notes.norm(pseudo),))
-    print("Mot de passe oublié : la prochaine connexion en définit un nouveau." if cur.rowcount
-          else "Pseudo inconnu.")
-    return 0 if cur.rowcount else 1
+    found = notes.resolve(pseudo, con)
+    if not found:
+        print("Pseudo inconnu.")
+        return 1
+    con.execute("UPDATE players SET pw_hash = NULL WHERE pseudo = ?", (found,))
+    if notes.ctfd_base():
+        print("Les comptes viennent du tableau des scores : changez le mot de passe dans CTFd (Admin > Users). "
+              "Le mot de passe gardé par le hub en secours est effacé.")
+    else:
+        print("Mot de passe oublié : la prochaine connexion en définit un nouveau.")
+    return 0
 
 
 def supprimer(con, pseudo):
-    pseudo = notes.norm(pseudo)
-    if not con.execute("SELECT 1 FROM players WHERE pseudo = ?", (pseudo,)).fetchone():
+    pseudo = notes.resolve(pseudo, con)
+    if not pseudo:
         print("Pseudo inconnu.")
         return 1
     con.execute("BEGIN IMMEDIATE")
@@ -52,6 +61,7 @@ def supprimer(con, pseudo):
         else:
             con.execute("DELETE FROM pads WHERE id = ?", (pid,))
     con.execute("DELETE FROM members WHERE pseudo = ?", (pseudo,))
+    con.execute("DELETE FROM statuses WHERE pseudo = ?", (pseudo,))
     con.execute("DELETE FROM players WHERE pseudo = ?", (pseudo,))
     con.execute("COMMIT")
     print(f"{pseudo} supprimé.")
@@ -61,6 +71,7 @@ def supprimer(con, pseudo):
 def vider(con):
     con.execute("BEGIN IMMEDIATE")
     con.execute("DELETE FROM members")
+    con.execute("DELETE FROM statuses")
     con.execute("DELETE FROM pads")
     con.execute("DELETE FROM players")
     con.execute("DELETE FROM meta WHERE key = 'secret'")    # signs everyone out after a restart

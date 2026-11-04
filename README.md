@@ -103,11 +103,13 @@ gated by a simple password (`GUIDE_PASSWORD`, default `debutant`) so ordinary
 players don't hit spoilers — hand the word only to players who want the training
 wheels.
 
-Offline there's no Google Docs, so the hub also has a **Bloc-notes** tab: players
-sign in with a pseudo (created the first time), get a private notepad, and can
-create shared notepads with other players added by pseudo, in solo or team mode.
-Notes live on the Pi (the `hub-data` volume). `NOTES_SHARED=0` keeps them private;
-organizer commands are in [handouts/HOSTING.md](handouts/HOSTING.md).
+Players **sign in to the hub with their scoreboard (CTFd) account** first, so
+finish CTFd's setup before they arrive. Their mission statuses are then saved on
+the Pi per player. Offline there's no Google Docs, so the hub also has a
+**Bloc-notes** tab: a private notepad per player, and shared notepads with other
+players added by name, in solo or team mode. All of it lives on the Pi (the
+`hub-data` volume); settings and organizer commands are in
+[handouts/HOSTING.md](handouts/HOSTING.md).
 
 Live services after step 2:
 

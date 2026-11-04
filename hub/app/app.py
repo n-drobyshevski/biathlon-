@@ -39,8 +39,11 @@ app = Flask(__name__)
 TABS = [("/", "Missions"), ("/contexte", "Contexte"), ("/outils", "Outils"),
         ("/guide", "Mode guidé"), ("/bloc-notes", "Bloc-notes"), ("/contacts", "Contacts")]
 
-# Formula bar follows the clicked cell; "Statut" choices are kept in the
-# player's own browser (localStorage), never sent anywhere.
+# Formula bar follows the clicked cell. "Statut": signed in, each choice is
+# saved on the Pi for that player (window.HUB_STATUT, see notes.py /statut);
+# the first time, statuses left in this browser are moved there, then removed
+# from the browser so the next player on a shared laptop starts clean. Not
+# signed in (HUB_LOGIN=0), they stay in the browser's localStorage as before.
 SCRIPT = """<script>
 (function(){
  var ref=document.getElementById('ref'),val=document.getElementById('val');
@@ -53,11 +56,22 @@ SCRIPT = """<script>
   });
  });
  var store=null;try{store=window.localStorage}catch(e){}
+ var api=window.HUB_STATUT||null;
+ function send(sel){
+  return fetch('/statut',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',
+   'X-CSRF':api.csrf},body:JSON.stringify({mission:sel.dataset.k,state:sel.value})}).then(function(r){
+   sel.classList.toggle('unsaved',!r.ok);sel.title=r.ok?'':'Pas enregistré, réessayez'})
+   .catch(function(){sel.classList.add('unsaved');sel.title='Pas enregistré, réessayez'});
+ }
  document.querySelectorAll('select[data-k]').forEach(function(sel){
   var k='statut-'+sel.dataset.k;
-  try{var v=store&&store.getItem(k);if(v)sel.value=v}catch(e){}
-  var paint=function(){sel.closest('tr').dataset.statut=sel.value};paint();
-  sel.addEventListener('change',function(){try{store&&store.setItem(k,sel.value)}catch(e){}paint()});
+  var paint=function(){sel.closest('tr').dataset.statut=sel.value};
+  if(api){
+   if(api.empty){try{var old=store&&store.getItem(k);if(old&&old!==sel.value){sel.value=old;send(sel)}
+    store&&store.removeItem(k)}catch(e){}}
+  }else{try{var v=store&&store.getItem(k);if(v)sel.value=v}catch(e){}}
+  paint();
+  sel.addEventListener('change',function(){if(api){send(sel)}else{try{store&&store.setItem(k,sel.value)}catch(e){}}paint()});
  });
 })();
 </script>"""
@@ -90,7 +104,7 @@ def layout(title, body, tab="/", cell="", formula="", note="", scripts=""):
 <div class="fx"><span class="ref" id="ref">{cell}</span><span class="f">fx</span><span class="v" id="val">{formula}</span></div>
 <main id="main" class="sheet">{body}</main>
 <nav class="tabs" aria-label="Feuilles">{tabs}</nav>
-{shortcuts()}{SCRIPT}{scripts}</body></html>"""
+{shortcuts()}{scripts}{SCRIPT}</body></html>"""
 
 
 def shortcuts():
@@ -106,7 +120,7 @@ def html(page, status=200):
     return Response(page, status=status, mimetype="text/html")
 
 
-notes.bind(app, layout, html)     # Bloc-notes tab: signing key, session cookie, routes
+notes.bind(app, layout, html, scoreboard=lambda: scoreboard_url())   # accounts, Bloc-notes, sign-in first
 
 HANDOUT_DIR = os.environ.get("HANDOUT_DIR", "/handouts")
 SCOREBOARD_URL = os.environ.get("SCOREBOARD_URL", "").strip()
@@ -296,6 +310,8 @@ def crisis_cell():
     total = sum(m[4] for m in MISSIONS)
     board = scoreboard_url()
     ids = ctfd_ids()
+    me = notes.current()
+    saved = notes.statuses(me)
     rows = []
     for num, title, cat, level, pts, brief, live, _files in MISSIONS:
         submit = ""
@@ -304,10 +320,10 @@ def crisis_cell():
             if num in ids:            # opens that challenge's popup in CTFd
                 target += "#" + quote(f"{ids[num]['name']}-{ids[num]['id']}", safe="")
             submit = f'<a class="submit" href="{escape(target)}"{NEW_TAB}>Soumettre le flag {EXT}</a>'
-        status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
-                  '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
-                  + submit)
-        rows.append((f' class="mission" id="mission-{num}"', [
+        state = saved.get(num, notes.STATES[0])
+        opts = "".join(f'<option{" selected" if o == state else ""}>{o}</option>' for o in notes.STATES)
+        status = f'<select data-k="{num}" aria-label="Statut de la mission {num}">{opts}</select>' + submit
+        rows.append((f' class="mission" id="mission-{num}" data-statut="{state}"', [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
             (access(live), ' class="acc"'), (status, "")]))
@@ -324,8 +340,12 @@ def crisis_cell():
             f'puces de chronométrage. Suivez la piste jusqu\'au coupable. {len(MISSIONS)} missions, '
             f'{total} points. Les flags ont la forme <code>TRIATHLON{{...}}</code>{where}. '
             f'Détails dans l\'onglet <a href="/contexte">Contexte</a>.</p>')
+    api = ""
+    if me:                              # statuses saved on the Pi for this player
+        cfg = json.dumps(notes.status_config(me)).replace("<", "\\u003c")
+        api = f"<script>window.HUB_STATUT={cfg};</script>"
     return html(layout("Missions", fr(body), "/", f"F{n}",
-                       f"=SOMME(F2:F{n-1})", fr(note)))
+                       f"=SOMME(F2:F{n-1})", fr(note), scripts=api))
 
 
 @app.get("/contexte")

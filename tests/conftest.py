@@ -8,6 +8,7 @@ loaded under a unique name with importlib to avoid a clash.
 import importlib.util
 import os
 import pathlib
+import re
 import sys
 
 import pytest
@@ -79,8 +80,28 @@ def hub_module(dist, tmp_path_factory):
     return _load("hub_app", HUB_APP / "app.py")
 
 
+def hub_signin(client, pseudo="testeur", password="testeur-pw"):
+    """Sign a hub test client in (local accounts in tests: CTFD_INTERNAL_URL is unset)."""
+    page = client.get("/connexion").data.decode()
+    tok = re.search(r'name="csrf" value="([^"]+)"', page).group(1)
+    r = client.post("/connexion", data={"pseudo": pseudo, "motdepasse": password, "csrf": tok})
+    assert r.status_code == 302, r.data[:300]
+    # some tests reach the hub on the Pi's address: the browser would sign in there too
+    value = client.get_cookie("hub_session").value
+    for host in ("10.0.0.5", "10.0.0.7"):
+        client.set_cookie("hub_session", value, domain=host)
+    return client
+
+
 @pytest.fixture()
 def hub(hub_module):
+    """A signed-in player: every hub sheet sits behind the sign-in (HUB_LOGIN=1)."""
+    return hub_signin(hub_module.app.test_client())
+
+
+@pytest.fixture()
+def hub_anon(hub_module):
+    """A browser that has not signed in to the hub."""
     return hub_module.app.test_client()
 
 

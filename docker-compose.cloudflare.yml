@@ -76,6 +76,8 @@ services:
       SCOREBOARD_URL: "https://ctfd.${CTF_DOMAIN}/"
       CYBERCHEF_URL: "https://cyberchef.${CTF_DOMAIN}/"
       TERMINAL_URL: "https://terminal.${CTF_DOMAIN}/"
+      # the hub's network cannot reach CTFd online: it keeps its own pseudos
+      CTFD_INTERNAL_URL: ""
       # host:port links are meaningless online: the *_URL values above win
       CTFD_PORT: ""
       CYBERCHEF_PORT: ""

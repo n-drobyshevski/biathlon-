@@ -260,3 +260,4 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 .np-incoming{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .np-incoming p{margin:0;padding:8px 10px;border-radius:6px;background:#e6f4ea;border:1px solid #b7dfc3;color:#0d652d;font-size:12.5px}
 .np-incoming a{font-weight:600;margin-left:4px}
+.grid select.unsaved{border-color:#a50e0e;box-shadow:0 0 0 1px #a50e0e}
