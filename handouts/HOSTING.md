@@ -110,6 +110,30 @@ cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
 `toolbox` image pulls its `apt`/`pip` tools and the `ttyd` binary at build time,
 so build it while you still have internet, same as the challenge images.
 
+## Turn on memory limits (Raspberry Pi OS, once)
+
+Raspberry Pi OS boots with the kernel's **memory cgroup off**. Docker then
+prints `Your kernel does not support memory limit capabilities ... Limitation
+discarded` and silently **ignores every `mem_limit`** in `docker-compose.yml`:
+one player's hashcat run or SSTI payload can then eat the whole Pi, and the
+kernel picks what to kill (possibly CTFd). Turn it on once:
+
+```bash
+F=/boot/firmware/cmdline.txt; [ -f "$F" ] || F=/boot/cmdline.txt   # Bookworm / older
+grep -q cgroup_enable=memory "$F" \
+  || sudo sed -i '1 s/$/ cgroup_enable=memory cgroup_memory=1/' "$F"
+cat "$F"                      # must still be ONE line
+sudo reboot
+```
+
+After the reboot, recreate the containers (limits are applied when a
+container is created, so the ones made before still have none) and check:
+
+```bash
+docker compose up -d --force-recreate
+./scripts/check-pi.sh          # read-only: prints OK / FIX lines
+```
+
 ## Resource budget (4 GB)
 
 | Component | Approx RAM |
@@ -205,6 +229,8 @@ drift. If a team is stuck on 01, an organizer can just read them the login — i
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
+- [ ] `./scripts/check-pi.sh` (lab running) prints no FIX line: memory
+      limits are enforced (see "Turn on memory limits" above)
 - [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
       "Browser toolbox" above)
 - [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps

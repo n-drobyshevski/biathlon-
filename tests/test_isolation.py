@@ -116,3 +116,14 @@ def compose_offline():
         pytest.skip("docker compose plugin missing")
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
+
+
+def test_check_pi_script_flags_missing_memory_cgroup():
+    import subprocess
+    path = ROOT / "scripts" / "check-pi.sh"
+    assert subprocess.run(["bash", "-n", str(path)]).returncode == 0
+    text = path.read_text()
+    assert "cgroup_enable=memory cgroup_memory=1" in text            # the exact fix
+    assert "--force-recreate" in text                                # limits apply at creation
+    hosting = (ROOT / "handouts" / "HOSTING.md").read_text()
+    assert "## Turn on memory limits" in hosting and "./scripts/check-pi.sh" in hosting
