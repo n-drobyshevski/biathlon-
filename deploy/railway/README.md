@@ -9,15 +9,17 @@ challenge there could reach the internet. Delete the project after testing.
 ## What runs there
 One Railway service per lab service, named exactly like the compose services
 (`hub`, `staff`, `share`, `idor`, `sqli`, `jwt`, `gitleak`, `ssti`, `sapgw`,
-`ctfd`, `toolbox`, `cloudflared`), so each is reachable on Railway's private
-network as `<name>.railway.internal`. None has a public Railway domain: the
-only way in is the tunnel, behind Cloudflare Access. CyberChef is left out
-(its release zip is not in the repo).
+`ctfd`, `cyberchef`, `toolbox`, `cloudflared`), so each is reachable on
+Railway's private network as `<name>.railway.internal`. None has a public
+Railway domain: the only way in is the tunnel, behind Cloudflare Access.
 
 - Most services build from their own folder's Dockerfile.
 - `share` and `staff` use `deploy/railway/{share,staff}.Dockerfile` (build
   context: repo root). Railway has no `handouts/dist` bind mount, so they
   generate the evidence files from their `FLAG_*` variables at start.
+- `cyberchef` uses `deploy/railway/cyberchef.Dockerfile`: the build downloads
+  the pinned official release (v10.19.4) from GitHub and checks its SHA-256
+  (the Pi build uses the zip you drop in by hand instead).
 - `toolbox` start command adds ttyd's `-O -m 20`, as in the overlay.
 - `cloudflared`: the pinned image, start command
   `cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 run`,
