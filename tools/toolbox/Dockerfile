@@ -3,7 +3,7 @@
 #
 # Isolation: NO repository, flags or challenge source mounted. It only reaches
 # the challenge services over the LAN. Every player logs in with a pseudo and
-# password and gets their OWN Unix user (joueur01..joueur24) with a private,
+# password and gets their OWN Unix user (named after the pseudo) with a private,
 # persistent home and a tmux session that survives a closed tab or lost
 # Wi-Fi: see shell.sh. ttyd itself runs as root so it can switch to the
 # player's user, but docker-compose.yml drops every capability except
@@ -35,17 +35,12 @@ RUN case "$TARGETARCH" in amd64) a=x86_64 ;; *) a=aarch64 ;; esac \
 # git-dumper (challenge 11) + PyJWT helpers (challenge 10).
 RUN pip3 install --no-cache-dir --break-system-packages git-dumper pyjwt requests
 
-# One Unix user per player (uid 2001..2024), home under /work. /work itself is
-# root-owned 0711: players can enter their own home but cannot list the
-# others. docker-compose.yml mounts the toolbox-data volume there (a new volume
-# starts as a copy of this empty, 0711 directory).
-RUN for n in $(seq 1 24); do \
-        i=$(printf %02d "$n"); id=$((2000 + n)); \
-        groupadd -g "$id" "joueur$i" \
-        && useradd -M -u "$id" -g "$id" -d "/work/joueur$i" -s /bin/bash "joueur$i" \
-        || exit 1; \
-    done \
-    && mkdir -p /work /etc/toolbox && chmod 0711 /work
+# One Unix user per player (uid 2001..2024) whose NAME is the player's pseudo,
+# home /work/<pseudo>. /work itself is root-owned 0711: players can enter their
+# own home but cannot list the others. docker-compose.yml mounts the
+# toolbox-data volume there (a new volume starts as a copy of this empty, 0711
+# directory).
+RUN mkdir -p /work /etc/toolbox && chmod 0711 /work
 COPY shell.sh /usr/local/bin/player-shell
 COPY grab.sh /usr/local/bin/grab
 COPY bashrc tmux.conf /etc/toolbox/
@@ -53,6 +48,14 @@ COPY init.sh /usr/local/bin/toolbox-init
 RUN chmod 0755 /usr/local/bin/player-shell /usr/local/bin/grab /usr/local/bin/toolbox-init \
     && ln -s player-shell /usr/local/bin/toolbox-admin \
     && chmod 0644 /etc/toolbox/bashrc /etc/toolbox/tmux.conf
+
+# Players' Unix names follow their pseudos, so passwd/group are rebuilt at run
+# time (read-only image): the system accounts are kept here as a base, and
+# /etc/passwd + /etc/group point to the copies toolbox-init / player-shell
+# write on the volume (/work/.etc, world-readable like any /etc/passwd).
+# Keep this the LAST step that needs user names at build time.
+RUN cp /etc/passwd /etc/toolbox/passwd.base && cp /etc/group /etc/toolbox/group.base \
+    && ln -sf /work/.etc/passwd /etc/passwd && ln -sf /work/.etc/group /etc/group
 
 WORKDIR /work
 EXPOSE 7681

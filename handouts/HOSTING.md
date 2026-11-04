@@ -61,7 +61,9 @@ run **on the Pi** and are driven entirely from a browser.
   `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
   a shell. **Each player logs in with a pseudo and a password** (created the
   first time, ideally the same pseudo as on CTFd) and gets their own Unix
-  user (`joueur01` to `joueur24`), a private home `/work/joueurNN` and a
+  user **named after the pseudo** (`whoami` prints it; 24 seats, uid 2001 to
+  2024, pseudos like `root` or `1234` are refused), a private home
+  `/work/<pseudo>` and a
   `tmux` session. Closing the tab, losing the Wi-Fi or switching laptops only
   detaches it: logging in again brings back the same session, running
   programs and files. Homes are on the `toolbox-data` volume, so they also

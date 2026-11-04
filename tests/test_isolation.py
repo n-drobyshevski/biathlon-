@@ -86,7 +86,12 @@ def test_offline_toolbox_gives_each_player_a_private_persistent_space(compose_of
     assert "ulimit -H -u" in shell and "ulimit -H -f" in shell and "--watchdog" in shell
     assert "Trop de tentatives" not in shell                        # wrong password never locks
     docker = (ROOT / "tools" / "toolbox" / "Dockerfile").read_text()
-    assert "USER player" not in docker and "joueur" in docker and "tmux" in docker
+    assert "USER player" not in docker and "tmux" in docker
+    # Unix name = pseudo: passwd/group are rebuilt on the volume at run time
+    assert "ln -sf /work/.etc/passwd /etc/passwd" in docker
+    assert "player-shell --sync-users" in init
+    assert 'user="$pseudo"' in shell and "reserved_name" in shell
+    assert "seat_uid() { echo $((2000 + 10#$1)); }" in shell        # uid fixed per seat
     assert 'ENTRYPOINT ["/usr/local/bin/toolbox-init"]' in docker
     tmux = (ROOT / "tools" / "toolbox" / "tmux.conf").read_text()
     assert "--rcfile /etc/toolbox/bashrc" in tmux
