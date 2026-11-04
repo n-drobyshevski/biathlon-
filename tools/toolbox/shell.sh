@@ -44,8 +44,8 @@ cat <<'BANNER'
 ──────────────────────────────────────────────
  Outils installés
    git, git-dumper, binwalk, foremost,
-   exiftool, john, hashcat, tshark, unzip,
-   xxd, jq, curl, wget, python3
+   exiftool, john, hashcat, tshark, ffuf,
+   unzip, xxd, jq, curl, wget, python3
 
  Les services sont sur l'IP du Pi.
  curl/wget pour récupérer un fichier :
