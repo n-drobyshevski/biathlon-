@@ -639,7 +639,7 @@ def contacts():
         ("Support IT", "Astreinte IT", "300", "Accès aux systèmes de l'événement"),
         ("Chronométrage", "Cabine de chronométrage", "231", "Wi-Fi staff, temps intermédiaires"),
         ("Arbitrage", "Jury de course", "240", "Clé USB retrouvée dans la cabine"),
-        ("Basis SAP", "V. Lindqvist", "410", "Exports ERP · dernière astreinte\u00a0: nuit du 1er nov."),
+        ("Basis SAP", "V. Lindqvist", "410", "Exports ERP, dernière astreinte : nuit du 1er nov."),
         ("Marketing", "Communication DécaFlop", "120", "Affiche officielle"),
     ]]
     return html(layout("Contacts",
