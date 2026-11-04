@@ -90,7 +90,7 @@ def parse_readme(path, host, domain=None):
     # description: everything after the title, up to the hints.
     # Evidence files are no longer handed out by the hub: each challenge is
     # reached through a live service (its **Connect:** line — the DécaFlop site
-    # for 02/03, the internal share "Partage DFlop" :8020 for 05/07/09/13/15),
+    # for 02/03, the internal share "Intranet DécaFlop" :8020 for 05/07/09/13/15),
     # so there are no hub /fichiers download links to generate here.
     body = text[m.end():].split("<details>", 1)[0].strip()
     if domain:                                     # online: one subdomain per service

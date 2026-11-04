@@ -1,4 +1,4 @@
-"""Partage DFlop — auth, browsing, byte-for-byte downloads, 404/traversal."""
+"""Intranet DécaFlop — auth, browsing, byte-for-byte downloads, 404/traversal."""
 import sys
 from html import escape as esc
 from urllib.parse import quote

@@ -63,7 +63,7 @@ Flag format: `TRIATHLON{...}`.
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
 hints). The live web/SAP apps are Flask containers; the forensics/stego/SAP
 files are generated as handouts and published on two internal services (the
-DécaFlop site for the poster/photo, the `Partage DFlop` file share for the rest)
+DécaFlop site for the poster/photo, the `Intranet DécaFlop` file share for the rest)
 so players find them in context instead of downloading them from the hub.
 
 ---
@@ -91,7 +91,7 @@ python3 scripts/ctfd-setup.py
 That's the "cellule de crise" (`hub/`, its own container, not a challenge):
 the in-story briefing page for the emergency IT crew. It lists every mission and
 links the live service each one is reached through. The hub serves **no files**
-itself: evidence files live on the internal share **Partage DFlop** (`:8020`),
+itself: evidence files live on the internal share **Intranet DécaFlop** (`:8020`),
 and the poster/photo on the DécaFlop site (`:8001`). The hub gives out the
 share's crew login in its Contexte sheet. It never links the hidden staff
 portal, so challenge 01 stays a puzzle, and no mission is locked behind another.
@@ -109,7 +109,7 @@ Live services after step 2:
 |------|-----------|
 | 8080 | Cellule de crise (players' entry point, not a challenge) |
 | 8001 | 01 DécaFlop site + staff portal (also the poster/photo for 02/03) |
-| 8020 | Partage DFlop — internal file share (02 evidence for 05/07/09/13/15; not a challenge) |
+| 8020 | Intranet DécaFlop — internal file share (02 evidence for 05/07/09/13/15; not a challenge) |
 | 8004 | 04 athlete portal (IDOR) |
 | 8006 | 06 results admin (SQLi) |
 | 8010 | 10 Results API (JWT) |
@@ -121,7 +121,7 @@ Live services after step 2:
 Where players find each file (all built into `handouts/dist/` by step 3, then
 mounted read-only into the service that publishes them):
 
-On the **internal share** `Partage DFlop` (`:8020`, log in `equipe-it` /
+On the **internal share** `Intranet DécaFlop` (`:8020`, log in `equipe-it` /
 `transition2026`):
 
 ```
@@ -175,7 +175,7 @@ them too, use `docker compose down -v` and redo CTFd's setup wizard.
 ```
 challenges/            one folder per challenge (player README + web app code)
 hub/                   "cellule de crise": players' entry point (port 8080)
-share/                 "Partage DFlop": intranet site + internal file share (port 8020, not a challenge)
+share/                 "Intranet DécaFlop": intranet site + internal file share (port 8020, not a challenge)
 handouts/              generator for all forensics/SAP evidence files
   generate.py          builds every handout from .env flags
   assets/              base photo for 03 (AI-generated, metadata stripped)

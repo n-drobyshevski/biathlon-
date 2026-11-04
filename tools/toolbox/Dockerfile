@@ -14,6 +14,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl wget git python3 python3-pip \
         binwalk foremost libimage-exiftool-perl john \
+        hashcat pocl-opencl-icd ocl-icd-libopencl1 \
+        tshark binutils \
         unzip xxd jq nano less openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,7 +31,8 @@ RUN pip3 install --no-cache-dir --break-system-packages git-dumper pyjwt request
 RUN useradd -m -s /bin/bash player \
     && mkdir -p /work && chown player:player /work
 COPY shell.sh /usr/local/bin/player-shell
-RUN chmod +x /usr/local/bin/player-shell
+COPY grab.sh /usr/local/bin/grab
+RUN chmod +x /usr/local/bin/player-shell /usr/local/bin/grab
 
 USER player
 WORKDIR /work

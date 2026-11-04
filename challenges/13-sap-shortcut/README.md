@@ -4,7 +4,7 @@
 > ERP. Someone ticked "save password" so they wouldn't have to type it. Handy —
 > and readable.
 
-**Connect:** `http://<CTF-HOST>:8020` — internal share **Partage DFlop**, folder `IT / Sauvegardes postes / portable-equipe-03` (`dflop_erp.sap`). Credentials are on the DécaFlop staff portal — see challenge 01.
+**Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `IT / Sauvegardes postes / portable-equipe-03` (`dflop_erp.sap`). Credentials: recover them via challenge 01 (hidden on the DécaFlop site).
 
 Download the shortcut: it has a saved password. Recover it.
 
