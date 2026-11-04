@@ -222,6 +222,10 @@ def test_online_overlay_isolates_every_service():
             # the only host path mounted anywhere: the read-only player evidence
             assert v["type"] == "bind" and v["target"] == "/handouts" and v.get("read_only"), name
             assert v["source"] == str(ROOT / "handouts" / "dist"), name
+        # same tunnel routes work on the Pi and on the Railway test deploy
+        nets = svc["networks"]
+        assert any(f"{name}.railway.internal" in ((n or {}).get("aliases") or [])
+                   for n in nets.values()), name
     cf = cfg["services"]["cloudflared"]
     assert sorted(cf["networks"]) == sorted({"internal", "edge", *ONLINE_NET.values()})
     assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+@sha256:[0-9a-f]{64}", cf["image"])

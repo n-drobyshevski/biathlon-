@@ -104,6 +104,9 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
 | `cyberchef.<domain>` | HTTP | `cyberchef:80` |
 | `terminal.<domain>` | HTTP | `toolbox:7681` |
 
+- Every service also answers as `<service>.railway.internal` (e.g.
+  `hub.railway.internal:5000`), so routes written for the Railway test deploy
+  (deploy/railway/README.md) work unchanged on the Pi.
 - `terminal` (ttyd) needs **WebSockets**. They are on by default for tunnels.
   Check that zone → **Network → WebSockets** is enabled.
 - `terminal` only: set **Additional application settings → HTTP Settings →

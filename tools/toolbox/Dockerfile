@@ -17,9 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip xxd jq nano less openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-# ttyd: static arm64 binary (serves the shell over HTTP).
-RUN curl -fsSL -o /usr/local/bin/ttyd \
-        https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.aarch64 \
+# ttyd: static binary (serves the shell over HTTP), for the build machine's
+# architecture: aarch64 on the Pi, x86_64 on a laptop or a cloud test host.
+RUN arch="$(uname -m)" \
+    && case "$arch" in aarch64|x86_64) ;; *) echo "no ttyd build for $arch" >&2; exit 1 ;; esac \
+    && curl -fsSL -o /usr/local/bin/ttyd \
+        "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.$arch" \
     && chmod +x /usr/local/bin/ttyd
 
 # git-dumper (challenge 11) + PyJWT helpers (challenge 10).

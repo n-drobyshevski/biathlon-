@@ -33,6 +33,10 @@
 # Inside the internal network every service answers on its compose name AND,
 # where they differ, on its public subdomain label (staff = site, gitleak =
 # git), so the toolbox banner can say "same name as the subdomain".
+# Each one also answers as <service>.railway.internal: the tunnel routes can
+# then use those names and work unchanged both here and on the Railway test
+# deploy (deploy/railway/README.md). Both forms work, e.g. hub:5000 or
+# hub.railway.internal:5000. These names only exist inside Docker.
 #
 # Hardening shared by the Flask apps (python:3.12-slim, listen on :5000, write
 # nothing but /tmp): run as nobody, no capabilities, no privilege escalation,
@@ -71,7 +75,9 @@ services:
   # ---- Hub: links point at the public subdomains --------------------------
   hub:
     <<: *locked-app
-    networks: [front]
+    networks:
+      front:
+        aliases: [hub.railway.internal]
     environment:
       SITE_URL: "https://site.${CTF_DOMAIN:?set CTF_DOMAIN in .env (see CLOUDFLARE.md)}/"
       IDOR_URL: "https://idor.${CTF_DOMAIN}/"
@@ -94,23 +100,35 @@ services:
     <<: *locked-app
     networks:
       internal:
-        aliases: [site]   # same name as its subdomain, for the toolbox
+        aliases: [site, staff.railway.internal]   # subdomain name, for the toolbox
     ports: !override ["127.0.0.1:8001:5000"]
 
   share:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [share.railway.internal]
     ports: !override ["127.0.0.1:8020:5000"]
 
   idor:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [idor.railway.internal]
     ports: !override ["127.0.0.1:8004:5000"]
 
   sqli:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [sqli.railway.internal]
     ports: !override ["127.0.0.1:8006:5000"]
 
   jwt:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [jwt.railway.internal]
     ports: !override ["127.0.0.1:8010:5000"]
 
   # The entrypoint builds the leaky git repo at startup: as nobody, on a
@@ -120,7 +138,7 @@ services:
     <<: *locked-app
     networks:
       internal:
-        aliases: [git]    # same name as its subdomain, for the toolbox
+        aliases: [git, gitleak.railway.internal]  # subdomain name, for the toolbox
     environment:
       SITE_DIR: /tmp/site
       HOME: /tmp
@@ -128,10 +146,16 @@ services:
 
   ssti:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [ssti.railway.internal]
     ports: !override ["127.0.0.1:8012:5000"]
 
   sapgw:
     <<: *locked-app
+    networks:
+      internal:
+        aliases: [sapgw.railway.internal]
     ports: !override ["127.0.0.1:8014:5000"]
 
   # CTFd image already runs as its own non-root user. REVERSE_PROXY makes it
@@ -140,7 +164,9 @@ services:
   # Its own network: no challenge container can reach it, only the tunnel.
   ctfd:
     image: ctfd/ctfd:3.8.8@sha256:07cc9788d58b2a18ea4dc2103ff385c053ffc506f57d0c769a99387849aedd01
-    networks: [scoreboard]
+    networks:
+      scoreboard:
+        aliases: [ctfd.railway.internal]
     environment:
       REVERSE_PROXY: "true"
     cap_drop: [ALL]
@@ -156,7 +182,9 @@ services:
   # nginx (alpine) starts as root to bind :80 and drop to the nginx user: keep
   # only the capabilities that needs. Static files only, so read-only is fine.
   cyberchef:
-    networks: [chef]
+    networks:
+      chef:
+        aliases: [cyberchef.railway.internal]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
     security_opt: ["no-new-privileges:true"]
@@ -172,7 +200,9 @@ services:
   # with a player's Access cookie; -m caps concurrent terminals. Player scratch
   # space is tmpfs: capped, private to the container, wiped on restart.
   toolbox:
-    networks: [internal]
+    networks:
+      internal:
+        aliases: [toolbox.railway.internal]
     command: ["ttyd", "-p", "7681", "-W", "-O", "-m", "20", "/usr/local/bin/player-shell"]
     cap_drop: [ALL]
     read_only: true
