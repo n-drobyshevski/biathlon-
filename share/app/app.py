@@ -1058,8 +1058,8 @@ def hint_warning(f):
     return (
         '<div class="sheet nopv hint-warn">' + icon("txt") +
         '<h2>Ceci est un véritable indice</h2>'
-        '<p>Ce fichier n\'est pas un leurre : il contient un vrai indice pour '
-        'l\'épreuve. Ne l\'ouvrez que si vous êtes vraiment bloqué et que vous '
+        '<p>Ce fichier contient un vrai indice pour l\'épreuve. '
+        'Ne l\'ouvrez que si vous êtes vraiment bloqué et que vous '
         'n\'avez plus aucune piste. Le consulter trop tôt vous gâchera la '
         'recherche.</p>'
         f'<a class="btn" href="{preview_href(f)}?vu=1">Afficher quand même l\'indice</a>'
