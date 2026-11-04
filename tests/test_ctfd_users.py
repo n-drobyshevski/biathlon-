@@ -107,3 +107,21 @@ def test_main_writes_private_list_and_can_close_signup(mod, tmp_path, monkeypatc
 def test_dry_run_needs_no_token(mod, tmp_path, capsys):
     assert mod.main(["--count", "1", "--dry-run", "--env", str(tmp_path / "none")]) == 0
     assert "player01@ctf.lan" in capsys.readouterr().out
+
+
+def test_rerun_without_reset_keeps_noted_passwords(mod, tmp_path, monkeypatch, capsys):
+    env = tmp_path / ".env"
+    env.write_text("CTFD_TOKEN=ctfd_x\n")
+    out = tmp_path / "comptes.txt"
+    api = FakeCTFd()
+    monkeypatch.setattr(mod, "CTFd", lambda url, token: api)
+    mod.main(["--count", "2", "--env", str(env), "--out", str(out)])
+    first = mod.read_list(str(out))
+    assert set(first) == {"player01", "player02"}
+    mod.main(["--count", "3", "--env", str(env), "--out", str(out)])       # 01, 02 exist; 03 is new
+    second = mod.read_list(str(out))
+    assert second["player01"] == first["player01"] and second["player02"] == first["player02"]
+    assert "player03" in second
+    assert "--reset" in capsys.readouterr().out                          # tells how to change them
+    mod.main(["--count", "1", "--reset", "--env", str(env), "--out", str(out)])
+    assert mod.read_list(str(out))["player01"] != first["player01"]       # reset: new one noted

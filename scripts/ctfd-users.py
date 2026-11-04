@@ -154,14 +154,30 @@ def apply(api, rows, reset=False, rng=secrets):
     return results
 
 
+def read_list(path):
+    """{pseudo: password} from a list written earlier (missing file: empty)."""
+    known = {}
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8").read().splitlines()[3:]:
+            parts = line.split()
+            if len(parts) == 2:
+                known[parts[0]] = parts[1]
+    return known
+
+
 def write_list(path, results, board_url=""):
-    """Pseudo / password list for the organizer (0600, git-ignored folder)."""
+    """Pseudo / password list for the organizer (0600, git-ignored folder).
+    Accounts left untouched this run keep the password noted the last time."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    width = max([len(n) for n, _p, _s in results] + [6])
+    known = read_list(path)
+    for n, p, _s in results:
+        if p:
+            known[n] = p
+    width = max([len(n) for n in known] + [6])
     lines = ["Comptes du tableau des scores (CTFd) et de la cellule de crise",
              "Même pseudo et même mot de passe pour les deux." + (f"  Tableau : {board_url}" if board_url else ""),
              ""]
-    lines += [f"{n:<{width}}  {p}" for n, p, _s in results if p]
+    lines += [f"{n:<{width}}  {p}" for n, p in known.items()]
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
@@ -199,6 +215,10 @@ def main(argv=None):
     results = apply(api, rows, reset=args.reset)
     for name, pw, status in results:
         print(f"  {name:<20} {pw or '-':<22} {status}")
+    kept = [n for n, p, _s in results if p is None]
+    if kept:
+        print(f"\n{len(kept)} compte(s) existaient déjà et gardent leur mot de passe "
+              f"({', '.join(kept)}). Pour leur en donner un nouveau : relancez avec --reset.")
     if args.close_registration:
         api.call("PATCH", "/configs", {"registration_visibility": "private"})
         print("CTFd sign-up form closed (registration_visibility = private).")
