@@ -61,7 +61,7 @@ HOST_PORT_RE = re.compile(r"http://<CTF-HOST>:\d+")
 
 # Online mode: the subdomain each challenge's **Connect:** line points at
 # (same names as the hub's *_URL values in docker-compose.cloudflare.yml).
-CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "idor",
+CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "site",
                "05": "share", "07": "share", "09": "share", "13": "share", "15": "share",
                "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw"}
 

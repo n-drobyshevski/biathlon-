@@ -164,10 +164,10 @@ MISSIONS = [
      "se souvient de plus de choses qu'il n'en montre. Quand, où, et qui l'a "
      "prise ?", "site", []),
     ("04", "Pas votre profil", "Web", "Moyen", 100,
-     "L'espace athlètes permet à chacun de consulter son propre profil. Vous êtes "
-     "connecté avec le dossard 1042. Le staff et les admins utilisent le même "
-     "portail, et le profil admin garderait la trace de qui a touché aux listes "
-     "de départ.", "idor", []),
+     "Les concurrents consultent leur dossier dans l'espace athlètes, accessible "
+     "depuis le site du sponsor. Le staff et les admins utilisent le même portail, "
+     "et le profil admin garderait la trace de qui a touché aux listes de départ.",
+     "site", []),
     ("05", "La cabine de chronométrage", "Forensics", "Moyen", 100,
      "La cabine envoie les temps intermédiaires sur le Wi-Fi staff, et sa "
      "connexion passe encore en HTTP en clair. Nous avons capturé le trafic : "
@@ -471,7 +471,8 @@ GUIDE = {
     "04": ("La page affiche un profil à partir d'un numéro dans l'URL, sans vérifier que c'est bien le vôtre "
            "(faille IDOR).",
            "Le navigateur.",
-           ["Connectez-vous : vous arrivez sur `/profile/1042`, votre dossard.",
+           ["Sur le site DécaFlop, page du championnat (`/triathlon`), suivez « Accéder à l'Espace athlètes ».",
+            "Connectez-vous avec le lien du dossard 1042 : vous arrivez sur `/profile/1042`, votre dossier.",
             "Changez le numéro dans l'URL pour `1000`, le compte admin.",
             "Le flag est dans l'encadré Jeton d'audit du profil admin."]),
     "05": ("Une connexion en HTTP non chiffré laisse passer l'identifiant et le mot de passe en clair sur le réseau.",

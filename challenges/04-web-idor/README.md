@@ -5,7 +5,8 @@
 > portal — and rumour is the admin's profile has an audit log of who touched
 > the start lists.
 
-**Connect:** `http://<CTF-HOST>:8004`
+**Connect:** `http://<CTF-HOST>:8001` — start on the DécaFlop site: competitors reach
+the Athlete Portal from the championship page (`/triathlon`).
 
 Read a profile that isn't yours. The flag (and a key story clue) live on an
 account with a much lower number than yours.
