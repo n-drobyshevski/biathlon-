@@ -32,6 +32,13 @@ RUN case "$TARGETARCH" in amd64) a=x86_64 ;; *) a=aarch64 ;; esac \
         "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.$a" \
     && chmod +x /usr/local/bin/ttyd
 
+# ffuf: web fuzzer (IDOR id-walk on 04, directory/parameter recon). Single Go
+# binary; ffuf's release arch names match Docker's TARGETARCH (amd64/arm64).
+RUN case "$TARGETARCH" in amd64) a=amd64 ;; *) a=arm64 ;; esac \
+    && curl -fsSL "https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_linux_$a.tar.gz" \
+        | tar -xz -C /usr/local/bin ffuf \
+    && chmod +x /usr/local/bin/ffuf
+
 # git-dumper (challenge 11) + PyJWT helpers (challenge 10).
 RUN pip3 install --no-cache-dir --break-system-packages git-dumper pyjwt requests
 
