@@ -35,10 +35,10 @@
         <span class="sap-ico" aria-hidden="true">&#10004;</span> Entrée
       </button>
       <span class="sap-sep" aria-hidden="true"></span>
-      <label class="sap-sr" for="sap-okcode">Code transaction</label>
-      <input class="sap-cmdfield" id="sap-okcode" name="okcode"
+      <label class="sap-sr" for="sap-cmd">Code transaction</label>
+      <input class="sap-cmdfield" id="sap-cmd" name="cmd"
              value="{% block tcode %}{{ tcode|default('') }}{% endblock %}"
-             autocomplete="off" spellcheck="false" placeholder="/n...">
+             autocomplete="off" spellcheck="false" placeholder="ex. SE16N">
     </form>
     <span class="sap-help">
       <a href="{{ wiki_url|default('/wiki') }}">Documentation Technique</a>

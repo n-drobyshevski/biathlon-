@@ -200,6 +200,10 @@ def test_12_ssti_still_evaluates(monkeypatch):
 # ---------------------------------------------------------------- 14
 def test_14_register_escapes_and_gives_flag(monkeypatch):
     c = _client("14", monkeypatch, FLAG="TRIATHLON{gw_x}")
+    # The gateway now sits behind the Level 3 SAP logon; reach it unauthenticated
+    # and you are bounced to the logon screen, not handed the flag.
+    assert c.post("/sap/gw/register", data={"tp": "x"}).status_code == 302
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
     assert "TRIATHLON{" not in c.get("/").data.decode()
     page = c.post("/sap/gw/register", data={"tp": "<img src=x>"}).data.decode()
     assert "TRIATHLON{gw_x}" in page
@@ -219,6 +223,7 @@ def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     c04.get("/login")
     c10 = _client("10", monkeypatch, FLAG="TRIATHLON{b}")
     c14 = _client("14", monkeypatch, FLAG="TRIATHLON{c}")
+    c14.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
     pages = {
         "01 portal": shop.get("/staff-portal-7f3a9").data.decode(),
         "01 robots": shop.get("/robots.txt").data.decode(),

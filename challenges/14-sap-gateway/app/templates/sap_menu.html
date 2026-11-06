@@ -1,0 +1,21 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}Menu SAP &mdash; Système DFL, Mandant 001{% endblock %}
+{% block status_msg %}Connecté : {{ sap_user }}{% endblock %}
+{% block content %}
+<h1>Menu SAP Easy Access</h1>
+<p>Sélectionnez une transaction, ou saisissez son code dans le champ de commande en haut.</p>
+<div class="sap-tiles">
+  <a class="sap-tile" href="/sap/gw/register">
+    <div class="sap-tile-code">SMGW</div>
+    <div class="sap-tile-desc">Moniteur de la passerelle</div>
+  </a>
+  <a class="sap-tile" href="/sap/se16n?table=USR02">
+    <div class="sap-tile-code">SE16N</div>
+    <div class="sap-tile-desc">Explorateur de données</div>
+  </a>
+  <a class="sap-tile" href="/sap/sm37">
+    <div class="sap-tile-code">SM37</div>
+    <div class="sap-tile-desc">Aperçu des jobs</div>
+  </a>
+</div>
+{% endblock %}

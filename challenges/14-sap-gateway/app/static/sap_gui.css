@@ -230,3 +230,31 @@ code, pre, kbd, .sap-mono { font-family: "Courier New", Courier, monospace; }
 .sap-msg--success { background: #c8e6c9; border-color: #7cb87f; }
 .sap-msg--warning { background: #fff3cd; border-color: #e5d36d; }
 .sap-msg--error   { background: #f8d7da; border-color: #e8a6ad; color: #7a0000; }
+
+/* ------------------------------------------------- logon screen */
+.sap-login { max-width: 420px; margin: 40px auto; }
+.sap-login .sap-panel-body { padding: 16px; }
+.sap-login .sap-formrow label { width: 130px; }
+.sap-login .sap-formrow input { width: 200px; }
+.sap-login .sap-btns { margin-top: 12px; }
+.sap-login-foot {
+  margin-top: 14px; padding-top: 8px;
+  border-top: 1px solid #ccc;
+  font-size: 11px; color: #666;
+}
+.sap-login-hint { margin-top: 10px; font-size: 11px; color: #555; }
+
+/* ------------------------------------------------- menu tiles */
+.sap-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 0; }
+.sap-tile {
+  display: block; width: 230px;
+  border: 1px solid #999; background: #fff;
+  text-decoration: none; color: #000;
+}
+.sap-tile:hover { background: #e8f0fe; text-decoration: none; }
+.sap-tile-code {
+  background: #33475b; color: #fff;
+  font-weight: bold; font-size: 12px;
+  padding: 4px 8px;
+}
+.sap-tile-desc { padding: 8px; font-size: 12px; }

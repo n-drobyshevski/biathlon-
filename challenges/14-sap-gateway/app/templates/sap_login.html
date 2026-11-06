@@ -1,0 +1,34 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}Ouverture de session SAP &mdash; Système DFL{% endblock %}
+{% block status_class %}{% if error %}sap-statusbar--error{% endif %}{% endblock %}
+{% block status_msg %}{% if error %}Utilisateur ou mot de passe incorrect.{% else %}Veuillez vous identifier.{% endif %}{% endblock %}
+{% block content %}
+<div class="sap-login">
+  <div class="sap-panel">
+    <div class="sap-panel-header">Ouverture de session SAP</div>
+    <div class="sap-panel-body">
+      <form method="post" action="/sap/logon">
+        <div class="sap-formrow">
+          <label for="sap-user">Utilisateur</label>
+          <input type="text" id="sap-user" name="user" class="sap-mono"
+                 autocomplete="username" autocapitalize="none" spellcheck="false" autofocus>
+        </div>
+        <div class="sap-formrow">
+          <label for="sap-pass">Mot de passe</label>
+          <input type="password" id="sap-pass" name="pass" autocomplete="current-password">
+        </div>
+        <div class="sap-formrow sap-btns">
+          <button class="sap-btn sap-btn-enter" type="submit">
+            <span class="sap-ico" aria-hidden="true">&#10004;</span> Continuer
+          </button>
+        </div>
+      </form>
+      <p class="sap-login-hint">
+        Besoin d'aide ? Consultez la
+        <a href="{{ wiki_url|default('/wiki') }}">Documentation Technique</a> de l'intranet.
+      </p>
+      <div class="sap-login-foot">Système DFL &middot; Mandant 001</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

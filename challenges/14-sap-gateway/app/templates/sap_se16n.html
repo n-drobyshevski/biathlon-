@@ -1,0 +1,14 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}SE16N &mdash; Explorateur de données{% endblock %}
+{% block tcode %}SE16N{% endblock %}
+{% block status_msg %}Table : {{ table }}{% endblock %}
+{% block content %}
+<h1>Explorateur de données (SE16N)</h1>
+<div class="sap-panel">
+  <div class="sap-panel-header">Sélection</div>
+  <div class="sap-panel-body">
+    <div class="sap-formrow"><label>Table</label><span class="sap-mono">{{ table }}</span></div>
+    <p class="sap-mute">Écran en préparation. L'affichage du contenu de la table sera disponible prochainement.</p>
+  </div>
+</div>
+{% endblock %}
