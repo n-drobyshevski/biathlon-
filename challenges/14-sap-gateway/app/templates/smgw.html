@@ -1,0 +1,61 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}SMGW &mdash; Moniteur de la passerelle{% endblock %}
+{% block tcode %}SMGW{% endblock %}
+{% block status_class %}{% if error_msg %}sap-statusbar--error{% elif registered %}sap-statusbar--success{% else %}sap-statusbar--warning{% endif %}{% endblock %}
+{% block status_msg %}{% if error_msg %}{{ error_msg }}{% elif registered %}Programme {{ tp }} enregistré avec succès sur la passerelle.{% else %}Aucune restriction active — la passerelle est ouverte.{% endif %}{% endblock %}
+{% block content %}
+<h1>Moniteur de la passerelle SAP — Fichiers de contrôle d'accès</h1>
+
+<div class="sap-tabs" role="tablist">
+  <a class="sap-tab sap-tab-active" href="/sap/smgw" role="tab" aria-selected="true">reginfo</a>
+  <a class="sap-tab" href="#" role="tab" aria-selected="false" aria-disabled="true" tabindex="-1">secinfo</a>
+</div>
+
+<h2 class="sap-h2">
+  Table de contrôle d'accès (reginfo)
+  <span class="sap-tooltip">
+    <button type="button" class="sap-tooltip-trigger" aria-label="Aide sur reginfo">&#9432;</button>
+    <span class="sap-tooltip-bubble" role="tooltip">Le fichier reginfo contrôle quels programmes externes peuvent s'enregistrer auprès de la passerelle SAP. Une entrée HOST=* / TP=* signifie que N'IMPORTE QUEL serveur du réseau peut enregistrer un programme et exécuter des appels RFC. C'est une faille critique (cf. CVE-2019-0321 et SAP Note 1444282).</span>
+  </span>
+</h2>
+<table class="sap-table">
+  <thead><tr><th>Hôte</th><th>Programme (TP)</th><th>Utilisateur</th><th>Accès</th></tr></thead>
+  <tbody><tr><td>*</td><td>*</td><td>*</td><td>FULL</td></tr></tbody>
+</table>
+
+<div class="sap-panel">
+  <div class="sap-panel-header">Contenu du fichier reginfo</div>
+  <div class="sap-panel-body"><pre class="sap-pre">{{ reginfo }}</pre></div>
+</div>
+
+<div class="sap-panel">
+  <div class="sap-panel-header">Enregistrer un programme externe</div>
+  <div class="sap-panel-body">
+    <form method="post" action="/sap/gw/register">
+      <div class="sap-formrow">
+        <label for="sap-tp">Nom du programme</label>
+        <input type="text" id="sap-tp" name="tp" class="sap-mono" value="{{ tp }}" maxlength="120" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="sap-formrow">
+        <label for="sap-host">Hôte appelant</label>
+        <input type="text" id="sap-host" name="host" class="sap-mono" value="{{ host }}" maxlength="120" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="sap-formrow">
+        <button class="sap-btn sap-btn-enter" type="submit"><span class="sap-ico" aria-hidden="true">&#10004;</span> Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if registered %}
+<div class="sap-panel">
+  <div class="sap-panel-header">Journal d'enregistrement</div>
+  <div class="sap-panel-body">
+    <pre class="sap-pre">{{ log }}</pre>
+    <p><b>Clé d'enregistrement :</b></p>
+    <pre class="sap-pre sap-flag">{{ flag }}</pre>
+    <p class="sap-mute">En conditions réelles, cette action permettrait de détourner un appel RFC légitime et d'exécuter du code sur le serveur applicatif.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

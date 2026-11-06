@@ -212,6 +212,22 @@ def test_14_register_escapes_and_gives_flag(monkeypatch):
     assert c.get("/sap/gw/reginfo").mimetype == "text/plain"
 
 
+def test_14_smgw_page_and_flag_env(monkeypatch):
+    monkeypatch.delenv("FLAG", raising=False)
+    c = _client("14", monkeypatch, FLAG_14="TRIATHLON{from_14}")
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    assert c.get("/sap/cmd?cmd=smgw").headers["Location"].endswith("/sap/smgw")
+    page = c.get("/sap/smgw").data.decode()
+    assert "Fichiers de contrôle d'accès" in page and "FULL" in page and "sap-tooltip-bubble" in page
+    assert "sap-statusbar--warning" in page and "TRIATHLON{" not in page
+    done = c.post("/sap/gw/register", data={"tp": "Z_ANY", "host": "203.0.113.9"}).data.decode()
+    assert "sap-statusbar--success" in done and "Journal d'enregistrement" in done
+    assert "TRIATHLON{from_14}" in done
+    # reginfo stays a plain-text ACL file and never carries the flag
+    r = c.get("/sap/gw/reginfo")
+    assert r.mimetype == "text/plain" and b"TRIATHLON{" not in r.data
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape

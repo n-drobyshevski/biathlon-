@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 14 · SAP · MEDIUM (Gateway reginfo/secinfo — missing ACL)
-Simulated SAP Gateway monitor. Based on a real, well-known SAP exposure: when
-the gateway's reginfo/secinfo access-control lists are left at their permissive
-default, unauthorized external programs can REGISTER with the gateway.
+Simulated SAP Gateway monitor (transaction SMGW) inside a mock SAP GUI for HTML
+shell. Based on a real, well-known SAP exposure: when the gateway's
+reginfo/secinfo access-control lists are left at their permissive default,
+unauthorized external programs can REGISTER with the gateway.
 
 This is a SIMULATION for a training CTF — it models only the information
 disclosure and the "registration is open" check, NOT any real RFC/registration
@@ -18,7 +19,6 @@ import os
 import sys
 import time
 import zlib
-from html import escape
 
 from flask import Flask, Response, redirect, render_template, request, session
 
@@ -27,7 +27,9 @@ import intranet  # noqa: E402
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SAP_SECRET_KEY") or os.urandom(32)
-FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
+# Flag comes from the environment only (set by scripts/gen-flags.sh through
+# docker-compose as FLAG_14). Plain FLAG is kept as a fallback for older wiring.
+FLAG = os.environ.get("FLAG_14") or os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
 # Level 3 (Basis Admin) SAP logon. These Basis credentials are intentionally
 # discoverable by players: softly via the Intranet "Documentation Technique"
@@ -36,8 +38,6 @@ FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 # puzzle, so the defaults below ship as-is and are read from env in production.
 SAP_BASIS_USER = os.environ.get("SAP_BASIS_USER", "basis_dflop")
 SAP_BASIS_PASS = os.environ.get("SAP_BASIS_PASS", "Trans1tion!2026")
-
-PRODUCT = "SAP DFlop ERP, système DFL, noyau 753"
 
 
 def sap_render(template, status=200, **ctx):
@@ -65,58 +65,29 @@ def sap_auth_gate():
     return None
 
 
-def shell(title, body):
-    return intranet.page(f"{title} - Gateway SAP DFL", body, app="sapgw",
-                         site_title="Gateway SAP DFL", site_href="/", logo="GW",
-                         topnav=[("/sap/gw/register", "Moniteur (SMGW)", True),
-                                 ("/sap/gw/reginfo", "reginfo", False)],
-                         product=PRODUCT, foot_extra="Production DFL. Accès non autorisé interdit.",
-                         scripts=intranet.COPY_JS)
-
-
-STATUS = """<section class="wp"><h2>État du gateway</h2>
-<table class="list data"><tbody>
-<tr><td style="width:240px" class="mute">SID</td><td>DFL</td></tr>
-<tr><td class="mute">Gateway</td><td>sapgw00 (port 3300)</td></tr>
-<tr><td class="mute">Version du noyau</td><td>753</td></tr>
-<tr><td class="mute">Démarré le</td><td class="num">12/10/2026 06:02:41</td></tr>
-<tr><td class="mute">Programmes externes enregistrés</td><td class="num">{count}</td></tr>
-</tbody></table></section>"""
-
-MONITOR_BODY = """<h1 class="h1">Moniteur du gateway (SMGW)</h1>
-<div class="cols"><div>
-""" + STATUS.replace("{count}", "0") + """
-<section class="wp"><h2>Sécurité</h2>
-<table class="list data"><tbody>
-<tr><td style="width:240px"><code>reg_info</code> / <code>sec_info</code></td>
- <td><span class="pill warn">valeurs par défaut, aucune ACL</span></td></tr>
-<tr><td><code>gw/acl_mode</code></td><td>0</td></tr>
-</tbody></table>
-<p style="margin-top:8px">Les programmes externes peuvent s'enregistrer sans restriction.
- Voir la configuration dans <a href="/sap/gw/reginfo">/sap/gw/reginfo</a>.</p></section>
-</div><div>
-<section class="wp"><h2>Enregistrer un programme (TP)</h2>
-<form class="form" method="post" action="/sap/gw/register">
- <div class="field"><label for="tp">Nom du programme (TP_NAME)</label>
-  <input class="in" id="tp" name="tp" placeholder="ex. Z_RFC_EXPORT" value="" autofocus></div>
- <div class="btns"><button class="btn" type="submit">Enregistrer</button></div>
-</form></section>
-</div></div>"""
-
-
-def monitor_page():
-    return shell("Moniteur", MONITOR_BODY)
-
+# The gateway's registration ACL as exposed by the monitor. The single wildcard
+# rule is the vulnerability: any host may register any program.
 REGINFO = """# reginfo, Gateway registration ACL (DFL / sapgw00)
 #
-# Format: P TP=<program> HOST=<host> ACCESS=<host> CANCEL=<host>
+# Format: P TP=<program> HOST=<host> USER=<user> ACCESS=<host>
 #
-# (vide, aucune règle définie)
-#
-# NOTE Basis: ACL non configurée. Comportement par défaut = tout autorisé.
-#   Tout programme externe peut s'enregistrer (P TP=* HOST=* ...).
+# NOTE Basis: ACL non configurée. Règle générique laissée par défaut.
+#   Tout programme externe peut s'enregistrer depuis n'importe quel hôte.
 #   À corriger: définir reginfo/secinfo (gw/reg_no_conn_info, gw/acl_mode=1).
+#
+P TP=* HOST=* USER=* ACCESS=*
 """
+
+# Defaults shown in the registration form.
+DEFAULT_TP = "Z_EXPLOIT_RFC"
+DEFAULT_HOST = "10.0.0.42"
+
+
+def smgw_page(**ctx):
+    ctx.setdefault("reginfo", REGINFO)
+    ctx.setdefault("tp", DEFAULT_TP)
+    ctx.setdefault("host", DEFAULT_HOST)
+    return sap_render("smgw.html", **ctx)
 
 
 @app.get("/")
@@ -151,7 +122,7 @@ def sap_menu():
 
 # Transaction codes a player can type in the command field.
 TCODE_MAP = {
-    "SMGW": "/sap/gw/reginfo",
+    "SMGW": "/sap/smgw",
     "SE16N": "/sap/se16n?table=USR02",
     "SM37": "/sap/sm37",
     "SU01": "/sap/se16n?table=USR02",
@@ -179,45 +150,37 @@ def sap_sm37():
     return sap_render("sap_sm37.html")
 
 
+# --------------------------------------------------------------------------
+# SMGW: gateway monitor, ACL files and the (open) registration form.
+# --------------------------------------------------------------------------
+@app.get("/sap/smgw")
+def smgw():
+    return smgw_page()
+
+
 @app.get("/sap/gw/reginfo")
 def reginfo():
+    # Raw ACL file, plain text (it never contains the flag).
     return Response(REGINFO, mimetype="text/plain")
 
 
 @app.route("/sap/gw/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
-        # The gateway monitor (SMGW): status, security state, reginfo link
-        # and the registration form that posts back here.
-        return Response(monitor_page(), mimetype="text/html")
-    tp = request.form.get("tp", "").strip()
+        return redirect("/sap/smgw")
+    tp = request.form.get("tp", "").strip()[:120]
+    host = request.form.get("host", "").strip()[:120] or DEFAULT_HOST
     if not tp:
-        return Response(monitor_page(), mimetype="text/html")
-    # VULN (simulated): reginfo/secinfo are permissive, so any registration is
-    # accepted. A real missing ACL would let an attacker register a malicious
-    # RFC server; here it simply grants the flag.
-    host = request.remote_addr or "0.0.0.0"
+        return smgw_page(host=host, error_msg="Le nom du programme est obligatoire.")
+    # VULN (simulated): reginfo is wide open, so ANY program name from ANY host
+    # is accepted. A real missing ACL would let an attacker register a malicious
+    # RFC server; here it simply reveals the flag.
     conv = zlib.crc32((tp + host).encode()) % 90000000 + 10000000
-    stamp = time.strftime("%d/%m/%Y %H:%M:%S")
+    stamp = time.strftime("%d.%m.%Y %H:%M:%S")
     log = (f"{stamp}  GW REGISTER  TP={tp}  HOST={host}  CONV_ID={conv}\n"
-           f"{stamp}  reg_info: aucune règle (gw/acl_mode=0) -> accepté\n"
+           f"{stamp}  reg_info: règle P TP=* HOST=* -> accepté\n"
            f"{stamp}  TP={tp}  STATE=REGISTERED  SNC=off")
-    page = shell("Programme enregistré", f"""<h1 class="h1">Moniteur du gateway (SMGW)</h1>
-<p class="status ok">Le programme <b>{escape(tp)}</b> est enregistré.</p>
-<div class="cols"><div>
-<section class="wp"><h2>Programmes externes enregistrés</h2>
-<table class="list data"><thead><tr><th>TP_NAME</th><th style="width:130px">Hôte</th>
- <th style="width:110px">CONV_ID</th><th style="width:110px">État</th></tr></thead>
-<tbody><tr><td>{escape(tp)}</td><td>{escape(host)}</td><td class="num">{conv}</td>
- <td><span class="pill ok">REGISTERED</span></td></tr></tbody></table></section>
-<section class="wp"><h2>Trace du gateway (dev_rd)</h2><div class="log"><pre>{escape(log)}</pre></div></section>
-</div><div>
-<section class="wp"><h2>Clé d'enregistrement</h2>
-<p class="mute" style="font-size:12px">Clé de session remise au programme enregistré.</p>
-{intranet.codebox(FLAG)}</section>
-<p><a href="/sap/gw/register">Retour au moniteur</a></p>
-</div></div>""")
-    return Response(page, mimetype="text/html")
+    return smgw_page(tp=tp, host=host, registered=True, log=log, flag=FLAG)
 
 
 if __name__ == "__main__":

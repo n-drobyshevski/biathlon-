@@ -258,3 +258,21 @@ code, pre, kbd, .sap-mono { font-family: "Courier New", Courier, monospace; }
   padding: 4px 8px;
 }
 .sap-tile-desc { padding: 8px; font-size: 12px; }
+
+/* ------------------------------------------------- tabs, section title, pre */
+.sap-tabs { display: flex; gap: 2px; margin: 0 0 12px; border-bottom: 1px solid #999; }
+.sap-tab {
+  padding: 4px 14px; border: 1px solid #999; border-bottom: 0;
+  background: #e6e6e6; color: #333; text-decoration: none;
+}
+.sap-tab:hover { background: #dcdcdc; text-decoration: none; }
+.sap-tab-active { background: #fff; font-weight: bold; position: relative; top: 1px; }
+.sap-tab[aria-disabled="true"] { color: #888; cursor: default; }
+.sap-h2 { font-size: 13px; font-weight: bold; margin: 16px 0 8px; }
+.sap-pre {
+  margin: 0 0 10px; padding: 8px 10px;
+  background: #fafafa; border: 1px solid #ccc;
+  font-family: "Courier New", Courier, monospace; font-size: 12px;
+  white-space: pre-wrap; overflow-wrap: anywhere; color: #222;
+}
+.sap-flag { background: #fff9c4; border-color: #e5d36d; font-weight: bold; }
