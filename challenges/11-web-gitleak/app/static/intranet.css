@@ -345,3 +345,20 @@ table.grid{border-collapse:collapse;font:12px/1.35 var(--f-ui);color:#1e1e1e}
   .suite,.ribbon,.site,.ql,.mnav,.foot,.noprint{display:none!important}
   .body{display:block;padding:0}
 }
+
+/* ------------------------------------------------ wiki (Documentation Technique) */
+.wiki-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin:0 0 22px}
+.wiki-card{display:block;border:1px solid var(--line);background:#fff;padding:14px 16px 12px;color:var(--text)}
+.wiki-card:hover{border-color:#92c0e0;background:#f7fbfe;text-decoration:none;color:var(--text)}
+.wiki-card h2{font:600 14px/1.3 var(--f-ui);color:var(--link);margin:0 0 6px}
+.wiki-card p{margin:0 0 8px;color:var(--text)}
+.wiki-card .more{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.wiki-art{max-width:80ch}
+.wiki-art h2{font:300 18px/1.25 var(--f-light);color:var(--head);border-bottom:1px solid var(--line);padding-bottom:5px;margin:22px 0 8px}
+.wiki-art p,.wiki-art li{margin:0 0 9px}
+.wiki-art code{background:var(--code);border:1px solid var(--line);padding:0 4px}
+.wiki-art pre.block code{background:none;border:0;padding:0}
+.wiki-art table{border-collapse:collapse;margin:0 0 14px;width:100%;font-size:12.5px}
+.wiki-art th,.wiki-art td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+.wiki-art th{background:#f2f2f2;color:#555;font-weight:600}
+.wiki-art .hash{overflow-wrap:anywhere}

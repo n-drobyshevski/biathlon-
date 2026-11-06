@@ -172,3 +172,54 @@ def test_preview_of_missing_file(share, share_module, monkeypatch, tmp_path):
     monkeypatch.setattr(sys.modules["share_app"], "HANDOUT_DIR", str(tmp_path))
     page = share.get("/apercu/Basis%20SAP/Exports/SAP_USR02_export.csv")
     assert page.status_code == 200 and "pas encore disponible" in page.data.decode()
+
+
+# ---------------------------------------------------------------- wiki (Documentation Technique)
+WIKI_PAGES = {
+    "/wiki/mots-de-passe-sap": ["Mots de passe SAP legacy (table USR02)", "MD5( MOT_DE_PASSE_EN_MAJUSCULES )",
+                                "EXAMPLE", "8e3b72508e05135569ace4ed9b96d137", "UFLAG",
+                                "sont les suspects prioritaires"],
+    "/wiki/raccourcis-sap-gui": ["Raccourcis SAP GUI (.sap)", "Enregistrer le mot de passe",
+                                 "Base64", "pas du chiffrement"],
+    "/wiki/lire-du-code-abap": ["Lire du code ABAP (notions minimales)", "CONCATENATE", "lv_",
+                                "sans aucun séparateur"],
+}
+
+
+@pytest.mark.parametrize("path", ["/wiki", *WIKI_PAGES])
+def test_wiki_needs_login(share_anon, path):
+    r = share_anon.get(path)
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+
+
+def test_wiki_index_lists_three_articles(share):
+    r = share.get("/wiki")
+    assert r.status_code == 200
+    body = r.data.decode()
+    for path in WIKI_PAGES:
+        assert f'href="{path}"' in body
+
+
+@pytest.mark.parametrize("path,needles", WIKI_PAGES.items())
+def test_wiki_article_renders_french(share, path, needles):
+    r = share.get(path)
+    assert r.status_code == 200
+    body = r.data.decode()
+    for needle in needles:
+        assert needle in body, needle
+    assert "Documentation interne DécaFlop" in body and "usage audit uniquement" in body
+
+
+def test_wiki_example_hash_is_md5_of_uppercase():
+    import hashlib
+    assert hashlib.md5(b"EXAMPLE").hexdigest() == "8e3b72508e05135569ace4ed9b96d137"
+
+
+def test_wiki_tab_in_nav_on_every_page(share):
+    for path in ("/", "/documents", "/annuaire", "/aide", "/wiki"):
+        assert ">Documentation Technique</a>" in share.get(path).data.decode(), path
+
+
+def test_wiki_unknown_article_is_404(share):
+    assert share.get("/wiki/inconnu").status_code == 404
+    assert share.get("/wiki/..%2fapp").status_code == 404

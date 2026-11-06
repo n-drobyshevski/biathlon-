@@ -1,0 +1,39 @@
+{% extends "wiki/wiki_base.html" %}
+{% block content %}
+<h2>Principe</h2>
+<p>Dans la table <code>USR02</code> (données maîtres des utilisateurs), les anciens comptes conservent un
+condensat du mot de passe dans le champ <code>BCODE</code>. Pour ces comptes :</p>
+<pre class="block"><code>BCODE = MD5( MOT_DE_PASSE_EN_MAJUSCULES )</code></pre>
+<p><b>Le mot de passe est converti en majuscules <em>avant</em> le calcul du condensat.</b> Les anciens
+mots de passe SAP ne sont pas sensibles à la casse : <code>Example</code>, <code>example</code> et
+<code>EXAMPLE</code> donnent le même <code>BCODE</code>.</p>
+
+<h2>Exemple</h2>
+<table>
+  <thead><tr><th>Étape</th><th>Valeur</th></tr></thead>
+  <tbody>
+    <tr><td>Mot de passe saisi</td><td><code>example</code></td></tr>
+    <tr><td>Mise en majuscules</td><td><code>EXAMPLE</code></td></tr>
+    <tr><td>MD5 de <code>EXAMPLE</code></td><td class="hash"><code>8e3b72508e05135569ace4ed9b96d137</code></td></tr>
+  </tbody>
+</table>
+<p>Attention : le MD5 de <code>example</code> en minuscules est une autre valeur
+(<code>1a79a4d60de6718e8e5b326e338ae533</code>). Un essai de rapprochement fait sur la mauvaise casse
+ne donnera jamais de correspondance.</p>
+
+<h2>Champs utiles pour l'audit</h2>
+<table>
+  <thead><tr><th>Champ</th><th>Contenu</th></tr></thead>
+  <tbody>
+    <tr><td><code>BNAME</code></td><td>Nom de l'utilisateur (identifiant de connexion)</td></tr>
+    <tr><td><code>BCODE</code></td><td>Condensat MD5 du mot de passe (voir ci-dessus)</td></tr>
+    <tr><td><code>LDATE</code></td><td>Date de la dernière connexion</td></tr>
+    <tr><td><code>LTIME</code></td><td>Heure de la dernière connexion</td></tr>
+    <tr><td><code>USTYP</code></td><td>Type d'utilisateur : <code>A</code> = dialogue, <code>S</code> = système</td></tr>
+    <tr><td><code>UFLAG</code></td><td>Statut du compte : <code>0</code> = actif, <code>64</code> = verrouillé</td></tr>
+  </tbody>
+</table>
+
+<h2>Conduite à tenir</h2>
+<p>Les comptes dont LDATE/LTIME correspondent à la fenêtre du sabotage sont les suspects prioritaires.</p>
+{% endblock %}

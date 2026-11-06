@@ -30,7 +30,7 @@ import zipfile
 from html import escape as esc
 from urllib.parse import quote, urlencode
 
-from flask import Flask, Response, abort, redirect, request, send_from_directory, session
+from flask import Flask, Response, abort, redirect, render_template, request, send_from_directory, session
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
 import intranet  # noqa: E402
@@ -345,7 +345,7 @@ def display_user():
 
 
 TOPNAV = [("/", "Accueil"), ("/documents", "Documents"), ("/annuaire", "Annuaire"),
-          ("/activite", "Activité récente")]
+          ("/wiki", "Documentation Technique"), ("/activite", "Activité récente")]
 
 
 def quick_launch(current_section, current_path=()):
@@ -359,14 +359,16 @@ def quick_launch(current_section, current_path=()):
             f'<li>{a("/documents", "Documents", current_section == "docs" and not current_path)}'
             f'<ul>{depts}</ul></li>'
             f'<li>{a("/annuaire", "Annuaire", current_section == "dir")}</li>'
+            f'<li>{a("/wiki", "Documentation Technique", current_section == "wiki")}</li>'
             f'<li>{a("/activite", "Activité récente", current_section == "activity")}</li>'
             f'<li>{a("/aide", "Aide", current_section == "help")}</li>'
             '</ul>')
 
 
 def page(title, section, body, current_path=(), q=""):
-    suite_on = {"home": "news", "docs": "docs", "dir": "dir"}.get(section)
-    top_on = {"home": "/", "docs": "/documents", "dir": "/annuaire", "activity": "/activite"}.get(section)
+    suite_on = {"home": "news", "docs": "docs", "dir": "dir", "wiki": "wiki"}.get(section)
+    top_on = {"home": "/", "docs": "/documents", "dir": "/annuaire", "wiki": "/wiki",
+              "activity": "/activite"}.get(section)
     topnav = [(h, lbl, h == top_on) for h, lbl in TOPNAV]
     return intranet.page(
         title + " - " + SITE, body, app="intranet", site_title=SITE, site_href="/", logo="DF",
@@ -556,6 +558,41 @@ def help_page():
             '<p style="margin-top:10px"><a href="/annuaire">Voir l\'annuaire complet</a></p></section>'
             '</div></div>')
     return html(page("Aide", "help", body))
+
+
+# --------------------------------------------------------------------------
+# Documentation Technique (wiki): static French articles, rendered from
+# templates/wiki/ and wrapped in the Intranet chrome. No user input is echoed.
+# --------------------------------------------------------------------------
+WIKI_ARTICLES = [
+    {"slug": "mots-de-passe-sap", "template": "wiki/mots_de_passe_sap.html",
+     "title": "Mots de passe SAP legacy (table USR02)",
+     "summary": "Comment les anciens mots de passe sont stockés dans BCODE, et quels champs de la table "
+                "utiliser pour un audit."},
+    {"slug": "raccourcis-sap-gui", "template": "wiki/raccourcis_sap_gui.html",
+     "title": "Raccourcis SAP GUI (.sap)",
+     "summary": "Que contient un fichier .sap, et pourquoi le mot de passe qu'il enregistre n'est pas "
+                "chiffré."},
+    {"slug": "lire-du-code-abap", "template": "wiki/lire_du_code_abap.html",
+     "title": "Lire du code ABAP (notions minimales)",
+     "summary": "Variables, CONCATENATE et commentaires : le strict nécessaire pour relire un programme."},
+]
+WIKI_BY_SLUG = {a["slug"]: a for a in WIKI_ARTICLES}
+
+
+@app.get("/wiki")
+def wiki_index():
+    body = render_template("wiki/wiki_index.html", title="", articles=WIKI_ARTICLES)
+    return html(page("Documentation Technique", "wiki", body))
+
+
+@app.get("/wiki/<slug>")
+def wiki_article(slug):
+    art = WIKI_BY_SLUG.get(slug)
+    if art is None:
+        abort(404)
+    body = render_template(art["template"], title=art["title"])
+    return html(page(art["title"] + " - Documentation Technique", "wiki", body))
 
 
 # --------------------------------------------------------------------------

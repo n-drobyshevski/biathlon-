@@ -143,7 +143,8 @@ def suite(current, suite_on=None, user=None, logout=None):
     return ('<div class="suite"><a class="brand" href="' + esc(app_url("intranet", "/", current)) +
             '">DécaFlop <span>Intranet</span></a><nav class="suite-nav" aria-label="Intranet">' +
             link("/", "Actualités", "news") + link("/documents", "Partage", "docs") +
-            link("/annuaire", "Annuaire", "dir") + _apps_menu(current) + '</nav>' + me +
+            link("/annuaire", "Annuaire", "dir") +
+            link("/wiki", "Documentation Technique", "wiki") + _apps_menu(current) + '</nav>' + me +
             f'<a class="ic" href="{esc(app_url("intranet", "/aide", current))}" title="Aide">?</a></div>')
 
 
