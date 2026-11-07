@@ -252,3 +252,24 @@ def test_08_is_registered_for_ctfd(monkeypatch):
     assert online["connection_info"] == "https://share.ctf.example.com"      # online mode needs CONNECT_SUB["08"]
     env = mod.read_env(str(ROOT / ".env.example"))
     assert [k for k in env if k.startswith("FLAG_08_")] == ["FLAG_08_PHANTOM"]
+
+
+# ---------------------------------------------------------------- CTFd hints for stuck points
+def test_stuck_point_hints_and_costs():
+    spec = importlib.util.spec_from_file_location("ctfd_hints", ROOT / "scripts" / "ctfd-setup.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    def hints(num):
+        path = next((ROOT / "challenges").glob(f"{num}-*/README.md"))
+        return [(h["cost"], h["content"]) for h in mod.parse_readme(str(path), "x")["hints"]]
+    h01 = hints("01")
+    assert [c for c, _ in h01] == [0, 10, 20, 50]                     # free nudge first, credentials last
+    assert "robots.txt" in h01[0][1] and "{{SHARE_USER}} / {{SHARE_PASSWORD}}" in h01[3][1]
+    assert (75, "Le hash BCODE utilise MD5(MOT_DE_PASSE_EN_MAJUSCULES). Utilisez la wordlist courte "
+                "/usr/share/wordlists/sap_default.txt dans le terminal. Ne lancez PAS rockyou.txt.") in hints("09")
+    assert any(c == 50 and "jwt_secrets.txt" in t and "-m 16500" in t for c, t in hints("10"))
+    assert any(c == 25 and "Ignorez lv_leurre" in t for c, t in hints("15"))
+    for num in ("01", "09", "10", "15"):                              # titles stay Indice 1..n in order
+        path = next((ROOT / "challenges").glob(f"{num}-*/README.md"))
+        assert [h["title"] for h in mod.parse_readme(str(path), "x")["hints"]] == \
+               [f"Indice {i}" for i in range(1, len(hints(num)) + 1)]

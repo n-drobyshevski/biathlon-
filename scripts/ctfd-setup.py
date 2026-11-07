@@ -149,6 +149,9 @@ def main():
     ap.add_argument("--ids-file", default=os.path.join(ROOT, "handouts", "dist", "ctfd_ids.json"),
                     help="where to write the challenge ids for the hub's deep links")
     ap.add_argument("--dry-run", action="store_true", help="parse and print, change nothing")
+    ap.add_argument("--unlock-gate", action="store_true",
+                    help="make challenge 01's credentials hint free (cost 0), then exit; run it ~45 min "
+                         "into the event if teams are stuck at the soft gate")
     args = ap.parse_args()
 
     env = read_env(args.env)
@@ -159,6 +162,14 @@ def main():
     challenges = [parse_readme(os.path.join(ROOT, "challenges", d, "README.md"), host, domain or None)
                   for d in sorted(os.listdir(os.path.join(ROOT, "challenges")))
                   if os.path.exists(os.path.join(ROOT, "challenges", d, "README.md"))]
+
+    # Hints quoting the share login follow .env, so a rotated password never leaves a wrong hint.
+    creds = {"{{SHARE_USER}}": env.get("SHARE_USER") or "equipe-it",
+             "{{SHARE_PASSWORD}}": env.get("SHARE_PASSWORD") or "transition2026"}
+    for ch in challenges:
+        for h in ch["hints"]:
+            for k, v in creds.items():
+                h["content"] = h["content"].replace(k, v)
 
     for ch in challenges:                          # flag for mission NN = FLAG_NN_* in .env
         keys = [k for k in env if k.startswith(f"FLAG_{ch['num']}_")]
@@ -185,6 +196,25 @@ def main():
         print("Note: no --host given; descriptions will say <CTF-HOST> and skip download links.")
 
     api = CTFd(env.get("CTFD_URL") or os.environ.get("CTFD_URL") or "http://localhost:8000", token)
+
+    # Soft-gate safety net. CTFd 3.8 has no time-based hint unlock (a hint's only
+    # 'requirements' are other hints), so the "after 45 minutes" rule is applied by
+    # the organiser: this zeroes the cost of challenge 01's credentials hint. Teams
+    # still click to reveal it, but it no longer costs points. Same effect by hand:
+    # CTFd admin > Challenges > 01 > Hints > edit the 'post-it' hint > Cost 0.
+    if args.unlock_gate:
+        gate = next(c for c in challenges if c["num"] == "01")
+        cid = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}.get(gate["name"])
+        if cid is None:
+            raise SystemExit("Challenge 01 is not in CTFd yet: run this script once without --unlock-gate.")
+        hints = [api.call("GET", f"/hints/{h['id']}") for h in api.call("GET", f"/challenges/{cid}/hints")]
+        target = [h for h in hints if "post-it" in (h.get("content") or "")]
+        if not target:
+            raise SystemExit("No 'post-it' hint on challenge 01: re-run this script without --unlock-gate first.")
+        for h in target:
+            api.call("PATCH", f"/hints/{h['id']}", {"cost": 0})
+        print(f"Soft gate opened: challenge 01 hint {target[0]['id']} is now free (cost 0).")
+        return
     existing = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}
     ids = {}
 

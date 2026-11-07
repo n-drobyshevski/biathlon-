@@ -15,4 +15,5 @@ the report) gives reading tips. Ignore anything named `lv_leurre`.
 **Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−15)</summary>Grepping for the flag won't work — it isn't a single string literal. Read how <code>lv_jeton_final</code> is built.</details>
-<details><summary>Hint 2 (−30)</summary>The token is assembled with <code>CONCATENATE</code> from three variables, in the order <code>lv_partie1</code> + <code>lv_partie2</code> + <code>lv_partie3</code>. Ignore <code>lv_leurre</code>. Join their values in that order.</details>
+<details><summary>Hint 2 (−25)</summary>Cherchez l'instruction CONCATENATE. L'ordre des variables dans CONCATENATE a b c INTO resultat est l'ordre du flag. Ignorez lv_leurre.</details>
+<details><summary>Hint 3 (−30)</summary>The token is assembled with <code>CONCATENATE</code> from three variables, in the order <code>lv_partie1</code> + <code>lv_partie2</code> + <code>lv_partie3</code>. Ignore <code>lv_leurre</code>. Join their values in that order.</details>
