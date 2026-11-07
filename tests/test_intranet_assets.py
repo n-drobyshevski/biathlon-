@@ -289,6 +289,37 @@ def test_15_abap_handout_is_short_split_and_never_whole(dist, share):
         assert share.get(f"/telecharger/Basis%20SAP/D%C3%A9veloppements/{name}").status_code == 200
 
 
+def test_08_phantom_pcap_is_cleartext_and_names_the_rogue(dist):
+    """phantom_signal.pcap: rogue device, HTTP POST, flag only in the 200 OK."""
+    import datetime
+    import struct
+    flag = b"TRIATHLON{phantom_pcap_test}"                  # FLAG_08_PHANTOM in conftest
+    raw = (dist / "phantom_signal.pcap").read_bytes()
+    assert struct.unpack("!IHHiIII", raw[:24])[0] == 0xa1b2c3d4 and struct.unpack("!I", raw[20:24])[0] == 1
+    frames, off = [], 24
+    while off < len(raw):
+        sec, usec, n, _ = struct.unpack("!IIII", raw[off:off + 16])
+        frames.append((sec + usec / 1e6, raw[off + 16:off + 16 + n]))
+        off += 16 + n
+    assert len(frames) >= 50
+    lo = datetime.datetime(2026, 11, 1, 18, 40, tzinfo=datetime.timezone.utc).timestamp()
+    assert all(lo <= t <= lo + 120 for t, _ in frames)             # the 18:40-18:42 window, in 2026
+    assert [t for t, _ in frames] == sorted(t for t, _ in frames)
+    assert flag in raw                                              # solvable with `strings`
+    carrying = [f for _, f in frames if flag in f]
+    assert len(carrying) == 1 and b"HTTP/1.1 200 OK" in carrying[0]
+    post = [f for _, f in frames if b"POST /sap/gw/register HTTP/1.1" in f]
+    assert len(post) == 1 and flag not in post[0]
+    assert b"User-Agent: SAP-RFC-Exploit" in post[0] and b"program=Z_EXPLOIT_RFC&host=10.10.0.42" in post[0]
+    assert b"Host: dfl-sap.decaflop.local:8014" in post[0]
+    rogue_mac = bytes.fromhex("aabbccddee42")
+    assert post[0][6:12] == rogue_mac                               # sent from the rogue's MAC
+    arp = [(t, f) for t, f in frames if f[12:14] == b"\x08\x06" and f[22:28] == rogue_mac]
+    assert arp and arp[0][1][28:32] == bytes([10, 10, 0, 42])      # ARP announce for 10.10.0.42
+    assert arp[0][0] - lo < 15                                      # early in the capture
+    assert not any(f[6:12] == rogue_mac for t, f in frames if t < arp[0][0])
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape
