@@ -181,4 +181,4 @@ def test_ctfd_setup_still_parses_14():
          "--dry-run", "--env", str(ROOT / ".env.example")],
         capture_output=True, text=True, check=True, env=env).stdout
     challenge_lines = [ln for ln in out.splitlines() if ln[:2].isdigit()]
-    assert len(challenge_lines) == 15          # +08 Le Signal Fantôme
+    assert len(challenge_lines) == 16          # +08 Le Signal Fantôme, +16 Rapport d'Incident Final

@@ -204,11 +204,17 @@ MISSIONS = [
      "jeton d'export vers le portail. Ce jeton n'est « pas censé » figurer dans "
      "le code. La source est dans le partage interne (Basis SAP / Développements), "
      "avec une courte note de lecture : lisez-la et jugez.", "share", []),
+    ("16", "Rapport d'Incident Final", "Collaboratif", "Final", 300,
+     "Mission d'équipe, à ne pas jouer seul. La cellule de crise doit corréler toutes les preuves "
+     "et déposer le rapport de clôture : identité du saboteur, vecteur d'attaque, heure de "
+     "l'incident et équipement fantôme. Il faut les trouvailles des équipes Web, Forensics et SAP : "
+     "mettez-les en commun, puis rendez-vous dans la salle de crise.", "warroom", []),
 ]
 
 PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
          "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
-         "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
+         "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014),
+         "warroom": ("WARROOM_URL", 8099)}
 
 
 def service_url(key):
@@ -237,11 +243,12 @@ def live_where(key):
     return (urlsplit(override).netloc if override else "") or LIVE_LABEL[key][1]
 
 
-LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
+LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3", "Final": "lv4"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Intranet DécaFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
-              "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
+              "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014"),
+              "warroom": ("Salle de crise (War Room)", ":8099")}
 COLS = "ABCDEFGH"
 
 
@@ -289,7 +296,10 @@ def crisis_cell():
         status = (f'<select data-k="{num}" aria-label="Statut de la mission {num}">'
                   '<option>À faire</option><option>En cours</option><option>Résolu</option></select>'
                   + submit)
-        rows.append((f' class="mission" id="mission-{num}"', [
+        if level == "Final":      # the team capstone gets its own section and styling
+            rows.append(("", [("Synthèse finale : mission d'équipe, à jouer ensemble une fois les autres "
+                               "pistes réunies", ' colspan="8" class="sect"')]))
+        rows.append((f' class="mission{" finale" if level == "Final" else ""}" id="mission-{num}"', [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
             (access(live), ' class="acc"'), (status, "")]))
@@ -320,11 +330,12 @@ def context():
         ("Contexte", "La veille de la finale, quelqu'un s'est introduit dans les systèmes de l'événement "
                      "et a truqué la liste de départ en échangeant les puces de chronométrage. Vous êtes "
                      "l'équipe IT d'urgence : suivez la piste à travers le site DécaFlop, la cabine de "
-                     "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière "
-                     "mission désigne le coupable."),
+                     "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La mission 09 "
+                     "désigne le coupable ; la synthèse finale (16) boucle le dossier en équipe."),
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
-        ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
+        ("Ordre", "Conseillé dans l'ordre, chaque mission se joue seule, sauf la synthèse finale (16), "
+                  "qui se joue en équipe"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
                             f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
                             "se cache dans les ressources du site DécaFlop — commencez par la mission 01."),
@@ -491,6 +502,13 @@ GUIDE = {
             "La machine qui émet cette requête est l'intrus : notez son adresse MAC et son IP "
             "(elle apparaît aussi dans une annonce ARP au début de la capture).",
             "La réponse `200 OK` de la passerelle contient une clé d'enregistrement : c'est le flag."]),
+    "16": ("Un incident se clôt en recoupant les preuves de plusieurs équipes : aucune piste ne suffit seule.",
+           "La salle de crise (War Room), avec ce que les autres équipes ont trouvé.",
+           ["Réunissez les équipes Web, Forensics et SAP : chacune détient une pièce du rapport.",
+            "Identité et heure : audit SAP et photo d'équipe (missions 03, 09). Vecteur : passerelle SAP (missions 09, 14).",
+            "Équipement fantôme : adresse MAC ou IP relevée dans la capture réseau (mission 08).",
+            "Saisissez les quatre champs dans la salle de crise : le flag apparaît quand tout concorde. "
+            "Recopiez-le dans le tableau des scores."]),
     "09": ("Un ancien hachage de mot de passe peut se casser avec une liste de mots. Ici le champ BCODE vaut "
            "le MD5 du mot de passe mis en majuscules.",
            "Le partage interne, puis CyberChef (ou le terminal).",

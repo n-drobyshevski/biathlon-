@@ -52,6 +52,7 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 .grid td:nth-child(3) b{white-space:nowrap}
 .chip{display:inline-block;border-radius:10px;padding:0 8px;font-size:12px;white-space:nowrap}
 .chip.lv1{background:#e6f4ea;color:#137333}.chip.lv2{background:#fef3d6;color:#8a5a00}.chip.lv3{background:#fde2e0;color:#a50e0e}
+.chip.lv4{background:#202124;color:#fff}
 .grid select{font:inherit;font-size:12.5px;border:1px solid var(--bar);border-radius:4px;padding:2px 4px;background:#fff;color:var(--text)}
 .grid tr[data-statut="En cours"] td{background:#fffbea}
 .grid tr[data-statut="Résolu"] td{background:#f1f8f3;color:var(--mute)}
@@ -167,3 +168,9 @@ code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 @media (max-width:900px){
   .tiles{grid-template-columns:minmax(0,1fr);max-width:560px}
 }
+
+/* Final mission (16): a team capstone, set apart from the solo missions */
+.grid td.sect{background:#202124;color:#fff;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:12px;padding:6px 10px}
+.grid tr.finale td{border-top:2px solid #202124;background:#fff8e6}
+.grid tr.finale td b{color:#202124}
+.grid tr.finale:target td,.grid tr.finale:target td:nth-child(3){background:#e8f0fe}

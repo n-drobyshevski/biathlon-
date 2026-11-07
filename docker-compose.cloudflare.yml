@@ -81,6 +81,7 @@ services:
       SSTI_URL: "https://ssti.${CTF_DOMAIN}/"
       SAPGW_URL: "https://sapgw.${CTF_DOMAIN}/"
       SHARE_URL: "https://share.${CTF_DOMAIN}/"
+      WARROOM_URL: "https://warroom.${CTF_DOMAIN}/"
       SCOREBOARD_URL: "https://ctfd.${CTF_DOMAIN}/"
       CYBERCHEF_URL: "https://cyberchef.${CTF_DOMAIN}/"
       TERMINAL_URL: "https://terminal.${CTF_DOMAIN}/"

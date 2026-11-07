@@ -59,7 +59,10 @@ HOST_PORT_RE = re.compile(r"http://<CTF-HOST>:\d+")
 # (same names as the hub's *_URL values in docker-compose.cloudflare.yml).
 CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "idor",
                "05": "share", "07": "share", "08": "share", "09": "share", "13": "share", "15": "share",
-               "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw"}
+               "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw", "16": "warroom"}
+
+# Missions whose flag is not named FLAG_<NN>_*: the finale's is FLAG_FINALE (the War Room's variable).
+FLAG_ALIAS = {"16": "FLAG_FINALE"}
 
 
 def read_env(path):
@@ -159,6 +162,8 @@ def main():
 
     for ch in challenges:                          # flag for mission NN = FLAG_NN_* in .env
         keys = [k for k in env if k.startswith(f"FLAG_{ch['num']}_")]
+        if not keys and FLAG_ALIAS.get(ch["num"]) in env:
+            keys = [FLAG_ALIAS[ch["num"]]]
         ch["flag"] = env[keys[0]] if len(keys) == 1 else None
 
     if args.dry_run:

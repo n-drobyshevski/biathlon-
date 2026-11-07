@@ -57,8 +57,9 @@ are independent of the main trail.
 | 13 | Saved for Convenience | **SAP** | Easy | 75 | handout |
 | 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
 | 15 | Hardcoded | **SAP** | Medium | 150 | handout |
+| 16 | Rapport d'Incident Final | **Synthèse** (team) | Final | 300 | live (`:8099`, War Room) |
 
-**15 challenges** · 4 easy · 7 medium · 4 hard. Total **1875 pts**.
+**16 challenges** · 4 easy · 7 medium · 4 hard · 1 final (team). Total **2175 pts**.
 Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed

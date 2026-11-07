@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 DOMAIN = "ctf.example.com"
 SUB = {"01": "site", "02": "site", "03": "site", "04": "idor", "05": "share", "06": "sqli",
        "07": "share", "08": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
-       "14": "sapgw", "15": "share"}
+       "14": "sapgw", "15": "share", "16": "warroom"}
 # online: these each get their own internal network (shared with cloudflared
 # only); everything else (challenges, share, toolbox) sits on `internal`
 ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef", "warroom": "warroom"}
