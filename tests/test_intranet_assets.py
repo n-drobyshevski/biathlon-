@@ -251,6 +251,24 @@ def test_14_se16n_matches_usr02_csv_handout(monkeypatch, dist):
     assert "Table non autorisée pour cet audit." in bad and "sap-table" not in bad
 
 
+def test_14_sm37_job_overview_and_log(monkeypatch):
+    from html import unescape
+    c = _client("14", monkeypatch, FLAG_14="TRIATHLON{sm37_x}")
+    assert c.get("/sap/sm37").status_code == 302 and c.get("/sap/sm37/log?job=X").status_code == 302
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    page = c.get("/sap/sm37").data.decode()
+    assert page.count("sap-row-highlight") == 1 and page.count('href="/sap/sm37/log?job=ZDFLOP_RESULT_EXPORT"') == 1
+    assert page.index("18:42:00") < page.index("02:00:00")            # most recent first
+    log = c.get("/sap/sm37/log?job=ZDFLOP_RESULT_EXPORT")
+    text = unescape(log.data.decode())
+    assert log.status_code == 200 and "47 enregistrements sélectionnés" in text and "mission 15" in text
+    assert "TRIATHLON{" not in page and "TRIATHLON{" not in text      # no flag on either screen
+    for job in ("ZDFLOP_NIGHTLY_SYNC", "<b>x</b>", ""):
+        r = c.get("/sap/sm37/log", query_string={"job": job})
+        assert r.status_code == 404 and "Journal introuvable." in r.data.decode()
+        assert "<b>x</b>" not in r.data.decode()
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape

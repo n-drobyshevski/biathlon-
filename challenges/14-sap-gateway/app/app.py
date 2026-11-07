@@ -191,9 +191,50 @@ def sap_se16n():
     return sap_render("se16n.html", rows=rows)
 
 
+# --------------------------------------------------------------------------
+# SM37 job overview. Narrative data only, no flag: the manual run of the export
+# report at 18:42 the day before the final points players at the ABAP source
+# (mission 15). Most recent first; the first row is the suspicious one.
+# --------------------------------------------------------------------------
+JOBS = [
+    {"name": "ZDFLOP_RESULT_EXPORT", "status": "Terminé", "user": "VLINDQVIST",
+     "date": "2026-11-01", "time": "18:42:00", "duration": "00:00:04", "hot": True},
+    {"name": "ZDFLOP_NIGHTLY_SYNC", "status": "Terminé", "user": "BATCHUSER",
+     "date": "2026-11-01", "time": "02:00:00", "duration": "00:03:11", "hot": False},
+    {"name": "ZDFLOP_CHIP_INVENTORY", "status": "Terminé", "user": "VLINDQVIST",
+     "date": "2026-10-30", "time": "16:20:45", "duration": "00:00:02", "hot": False},
+    {"name": "ZDFLOP_RESULT_EXPORT", "status": "Terminé", "user": "BATCHUSER",
+     "date": "2026-10-29", "time": "02:00:00", "duration": "00:00:03", "hot": False},
+]
+
+# Only the suspicious run has a readable log.
+JOB_LOGS = {
+    "ZDFLOP_RESULT_EXPORT": (
+        "Job ZDFLOP_RESULT_EXPORT démarré (utilisateur VLINDQVIST, 2026-11-01 18:42:00)\n"
+        "Étape 1 : lecture de la table ZRACE_RESULT\n"
+        "Étape 2 : 47 enregistrements sélectionnés\n"
+        "Avertissement : les contrôles d'autorisation sont désactivés dans ce rapport "
+        "(voir le code source)\n"
+        "Étape 3 : export terminé — 47 enregistrements écrits\n"
+        "Job ZDFLOP_RESULT_EXPORT terminé (00:00:04)"),
+}
+
+
 @app.get("/sap/sm37")
 def sap_sm37():
-    return sap_render("sap_sm37.html")
+    return sap_render("sm37.html", jobs=JOBS, log_job=JOBS[0]["name"])
+
+
+@app.get("/sap/sm37/log")
+def sap_sm37_log():
+    # The job name is only used as a lookup key and is never echoed back.
+    job = request.args.get("job", "").strip().upper()
+    log = JOB_LOGS.get(job)
+    if log is None:
+        return sap_render("sap_message.html", status=404,
+                          status_class_val="sap-statusbar--error",
+                          status_msg_val="Journal introuvable.")
+    return sap_render("sm37_log.html", job=job, log=log, back_url="/sap/sm37")
 
 
 # --------------------------------------------------------------------------
