@@ -44,4 +44,4 @@ echo "  09 sap      -> Basis SAP / Exports / SAP_USR02_export.csv + sap_hint.txt
 echo "              -> IT / Outils / wordlist.txt"
 echo "              -> Direction de course / Dossier incident / case_file.zip"
 echo "  13 sap      -> IT / Sauvegardes postes / portable-equipe-03 / dflop_erp.sap"
-echo "  15 sap      -> Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap"
+echo "  15 sap      -> Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap + abap_lisezmoi.txt"

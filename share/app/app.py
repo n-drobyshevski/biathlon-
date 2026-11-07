@@ -212,6 +212,8 @@ FILES = [
        "Équipe IT d'urgence", "2026-10-30 11:20", "1.0", "Sauvegarde du bureau du portable 03"),
     ev(("Basis SAP", "Développements", "ZDFLOP_RESULT_EXPORT.abap"), "abap", "Source ABAP",
        "Basis SAP", "2026-10-28 16:48", "3.4", "Rapport d'export des résultats (RFC)"),
+    ev(("Basis SAP", "Développements", "abap_lisezmoi.txt"), "txt", "Document texte",
+       "Basis SAP", "2026-10-28 16:52", "1.0", "Note d'accompagnement du rapport"),
     # --- mundane decoys (generated text, no clues) ---
     # A Basis working note that casually names the SAP gateway monitor (:8014,
     # challenge 14) and the ABAP dev folder — service names only, no secrets.

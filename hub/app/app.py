@@ -517,8 +517,8 @@ GUIDE = {
     "15": ("Un secret écrit en dur dans le code peut être découpé en morceaux pour échapper à une simple recherche.",
            "Le partage interne.",
            ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`.",
-            "Repérez les variables `lv_a`, `lv_b` et `lv_c` (ignorez `lv_decoy`, un leurre).",
-            "Remettez les morceaux dans l'ordre a puis b puis c : vous obtenez le flag."]),
+            "Repérez les variables `lv_partie1`, `lv_partie2` et `lv_partie3` (ignorez `lv_leurre`, un leurre).",
+            "Remettez les morceaux dans l'ordre du `CONCATENATE` : partie1, partie2, partie3. Vous obtenez le flag."]),
 }
 
 

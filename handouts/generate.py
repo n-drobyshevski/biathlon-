@@ -13,7 +13,7 @@ Challenges produced:
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
   13 sap     -> dflop_erp.sap           (SAP GUI shortcut with a saved password)
-  15 sap     -> ZDFLOP_RESULT_EXPORT.abap (hardcoded credential in ABAP source)
+  15 sap     -> ZDFLOP_RESULT_EXPORT.abap, abap_lisezmoi.txt (token split across variables)
 """
 import io, os, sys, zipfile, struct, socket, hashlib, base64, subprocess, tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
@@ -490,56 +490,65 @@ def gen_sap_shortcut():
 # ---------------------------------------------------------------------------
 def gen_sap_abap():
     f = flag("FLAG_15_SAP_ABAP", "TRIATHLON{abap_placeholder}")
-    # Split the flag into three pieces, assembled by CONCATENATE in the report
-    # in a non-obvious order, among decoy variables. grep for the whole flag
-    # won't find it; you have to read the logic.
+    # Split the flag into three roughly equal parts, joined by CONCATENATE in
+    # the report. The complete flag never appears as one literal, so grep for
+    # it finds nothing: the player has to read the assembly logic.
     n = len(f); a, b = n // 3, 2 * n // 3
-    p1, p2, p3 = f[:a], f[a:b], f[b:]
-    abap = f"""*&---------------------------------------------------------------------*
-*& Report ZDFLOP_RESULT_EXPORT
-*& Exporte la table ZRACE_RESULT vers le systeme de resultats via RFC.
-*& Auteur: equipe Basis DFlop   Mandant: 001
+    parts = (f[:a], f[a:b], f[b:])
+    assert all(parts) and "'" not in f, "flag cannot be split into ABAP string literals"
+    p1, p2, p3 = parts
+    decoy = "TRIATHLON{ceci_n_est_pas_le_flag}"      # clearly marked, never the real flag
+    abap = f"""REPORT zdflop_result_export.
+* Export nocturne des résultats vers le portail.
+* Lit la table ZRACE_RESULT (mandant 001) et prépare le jeton
+* d'accès utilisé pour transmettre les résultats au portail.
+* Auteur : équipe Basis DFlop.
+
+DATA: lv_partie1 TYPE string VALUE '{p1}'.
+DATA: lv_partie2 TYPE string VALUE '{p2}'.
+DATA: lv_partie3 TYPE string VALUE '{p3}'.
+
+* Leurre — ne pas utiliser
+DATA: lv_leurre TYPE string VALUE '{decoy}'.
+
+DATA: lv_jeton_final TYPE string,
+      lt_result      TYPE STANDARD TABLE OF zrace_result,
+      ls_result      TYPE zrace_result.
+
 *&---------------------------------------------------------------------*
-REPORT zdflop_result_export.
-
-CONSTANTS: gc_dest  TYPE rfcdest VALUE 'DFLOP_RESULT',
-           gc_user  TYPE string  VALUE 'RESULTS_SVC'.
-
-DATA: lv_token TYPE string,
-      lv_a     TYPE string,
-      lv_b     TYPE string,
-      lv_c     TYPE string,
-      lv_decoy TYPE string.
+* --- ATTENTION : assemblage du jeton d'export ---
+*&---------------------------------------------------------------------*
+CONCATENATE lv_partie1 lv_partie2 lv_partie3 INTO lv_jeton_final.
 
 START-OF-SELECTION.
-
-* Jeton d'export (ne pas committer, ne pas tracer). Assemble a l'execution.
-  lv_a = '{p1}'.
-  lv_decoy = 'TRIATHLON{{not_the_flag}}'.      " piege: valeur factice
-  lv_c = '{p3}'.
-  lv_b = '{p2}'.
-
-* Ordre d'assemblage: a + b + c
-  CONCATENATE lv_a lv_b lv_c INTO lv_token.
-
-  CALL FUNCTION 'Z_RESULT_PUSH'
-    DESTINATION gc_dest
-    EXPORTING
-      iv_user  = gc_user
-      iv_token = lv_token
-    EXCEPTIONS
-      system_failure        = 1
-      communication_failure = 2.
-
-  IF sy-subrc = 0.
-    WRITE: / 'Export ZRACE_RESULT: OK'.
-  ELSE.
-    WRITE: / 'Export ZRACE_RESULT: echec', sy-subrc.
+  SELECT * FROM zrace_result INTO TABLE lt_result WHERE mandt = sy-mandt.
+  IF sy-subrc <> 0.
+    WRITE: / 'Aucun résultat à exporter.'.
+    EXIT.
   ENDIF.
+  LOOP AT lt_result INTO ls_result.
+    WRITE: / ls_result-bib, ls_result-nom, ls_result-temps.
+  ENDLOOP.
+  WRITE: / 'Export terminé, longueur du jeton :', strlen( lv_jeton_final ).
 """
-    with open(os.path.join(OUT, "ZDFLOP_RESULT_EXPORT.abap"), "w") as fh:
-        fh.write(abap)
-    print("[15] ZDFLOP_RESULT_EXPORT.abap")
+    lisezmoi = (
+        "Lisez-moi : rapport ZDFLOP_RESULT_EXPORT\n"
+        "\n"
+        "- Le jeton n'est pas stocké en un seul morceau : aucune ligne ne le contient en entier.\n"
+        "- Cherchez l'instruction CONCATENATE : c'est elle qui assemble le jeton final.\n"
+        "- L'ordre des variables dans le CONCATENATE compte : recollez les valeurs dans cet ordre.\n"
+        "- Ignorez tout ce qui s'appelle \"leurre\" : c'est une fausse piste.\n"
+        "- Rappel : le wiki de l'intranet propose l'article \"Lire du code ABAP (notions minimales)\".\n"
+    )
+    # Hard guarantees, checked at generation time: the whole flag is nowhere in
+    # either file, the report stays short, and the decoy is not the flag.
+    assert f not in abap and f not in lisezmoi and decoy != f
+    assert abap.count("\n") <= 40, "ABAP handout must stay under 41 lines"
+    # UTF-8, LF line endings, whatever the host OS is
+    for name, text in (("ZDFLOP_RESULT_EXPORT.abap", abap), ("abap_lisezmoi.txt", lisezmoi)):
+        with open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+    print("[15] ZDFLOP_RESULT_EXPORT.abap, abap_lisezmoi.txt")
 
 
 if __name__ == "__main__":

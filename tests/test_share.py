@@ -71,7 +71,7 @@ def test_root_and_all_folders_browse(share, share_module):
 # ---------------------------------------------------------------- downloads
 def test_every_evidence_file_byte_identical(share, share_module, dist):
     evidence = [f for f in share_module.FILES if not f["decoy"]]
-    assert len(evidence) == 8
+    assert len(evidence) == 9      # +abap_lisezmoi.txt (challenge 15)
     for f in evidence:
         r = share.get(url_for_file(f))
         assert r.status_code == 200, f["path"]

@@ -269,6 +269,26 @@ def test_14_sm37_job_overview_and_log(monkeypatch):
         assert "<b>x</b>" not in r.data.decode()
 
 
+def test_15_abap_handout_is_short_split_and_never_whole(dist, share):
+    flag = "TRIATHLON{sap_abap_test}"                       # FLAG_15_SAP_ABAP in conftest
+    raw = (dist / "ZDFLOP_RESULT_EXPORT.abap").read_bytes()
+    text = raw.decode("utf-8")
+    assert b"\r" not in raw and text.count("\n") <= 40 and text.startswith("REPORT zdflop_result_export.")
+    assert flag not in text                                 # never one literal
+    parts = [re.search(rf"lv_partie{i} TYPE string VALUE '([^']*)'", text).group(1) for i in (1, 2, 3)]
+    assert "".join(parts) == flag and parts[2].endswith("}")
+    assert max(map(len, parts)) - min(map(len, parts)) <= 1  # roughly equal thirds
+    assert re.search(r"CONCATENATE lv_partie1 lv_partie2 lv_partie3 INTO lv_jeton_final", text)
+    leurre = [ln for ln in text.splitlines() if "lv_leurre" in ln]
+    assert leurre and flag not in leurre[0] and "* Leurre" in text
+    note = (dist / "abap_lisezmoi.txt").read_bytes()
+    assert b"\r" not in note and flag.encode() not in note
+    assert 6 <= note.decode("utf-8").count("\n") <= 8 and b"CONCATENATE" in note
+    # players can actually fetch both files from the share
+    for name in ("ZDFLOP_RESULT_EXPORT.abap", "abap_lisezmoi.txt"):
+        assert share.get(f"/telecharger/Basis%20SAP/D%C3%A9veloppements/{name}").status_code == 200
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape
