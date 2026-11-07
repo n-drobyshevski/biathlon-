@@ -34,6 +34,11 @@ COPY shell.sh /usr/local/bin/player-shell
 COPY grab.sh /usr/local/bin/grab
 RUN chmod +x /usr/local/bin/player-shell /usr/local/bin/grab
 
+# Curated wordlists for john / hashcat (challenges 09 and 10): short on purpose, so a
+# crack finishes in seconds on the Pi. World-readable; root-owned so players cannot edit them.
+COPY wordlists/sap_default.txt wordlists/jwt_secrets.txt /usr/share/wordlists/
+RUN chmod 644 /usr/share/wordlists/sap_default.txt /usr/share/wordlists/jwt_secrets.txt
+
 USER player
 WORKDIR /work
 EXPOSE 7681
