@@ -1,12 +1,16 @@
 # 15 · Hardcoded — `SAP` · Medium · 150 pts
 
 > The last audit finding: a custom ABAP report, `ZDFLOP_RESULT_EXPORT`, that
-> pushes the results over RFC. Its export token is "not committed" — except it's
-> right there in the source, just not spelled out in one place.
+> reads the race results and prepares the export token for the portal. The token
+> is "not committed" — except it's right there in the source, just not spelled
+> out in one place.
 
 **Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `Basis SAP / Développements` (`ZDFLOP_RESULT_EXPORT.abap`, with a short `abap_lisezmoi.txt` next to it). Credentials: recover them via challenge 01 (hidden on the DécaFlop site).
 
-Download the report, read it, and recover the export token.
+Download the report, read it, and recover the export token. The report is short
+and meant to be read by a beginner: the intranet's **Documentation Technique**
+has a "Lire du code ABAP" article, and `abap_lisezmoi.txt` (in French, next to
+the report) gives reading tips. Ignore anything named `lv_leurre`.
 
 **Flag format:** `TRIATHLON{...}`
 

@@ -195,10 +195,10 @@ MISSIONS = [
      "l'événement, et personne n'a verrouillé qui peut s'y connecter. Voyez "
      "jusqu'où va cette exposition.", "sapgw", []),
     ("15", "En dur", "SAP", "Moyen", 150,
-     "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
-     "Son jeton d'export n'est « pas censé » figurer dans le code. La source "
-     "est dans le partage interne (Basis SAP / Développements) : lisez-la et "
-     "jugez.", "share", []),
+     "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, lit les résultats et prépare le "
+     "jeton d'export vers le portail. Ce jeton n'est « pas censé » figurer dans "
+     "le code. La source est dans le partage interne (Basis SAP / Développements), "
+     "avec une courte note de lecture : lisez-la et jugez.", "share", []),
 ]
 
 PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
@@ -515,10 +515,13 @@ GUIDE = {
             "Sur la page d'accueil, utilisez le formulaire pour enregistrer un programme (TP) avec un nom quelconque.",
             "La réponse affiche une Clé d'enregistrement : c'est le flag."]),
     "15": ("Un secret écrit en dur dans le code peut être découpé en morceaux pour échapper à une simple recherche.",
-           "Le partage interne.",
-           ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`.",
-            "Repérez les variables `lv_partie1`, `lv_partie2` et `lv_partie3` (ignorez `lv_leurre`, un leurre).",
-            "Remettez les morceaux dans l'ordre du `CONCATENATE` : partie1, partie2, partie3. Vous obtenez le flag."]),
+           "Le partage interne, et sa Documentation Technique si le code ABAP vous est inconnu.",
+           ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`. "
+            "La note `abap_lisezmoi.txt`, à côté, donne des conseils de lecture.",
+            "Repérez l'instruction `CONCATENATE` : elle assemble `lv_partie1`, `lv_partie2` et `lv_partie3` "
+            "dans `lv_jeton_final` (ignorez `lv_leurre`, un leurre).",
+            "Recollez les valeurs des trois variables dans l'ordre du `CONCATENATE` : vous obtenez le flag. "
+            "L'article « Lire du code ABAP » de la Documentation Technique explique ces instructions."]),
 }
 
 
