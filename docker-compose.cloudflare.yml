@@ -60,7 +60,7 @@ services:
     command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
     environment:
       TUNNEL_TOKEN: "${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env (see CLOUDFLARE.md)}"
-    networks: [internal, scoreboard, front, chef, edge]
+    networks: [internal, scoreboard, front, chef, warroom, edge]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     read_only: true
@@ -134,6 +134,18 @@ services:
     <<: *locked-app
     ports: !override ["127.0.0.1:8014:5000"]
 
+  # Finale: holds the Grandmaster Flag, so like CTFd it sits on its OWN network
+  # where only the tunnel can reach it (a popped challenge cannot even resolve
+  # it, nor guess the report from inside). cloudflared is the only client, so
+  # every player arrives from its address: trust its X-Forwarded-For for the
+  # per-IP rate limit (never set WARROOM_TRUST_PROXY without such a proxy).
+  warroom:
+    <<: *locked-app
+    networks: [warroom]
+    environment:
+      WARROOM_TRUST_PROXY: "1"
+    ports: !override ["127.0.0.1:8099:8099"]
+
   # CTFd image already runs as its own non-root user. REVERSE_PROXY makes it
   # trust cloudflared's X-Forwarded-Proto/Host, so it builds its own public
   # https://ctfd.<domain> URLs (CTFd has no separate "site URL" setting).
@@ -191,6 +203,8 @@ networks:
     internal: true        # hub + cloudflared only
   chef:
     internal: true        # CyberChef + cloudflared only
+  warroom:
+    internal: true        # War Room + cloudflared only
   edge:                   # normal bridge, used by cloudflared only
     driver_opts:          # fixed interface name for scripts/cloudflare-egress.sh
       com.docker.network.bridge.name: ctf-edge

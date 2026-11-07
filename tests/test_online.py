@@ -22,8 +22,8 @@ SUB = {"01": "site", "02": "site", "03": "site", "04": "idor", "05": "share", "0
        "14": "sapgw", "15": "share"}
 # online: these each get their own internal network (shared with cloudflared
 # only); everything else (challenges, share, toolbox) sits on `internal`
-ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef"}
-SERVICES = ["hub", "staff", "share", "idor", "sqli", "jwt", "gitleak", "ssti", "sapgw",
+ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef", "warroom": "warroom"}
+SERVICES = ["hub", "staff", "share", "idor", "sqli", "jwt", "gitleak", "ssti", "sapgw", "warroom",
             "ctfd", "cyberchef", "toolbox"]
 
 

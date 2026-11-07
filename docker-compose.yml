@@ -131,6 +131,23 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
+  # ---- Finale · War Room (final incident report) ------------------------
+  # http://<PiIP>:8099 — players pool the findings of every track into one
+  # report; only a fully correct one reveals the Grandmaster Flag.
+  # It gets ONLY its own flag and the rogue-device answer from .env (never the
+  # whole file: no other mission's flag may sit in this container). It listens
+  # on 8099 itself (gunicorn, one worker: the rate-limit counters are in memory).
+  # An unset ROGUE_* is passed as "" and the app then uses its built-in default.
+  warroom:
+    build: ./warroom
+    environment:
+      FLAG_FINALE: "${FLAG_FINALE}"
+      ROGUE_MAC: "${ROGUE_MAC:-}"
+      ROGUE_IP: "${ROGUE_IP:-}"
+    ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8099:8099"]
+    mem_limit: 64m
+    restart: unless-stopped
+
   # ---- Scoreboard: CTFd (teams, flags, hints, scores) --------------------
   # http://<PiIP>:8000 — finish the setup wizard once, then load the
   # challenges with: python3 scripts/ctfd-setup.py --host <PiIP>

@@ -425,8 +425,8 @@ PHANTOM_ZIP_PASSWORD = "infected"      # the usual malware-sample convention
 # these as the "equipement fantome" answer and reads the SAME env var names with
 # the SAME defaults; tests/test_warroom.py fails if the two ever diverge. If you
 # override them, set them in .env so the handouts and the War Room both see them.
-ROGUE_MAC = flag("ROGUE_MAC", "aa:bb:cc:dd:ee:42")
-ROGUE_IP = flag("ROGUE_IP", "10.10.0.42")
+ROGUE_MAC = flag("ROGUE_MAC", "") or "aa:bb:cc:dd:ee:42"      # empty counts as unset
+ROGUE_IP = flag("ROGUE_IP", "") or "10.10.0.42"
 
 def gen_phantom():
     import random, datetime

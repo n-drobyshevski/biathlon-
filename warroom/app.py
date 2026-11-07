@@ -55,8 +55,10 @@ VECTOR_ANSWERS = _env_list("WARROOM_VECTOR", ["SAP Gateway", "Passerelle SAP", "
 INCIDENT_DATE = os.environ.get("WARROOM_INCIDENT_DATE", "2026-11-01")
 INCIDENT_TIME = os.environ.get("WARROOM_INCIDENT_TIME", "18:42")
 # d) the phantom device (challenge 08): same names and defaults as handouts/generate.py
-ROGUE_MAC = os.environ.get("ROGUE_MAC", "aa:bb:cc:dd:ee:42")
-ROGUE_IP = os.environ.get("ROGUE_IP", "10.10.0.42")
+# `or`: compose passes an unset variable as "", which must mean "use the default"
+# (an empty ROGUE_IP would otherwise accept an empty answer).
+ROGUE_MAC = os.environ.get("ROGUE_MAC") or "aa:bb:cc:dd:ee:42"
+ROGUE_IP = os.environ.get("ROGUE_IP") or "10.10.0.42"
 
 
 def _norm(text):
