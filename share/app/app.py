@@ -72,11 +72,12 @@ def fr_dt(when, sep=" "):
 # type, author, when ('YYYY-MM-DD HH:MM'), version, description, and either a
 # handout 'source' (served from HANDOUT_DIR) or decoy 'text' (generated).
 # --------------------------------------------------------------------------
-DEPT_ORDER = ["Direction de course", "Chronométrage", "Arbitrage", "Basis SAP", "IT",
+DEPT_ORDER = ["Direction de course", "Chronométrage", "Réseau", "Arbitrage", "Basis SAP", "IT",
               "Logistique", "Communication"]
 DEPT_DESC = {
     "Direction de course": "Organisation de la finale, réunions, dossier incident",
     "Chronométrage": "Captures et documents de la cabine de chronométrage",
+    "Réseau": "Captures et relevés réseau pris sur le terrain",
     "Arbitrage": "Jury, consignes et pièces remises par les arbitres",
     "Basis SAP": "Administration du système SAP DFlop ERP (DFL)",
     "IT": "Outils, procédures et sauvegardes de l'équipe IT",
@@ -198,6 +199,11 @@ _BADGES = ("Commande de badges - finale 2026\n"
 FILES = [
     ev(("Chronométrage", "Captures", "timing_booth.pcap"), "pcap", "Capture réseau (PCAP)",
        "Équipe IT d'urgence", "2026-11-01 22:14", "1.0", "Capture du Wi-Fi staff, cabine de chronométrage"),
+    ev(("Réseau", "Captures terrain", "phantom_signal.zip"), "zip", "Archive ZIP (chiffrée)",
+       "Équipe IT d'urgence", "2026-11-01 23:40", "1.0",
+       "Capture du segment de la cabine de chronométrage, nuit du 1er novembre. "
+       "Un équipement inconnu s'est connecté au réseau. Identifiez-le. "
+       "Archive protégée, mot de passe : infected."),
     ev(("Arbitrage", "Pièces", "referee_usb.img"), "img", "Image disque brute",
        "Arbitrage", "2026-11-01 20:03", "1.0", "Image de la clé USB retrouvée en cabine"),
     ev(("Basis SAP", "Exports", "SAP_USR02_export.csv"), "csv", "Feuille CSV",

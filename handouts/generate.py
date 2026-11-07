@@ -10,7 +10,8 @@ Challenges produced:
   03 exif    -> transition_shot.jpg     (flag + GPS + timestamp in EXIF)
   05 pcap    -> timing_booth.pcap       (HTTP Basic-Auth creds = flag)
   07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
-  08 pcap    -> phantom_signal.pcap     (rogue device POSTs to the SAP gateway over HTTP)
+  08 pcap    -> phantom_signal.pcap + phantom_signal.zip (password 'infected'; rogue device
+               POSTs to the SAP gateway over cleartext HTTP)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
   13 sap     -> dflop_erp.sap           (SAP GUI shortcut with a saved password)
@@ -418,6 +419,8 @@ def _dns_answer(txid, name, ip):
     return (struct.pack("!HHHHHH", txid, 0x8180, 1, 1, 0, 0) + _dns_name(name) + struct.pack("!HH", 1, 1)
             + struct.pack("!HHHIH", 0xc00c, 1, 1, 300, 4) + socket.inet_aton(ip))
 
+PHANTOM_ZIP_PASSWORD = "infected"      # the usual malware-sample convention
+
 def gen_phantom():
     import random, datetime
     f = os.environ.get("FLAG_08_PHANTOM") or flag("FLAG_08", "TRIATHLON{phantom_placeholder}")
@@ -504,12 +507,23 @@ def gen_phantom():
     from_sap(t + 0.2651, s_isn + 2 + len(resp), c_isn + 2 + len(req), 0x10)  # ACK
 
     pkts.sort(key=lambda x: x[0])
-    with open(os.path.join(OUT, "phantom_signal.pcap"), "wb") as fh:
+    pcap_path = os.path.join(OUT, "phantom_signal.pcap")
+    with open(pcap_path, "wb") as fh:
         fh.write(struct.pack("!IHHiIII", 0xa1b2c3d4, 2, 4, 0, 0, 65535, 1))   # same header as 05
         for t, pkt in pkts:
             ts = t0 + t
             fh.write(struct.pack("!IIII", int(ts), int((ts % 1) * 1_000_000), len(pkt), len(pkt)) + pkt)
-    print("[08] phantom_signal.pcap")
+    # EDR-safe packaging: corporate EDR tends to quarantine a bare capture holding
+    # an exploit user-agent, so players get it as a ZIP with the usual sample
+    # password. This is only a wrapper (the password is printed next to the file
+    # on the share); it is not part of the puzzle. The raw pcap stays in OUT for
+    # organisers and tests but is not on the share's file map.
+    out_zip = os.path.join(OUT, "phantom_signal.zip")
+    if os.path.exists(out_zip):
+        os.remove(out_zip)
+    subprocess.run(["zip", "-j", "-P", PHANTOM_ZIP_PASSWORD, out_zip, pcap_path],
+                   check=True, stdout=subprocess.DEVNULL)
+    print("[08] phantom_signal.pcap, phantom_signal.zip (password:", PHANTOM_ZIP_PASSWORD + ")")
 
 # ---------------------------------------------------------------------------
 # 09 · SAP USR02 (HARD, finale) — identify + crack the saboteur's legacy hash

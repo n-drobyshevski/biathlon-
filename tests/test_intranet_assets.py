@@ -320,6 +320,16 @@ def test_08_phantom_pcap_is_cleartext_and_names_the_rogue(dist):
     assert not any(f[6:12] == rogue_mac for t, f in frames if t < arp[0][0])
 
 
+def test_08_capture_ships_in_a_password_zip(dist):
+    import zipfile
+    zf = zipfile.ZipFile(dist / "phantom_signal.zip")
+    assert zf.namelist() == ["phantom_signal.pcap"]
+    with pytest.raises(RuntimeError):
+        zf.read("phantom_signal.pcap")                                  # needs the password
+    assert zf.read("phantom_signal.pcap", pwd=b"infected") == (dist / "phantom_signal.pcap").read_bytes()
+    assert b"TRIATHLON{phantom_pcap_test}" not in (dist / "phantom_signal.zip").read_bytes()  # encrypted
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape

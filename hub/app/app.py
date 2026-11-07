@@ -167,6 +167,11 @@ MISSIONS = [
      "Supprimer un fichier n'efface pas ses octets. Notre image de la clé est dans "
      "le partage interne (Arbitrage / Pièces) : récupérez ce qui a été effacé.",
      "share", []),
+    ("08", "Le Signal Fantôme", "Forensics", "Moyen", 125,
+     "La veille de la course, un équipement inconnu est apparu sur le segment réseau "
+     "de la cabine de chronométrage. Retrouvez son adresse MAC et son IP : elles "
+     "serviront au rapport d'incident final. La capture du réseau est dans le "
+     "partage interne (Réseau / Captures terrain).", "share", []),
     ("09", "Qui a truqué la course ?", "SAP", "Difficile", 250,
      "La table des résultats ZRACE_RESULT a été modifiée la veille de la finale. "
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
@@ -478,6 +483,14 @@ GUIDE = {
            ["Dans le partage, dossier Arbitrage puis Pièces, téléchargez `referee_usb.img` dans un dossier vide.",
             "Dans CyberChef, appliquez `Extract Files` : l'image PNG cachée est détectée et extraite.",
             "Ouvrez l'image PNG extraite : le flag y est écrit."]),
+    "08": ("Un équipement qui n'a rien à faire sur un réseau se repère à son adresse MAC et à son trafic en clair.",
+           "Le partage interne, puis le terminal de l'équipe (`unzip`, `tshark`) ou CyberChef.",
+           ["Dans le partage, dossier Réseau puis Captures terrain, téléchargez `phantom_signal.zip` "
+            "et décompressez-la avec le mot de passe indiqué dans la description du fichier.",
+            "Dans la capture, filtrez le trafic HTTP et repérez la requête `POST` vers `/sap/gw/register`.",
+            "La machine qui émet cette requête est l'intrus : notez son adresse MAC et son IP "
+            "(elle apparaît aussi dans une annonce ARP au début de la capture).",
+            "La réponse `200 OK` de la passerelle contient une clé d'enregistrement : c'est le flag."]),
     "09": ("Un ancien hachage de mot de passe peut se casser avec une liste de mots. Ici le champ BCODE vaut "
            "le MD5 du mot de passe mis en majuscules.",
            "Le partage interne, puis CyberChef (ou le terminal).",

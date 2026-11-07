@@ -39,6 +39,7 @@ echo "  03 exif     -> transition_shot.jpg   (actualités:    /actualites)"
 echo
 echo "On the internal share 'Intranet DécaFlop' ('share' container, :8020):"
 echo "  05 pcap     -> Chronométrage / Captures / timing_booth.pcap"
+echo "  08 pcap     -> Réseau / Captures terrain / phantom_signal.zip (password: infected)"
 echo "  07 usb      -> Arbitrage / Pièces / referee_usb.img"
 echo "  09 sap      -> Basis SAP / Exports / SAP_USR02_export.csv + sap_hint.txt"
 echo "              -> IT / Outils / wordlist.txt"

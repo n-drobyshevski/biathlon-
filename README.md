@@ -42,6 +42,7 @@ enough for 6 people to split up and work in parallel.
 | 05 | The Timing Booth | Forensics (pcap) | Medium | 100 | handout |
 | 06 | Results Admin | Web (SQLi) | Medium | 125 | live (`:8006`) |
 | 07 | The Referee's USB | Forensics (carving) | Medium | 125 | handout |
+| 08 | Le Signal Fantôme | Forensics (network) | Medium | 125 | handout |
 | 09 | Who Rigged the Race? 🏁 | **SAP** | **Hard** | 250 | handout (finale) |
 
 The finale (09) closes the sabotage story. Missions **10–15** are an optional
@@ -57,7 +58,7 @@ are independent of the main trail.
 | 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
 | 15 | Hardcoded | **SAP** | Medium | 150 | handout |
 
-**14 challenges** · 4 easy · 6 medium · 4 hard. Total **1750 pts**.
+**15 challenges** · 4 easy · 7 medium · 4 hard. Total **1875 pts**.
 Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
@@ -126,6 +127,7 @@ On the **internal share** `Intranet DécaFlop` (`:8020`, log in `equipe-it` /
 
 ```
 Chronométrage / Captures / timing_booth.pcap                     -> 05
+Réseau / Captures terrain / phantom_signal.zip (mot de passe: infected) -> 08
 Arbitrage / Pièces / referee_usb.img                             -> 07
 Basis SAP / Exports / SAP_USR02_export.csv, sap_hint.txt         -> 09
 IT / Outils / wordlist.txt                                       -> 09

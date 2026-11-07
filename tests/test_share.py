@@ -71,7 +71,7 @@ def test_root_and_all_folders_browse(share, share_module):
 # ---------------------------------------------------------------- downloads
 def test_every_evidence_file_byte_identical(share, share_module, dist):
     evidence = [f for f in share_module.FILES if not f["decoy"]]
-    assert len(evidence) == 9      # +abap_lisezmoi.txt (challenge 15)
+    assert len(evidence) == 10     # +abap_lisezmoi.txt (15), +phantom_signal.zip (08)
     for f in evidence:
         r = share.get(url_for_file(f))
         assert r.status_code == 200, f["path"]
@@ -223,3 +223,19 @@ def test_wiki_tab_in_nav_on_every_page(share):
 def test_wiki_unknown_article_is_404(share):
     assert share.get("/wiki/inconnu").status_code == 404
     assert share.get("/wiki/..%2fapp").status_code == 404
+
+
+# ---------------------------------------------------------------- challenge 08 placement
+def test_phantom_capture_is_listed_under_reseau_behind_the_login(share, share_anon):
+    path = "/d/R%C3%A9seau/Captures%20terrain"
+    assert share_anon.get(path).status_code == 302
+    assert share_anon.get("/telecharger/R%C3%A9seau/Captures%20terrain/phantom_signal.zip").status_code == 302
+    assert "R\u00e9seau" in share.get("/documents").data.decode()
+    page = share.get(path).data.decode()
+    assert "phantom_signal.zip" in page
+    assert "phantom_signal.pcap" not in page                      # only the wrapped archive is offered
+    from html import unescape
+    prev = unescape(share.get("/d/R%C3%A9seau/Captures%20terrain?f=phantom_signal.zip").data.decode())
+    assert "Un équipement inconnu s'est connecté au réseau. Identifiez-le." in prev
+    assert "mot de passe : infected" in prev
+    assert share.get("/telecharger/R%C3%A9seau/Captures%20terrain/phantom_signal.pcap").status_code == 404

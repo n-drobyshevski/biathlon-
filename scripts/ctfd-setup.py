@@ -58,7 +58,7 @@ HOST_PORT_RE = re.compile(r"http://<CTF-HOST>:\d+")
 # Online mode: the subdomain each challenge's **Connect:** line points at
 # (same names as the hub's *_URL values in docker-compose.cloudflare.yml).
 CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "idor",
-               "05": "share", "07": "share", "09": "share", "13": "share", "15": "share",
+               "05": "share", "07": "share", "08": "share", "09": "share", "13": "share", "15": "share",
                "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw"}
 
 
@@ -90,7 +90,7 @@ def parse_readme(path, host, domain=None):
     # description: everything after the title, up to the hints.
     # Evidence files are no longer handed out by the hub: each challenge is
     # reached through a live service (its **Connect:** line — the DécaFlop site
-    # for 02/03, the internal share "Intranet DécaFlop" :8020 for 05/07/09/13/15),
+    # for 02/03, the internal share "Intranet DécaFlop" :8020 for 05/07/08/09/13/15),
     # so there are no hub /fichiers download links to generate here.
     body = text[m.end():].split("<details>", 1)[0].strip()
     if domain:                                     # online: one subdomain per service
