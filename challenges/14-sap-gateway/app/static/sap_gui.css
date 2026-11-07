@@ -202,6 +202,7 @@ code, pre, kbd, .sap-mono { font-family: "Courier New", Courier, monospace; }
   font-size: 11px;
   font-weight: normal;
   text-transform: none;
+  white-space: normal;   /* inside a nowrap <th> the bubble must still wrap */
   color: #000;
   line-height: 1.4;
   text-align: left;
@@ -276,3 +277,6 @@ code, pre, kbd, .sap-mono { font-family: "Courier New", Courier, monospace; }
   white-space: pre-wrap; overflow-wrap: anywhere; color: #222;
 }
 .sap-flag { background: #fff9c4; border-color: #e5d36d; font-weight: bold; }
+
+/* Tooltip on a right-hand column: open towards the left so it stays on screen. */
+.sap-tooltip-right > .sap-tooltip-bubble { left: auto; right: 0; }

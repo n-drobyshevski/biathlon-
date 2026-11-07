@@ -228,6 +228,29 @@ def test_14_smgw_page_and_flag_env(monkeypatch):
     assert r.mimetype == "text/plain" and b"TRIATHLON{" not in r.data
 
 
+def test_14_se16n_matches_usr02_csv_handout(monkeypatch, dist):
+    """The on-screen USR02 table and SAP_USR02_export.csv are the same data."""
+    import csv
+    from html import unescape
+    mod = _load("intra_14_se16n", APPS["14"] / "app.py")
+    c = mod.app.test_client()
+    assert c.get("/sap/se16n?table=USR02").status_code == 302          # behind the logon
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    page = c.get("/sap/se16n?table=USR02").data.decode()
+    handout = list(csv.DictReader(open(dist / "SAP_USR02_export.csv")))
+    screen = {r["BNAME"]: r for r in mod.USR02}
+    assert [r["BNAME"] for r in handout] == [r["BNAME"] for r in mod.USR02]
+    for h in handout:
+        r = screen[h["BNAME"]]
+        assert (r["BCODE"], r["LDATE"], r["LTIME"], r["MANDT"]) == (h["BCODE"], h["TRDAT"], h["LTIME"], h["MANDT"])
+        assert r["UFLAG"] == int(h["UFLAG"])
+        assert h["BCODE"] in page                                       # and it is what is rendered
+    assert page.count("sap-row-highlight") == 1 and "VLINDQVIST" in page.split("sap-row-highlight")[1][:80]
+    assert "5 entrée(s) trouvée(s)" in unescape(page) and "TRIATHLON{" not in page
+    bad = c.get("/sap/se16n?table=USR01").data.decode()
+    assert "Table non autorisée pour cet audit." in bad and "sap-table" not in bad
+
+
 # ------------------------------------------------- flag pages, copy rules
 def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     from html import unescape

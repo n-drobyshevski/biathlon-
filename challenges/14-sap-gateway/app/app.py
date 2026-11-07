@@ -14,6 +14,7 @@ gateway accepts registrations; registering a program returns the flag.
 Teaches: why gateway reginfo/secinfo ACLs matter, reading an exposed gateway
 monitor, recognising a permissive ACL.
 """
+import hashlib
 import hmac
 import os
 import sys
@@ -77,6 +78,43 @@ REGINFO = """# reginfo, Gateway registration ACL (DFL / sapgw00)
 #
 P TP=* HOST=* USER=* ACCESS=*
 """
+
+# --------------------------------------------------------------------------
+# SE16N data browser: table USR02 (user master).
+# The rows MUST stay identical to handouts/generate.py gen_sap(), which writes
+# SAP_USR02_export.csv: players compare this screen to that file. The shared
+# fields (BNAME, BCODE, UFLAG, LDATE=TRDAT, LTIME) are guarded by a test; USTYP
+# only exists on screen. BCODE is the simplified legacy scheme used by the
+# whole exercise: MD5(UPPERCASE(password)), upper-case hex. These passwords are
+# fiction for the cracking exercise, not real credentials.
+# --------------------------------------------------------------------------
+def bcode(password):
+    if not password:
+        return ""
+    return hashlib.md5(password.upper().encode()).hexdigest().upper()
+
+
+# (MANDT, BNAME, password, USTYP, LDATE, LTIME, UFLAG), same order as the CSV
+_USR02_SOURCE = [
+    ("001", "RESULTS_ADMIN", "ADMIN2019", "S", "20260715", "091500", 64),
+    ("001", "VLINDQVIST", "CHIP7", "A", "20261101", "184230", 0),
+    ("001", "MSORENSEN", "SUMMER", "A", "20261028", "133010", 0),
+    ("001", "JKOWALSKI", "SWIM2020", "A", "20261030", "171240", 0),
+    ("000", "SAP*", None, "S", "20260101", "000000", 0),
+]
+USR02 = [{"MANDT": m, "BNAME": n, "BCODE": bcode(pw), "USTYP": t,
+          "LDATE": d, "LTIME": tm, "UFLAG": f}
+         for m, n, pw, t, d, tm, f in _USR02_SOURCE]
+HIGHLIGHT_USER = "VLINDQVIST"      # last logon inside the sabotage window
+
+
+def fmt_date(raw):
+    return f"{raw[0:4]}-{raw[4:6]}-{raw[6:8]}"
+
+
+def fmt_time(raw):
+    return f"{raw[0:2]}:{raw[2:4]}:{raw[4:6]}"
+
 
 # Defaults shown in the registration form.
 DEFAULT_TP = "Z_EXPLOIT_RFC"
@@ -142,7 +180,15 @@ def sap_cmd():
 
 @app.get("/sap/se16n")
 def sap_se16n():
-    return sap_render("sap_se16n.html", table=request.args.get("table", ""))
+    # Only USR02 may be browsed; the table name is never echoed back.
+    table = request.args.get("table", "USR02").strip().upper()
+    if table != "USR02":
+        return sap_render("sap_message.html",
+                          status_class_val="sap-statusbar--error",
+                          status_msg_val="Table non autorisée pour cet audit.")
+    rows = [dict(r, ldate_fmt=fmt_date(r["LDATE"]), ltime_fmt=fmt_time(r["LTIME"]),
+                 hot=r["BNAME"] == HIGHLIGHT_USER) for r in USR02]
+    return sap_render("se16n.html", rows=rows)
 
 
 @app.get("/sap/sm37")
