@@ -43,13 +43,13 @@ def _forge_hs256(secret, payload):
 def _build_gitleak(tmp_path, flag, api_secret=None):
     """Run 11's real entrypoint to build the git history; return the site dir.
 
-    A stub `python` on PATH makes the script's final `exec python /app/app.py`
+    A stub `gunicorn` on PATH makes the script's final `exec gunicorn ... app:app`
     a no-op, so only the git-building part runs.
     """
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    (bindir / "python").write_text("#!/bin/sh\nexit 0\n")
-    (bindir / "python").chmod(0o755)
+    (bindir / "gunicorn").write_text("#!/bin/sh\nexit 0\n")
+    (bindir / "gunicorn").chmod(0o755)
     site = tmp_path / "site"
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}",
                SITE_DIR=str(site), FLAG=flag)

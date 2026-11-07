@@ -174,8 +174,8 @@ def test_10_docs_page_is_intranet(monkeypatch):
 def test_11_index_and_nginx_listing(tmp_path, monkeypatch):
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    (bindir / "python").write_text("#!/bin/sh\nexit 0\n")
-    (bindir / "python").chmod(0o755)
+    (bindir / "gunicorn").write_text("#!/bin/sh\nexit 0\n")      # the entrypoint's final exec
+    (bindir / "gunicorn").chmod(0o755)
     site = tmp_path / "site"
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", SITE_DIR=str(site), FLAG="TRIATHLON{g}")
     subprocess.run(["sh", str(APPS["11"] / "entrypoint.sh")], check=True, env=env, capture_output=True)

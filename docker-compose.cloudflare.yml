@@ -45,8 +45,13 @@ x-locked-app: &locked-app
   security_opt: ["no-new-privileges:true"]
   read_only: true
   tmpfs: ["/tmp:size=32m,mode=1777"]
-  pids_limit: 128
-  cpus: 1.0
+  # Process cap inside deploy.resources: it merges with the memory/CPU limits the
+  # Flask apps get in docker-compose.yml (compose refuses pids_limit/cpus next to
+  # a deploy.resources block). CPU is capped there (0.5), not here.
+  deploy:
+    resources:
+      limits:
+        pids: 128
 
 services:
   # ---- The only container with internet access: the outbound tunnel ------
@@ -143,6 +148,11 @@ services:
   warroom:
     <<: *locked-app
     networks: [warroom]
+    deploy:              # replaces locked-app's deploy (YAML merge is shallow): repeat the pids cap
+      resources:
+        limits:
+          cpus: '1.0'
+          pids: 128
     environment:
       WARROOM_TRUST_PROXY: "1"
     ports: !override ["127.0.0.1:8099:8099"]

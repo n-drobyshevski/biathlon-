@@ -214,7 +214,8 @@ def test_online_overlay_isolates_every_service():
         assert "no-new-privileges:true" in svc["security_opt"], name
         assert svc["cap_drop"] == ["ALL"], name
         assert svc.get("read_only") is True, name                      # app cannot rewrite itself
-        assert 0 < svc.get("pids_limit", 0) <= 256, name               # no fork bomb
+        pids = svc.get("pids_limit") or svc.get("deploy", {}).get("resources", {}).get("limits", {}).get("pids", 0)
+        assert 0 < pids <= 256, name                                    # no fork bomb (either form)
         for v in svc.get("volumes", []):
             if v["type"] == "volume":                                # CTFd's own data volume
                 assert (name, v["source"]) == ("ctfd", "ctfd-data"), name
