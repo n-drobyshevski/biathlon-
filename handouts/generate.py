@@ -421,6 +421,13 @@ def _dns_answer(txid, name, ip):
 
 PHANTOM_ZIP_PASSWORD = "infected"      # the usual malware-sample convention
 
+# The rogue device of challenge 08. The War Room finale (warroom/app.py) accepts
+# these as the "equipement fantome" answer and reads the SAME env var names with
+# the SAME defaults; tests/test_warroom.py fails if the two ever diverge. If you
+# override them, set them in .env so the handouts and the War Room both see them.
+ROGUE_MAC = flag("ROGUE_MAC", "aa:bb:cc:dd:ee:42")
+ROGUE_IP = flag("ROGUE_IP", "10.10.0.42")
+
 def gen_phantom():
     import random, datetime
     f = os.environ.get("FLAG_08_PHANTOM") or flag("FLAG_08", "TRIATHLON{phantom_placeholder}")
@@ -431,7 +438,7 @@ def gen_phantom():
     GW   = ("10.10.0.1", "00:0c:29:4e:71:01")
     BOOTH, CHIP, SCREEN = (("10.10.0.5", "3c:52:82:7e:90:05"), ("10.10.0.6", "b8:27:eb:3c:11:06"),
                            ("10.10.0.7", "dc:a6:32:19:ab:07"))
-    ROGUE = ("10.10.0.42", "aa:bb:cc:dd:ee:42")                # does not belong here
+    ROGUE = (ROGUE_IP, ROGUE_MAC)                              # does not belong here
     SAP_IP = "10.20.0.30"                                      # behind the router
 
     pkts = []                                                  # (seconds after t0, frame)
@@ -465,7 +472,7 @@ def gen_phantom():
         add(t, _udp_frame(host[1], GW[1], host[0], GW[0], sp, 53, _dns_query(txid, name)))
         add(t + 0.002, _udp_frame(GW[1], host[1], GW[0], host[0], 53, sp, _dns_answer(txid, name, ip)))
 
-    # --- the phantom: first sign of 10.10.0.42 (gratuitous ARP, then asks for the router) ---
+    # --- the phantom: first sign of the rogue (gratuitous ARP, then asks for the router) ---
     add(7.31, _arp(1, ROGUE[1], ROGUE[0], "00:00:00:00:00:00", ROGUE[0]))
     add(9.02, _arp(1, ROGUE[1], ROGUE[0], "00:00:00:00:00:00", GW[0]))
     add(9.0224, _arp(2, GW[1], GW[0], ROGUE[1], ROGUE[0]))
@@ -475,7 +482,7 @@ def gen_phantom():
     add(62.40, _udp_frame(ROGUE[1], GW[1], ROGUE[0], GW[0], 51877, 53, _dns_query(0x4242, qname)))
     add(62.4026, _udp_frame(GW[1], ROGUE[1], GW[0], ROGUE[0], 53, 51877, _dns_answer(0x4242, qname, SAP_IP)))
 
-    body_req = b"program=Z_EXPLOIT_RFC&host=10.10.0.42"
+    body_req = f"program=Z_EXPLOIT_RFC&host={ROGUE_IP}".encode()
     req = (b"POST /sap/gw/register HTTP/1.1\r\n"
            b"Host: dfl-sap.decaflop.local:8014\r\n"
            b"User-Agent: SAP-RFC-Exploit\r\n"

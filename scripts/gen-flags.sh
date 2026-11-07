@@ -58,6 +58,9 @@ FLAG_13_SAP_SHORTCUT=TRIATHLON{race_belt_$(tok 10)}
 FLAG_14_SAP_GW=TRIATHLON{open_water_$(tok 10)}
 FLAG_15_SAP_ABAP=TRIATHLON{the_wall_$(tok 10)}
 
+# --- Finale (War Room, warroom/): revealed only by a fully correct incident report ---
+FLAG_FINALE=TRIATHLON{grand_maitre_$(tok 12)}
+
 SABOTEUR_NAME=viktor_lindqvist
 
 # CTFd session key (kept across rotations)

@@ -1,0 +1,13 @@
+/* Minimal placeholder styling (task 3.4 replaces it). Self-hosted, no external assets. */
+body{margin:0;background:#f4f4f6;color:#222;font:15px/1.45 system-ui,Arial,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px 16px}
+h1{font-size:24px;margin:0 0 8px}
+.lead{margin:0 0 18px;color:#555}
+.row{margin:0 0 12px}
+label{display:block;margin:0 0 4px;font-weight:600}
+input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #888;border-radius:3px;font:inherit}
+button{padding:8px 16px;border:0;border-radius:3px;background:#3643ba;color:#fff;font:inherit;cursor:pointer}
+.err{padding:10px 12px;background:#fde7e9;border:1px solid #e8a6ad;color:#7a0000}
+.ok{padding:12px 14px;background:#dff6dd;border:1px solid #9bd39b}
+.ok h2{margin:0 0 6px;font-size:18px}
+.flag{margin:8px 0 0;padding:10px;background:#fff;border:1px solid #9bd39b;overflow-wrap:anywhere;white-space:pre-wrap;font-size:16px}

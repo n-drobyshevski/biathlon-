@@ -1,0 +1,49 @@
+{#
+  War Room incident-report form. MINIMAL placeholder: task 3.4 replaces the look.
+  Context contract (keep it stable):
+    fields   list of (key, French label); form keys: saboteur, vector, time, device
+    values   dict key -> what the player typed (kept so nothing is retyped)
+    error    French message (wrong report, rate limit, misconfiguration) or absent
+    correct, total   how many fields are right (never which ones) on a wrong report
+    flag     the Grandmaster Flag, present ONLY on success
+  The page deliberately marks no individual field as right or wrong.
+#}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salle de crise - Rapport d'incident</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='warroom.css') }}">
+</head>
+<body>
+  <main>
+    <h1>Salle de crise</h1>
+    <p class="lead">Rapport d'incident final. Croisez les preuves de toutes les équipes :
+      le flag n'apparaît que lorsque les quatre champs sont exacts.</p>
+
+    {% if flag %}
+    <section class="ok" role="status">
+      <h2>Rapport validé</h2>
+      <p>Corrélation complète. Voici le flag du Grand Maître :</p>
+      <pre class="flag">{{ flag }}</pre>
+    </section>
+    {% elif error %}
+    <p class="err" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if not flag %}
+    <form method="post" action="/submit" autocomplete="off">
+      {% for key, label in fields %}
+      <div class="row">
+        <label for="f-{{ key }}">{{ label }}</label>
+        <input id="f-{{ key }}" name="{{ key }}" type="text" maxlength="200" required
+               value="{{ values.get(key, '') }}" spellcheck="false">
+      </div>
+      {% endfor %}
+      <button type="submit">Soumettre le rapport</button>
+    </form>
+    {% endif %}
+  </main>
+</body>
+</html>
