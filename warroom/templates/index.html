@@ -1,49 +1,131 @@
 {#
-  War Room incident-report form. MINIMAL placeholder: task 3.4 replaces the look.
-  Context contract (keep it stable):
-    fields   list of (key, French label); form keys: saboteur, vector, time, device
+  War Room: final incident-report console (last screen of the CTF).
+  Context from warroom/app.py (keep in sync):
+    fields   list of (key, French label); keys: saboteur, vector, time, device
     values   dict key -> what the player typed (kept so nothing is retyped)
     error    French message (wrong report, rate limit, misconfiguration) or absent
-    correct, total   how many fields are right (never which ones) on a wrong report
+    correct, total   how many fields are right on a wrong report (never which ones)
     flag     the Grandmaster Flag, present ONLY on success
-  The page deliberately marks no individual field as right or wrong.
+  The page never marks an individual field as right or wrong: the gauge fills
+  from the left and is not tied to any field.
 #}
+{%- set hints = {
+  "saboteur": ("Audit SAP / photo d'équipe", "missions 03, 09"),
+  "vector":   ("Passerelle SAP / USR02", "missions 09, 14"),
+  "time":     ("Métadonnées EXIF", "mission 03"),
+  "device":   ("Capture réseau", "mission 08"),
+} -%}
+{%- set mono_fields = ("time", "device") -%}
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Salle de crise - Rapport d'incident</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='warroom.css') }}">
+  <title>{% if flag %}Cas résolu{% else %}Rapport d'incident final{% endif %} - Cellule de crise</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <main>
-    <h1>Salle de crise</h1>
-    <p class="lead">Rapport d'incident final. Croisez les preuves de toutes les équipes :
-      le flag n'apparaît que lorsque les quatre champs sont exacts.</p>
+<body class="{{ 'is-solved' if flag else 'is-open' }}">
+  <header class="band">
+    <span class="band-dot" aria-hidden="true"></span>
+    <span class="band-text">Confidentiel — Cellule de crise</span>
+    <span class="band-ref">Dossier DFL-2026-1101 · Diffusion restreinte</span>
+  </header>
+
+  <main class="console">
+    <p class="kicker">Opération Dernière Transition</p>
+    <h1>Rapport d'Incident Final — Opération Dernière Transition</h1>
 
     {% if flag %}
-    <section class="ok" role="status">
-      <h2>Rapport validé</h2>
-      <p>Corrélation complète. Voici le flag du Grand Maître :</p>
-      <pre class="flag">{{ flag }}</pre>
+    <section class="solved" role="status" aria-labelledby="solved-title">
+      <div class="stamp" aria-hidden="true">Cas résolu</div>
+      <h2 id="solved-title">Cas résolu</h2>
+      <p class="solved-lead">Les quatre preuves concordent. Le rapport de clôture est accepté
+        par la cellule de crise.</p>
+
+      <p class="flag-label" id="flag-label">Flag du Grand Maître</p>
+      <div class="flagbox">
+        <code id="flag" aria-labelledby="flag-label">{{ flag }}</code>
+        <button type="button" class="copy" data-target="flag">Copier</button>
+      </div>
+      <p class="copied" role="status" aria-live="polite"></p>
+
+      <p class="closing">Viktor Lindqvist (utilisateur SAP <span class="mono">VLINDQVIST</span>) est
+        formellement identifié comme le saboteur. Le job d'export
+        <span class="mono">ZDFLOP_RESULT_EXPORT</span>, lancé manuellement le 1er novembre à 18:42,
+        a servi à truquer les résultats de la course. Dossier clos.</p>
+      <p class="thanks">Merci à toutes les équipes de la cellule de crise.</p>
     </section>
-    {% elif error %}
-    <p class="err" role="alert">{{ error }}</p>
+
+    {% else %}
+    <p class="intro">La cellule de crise doit déposer le rapport de clôture de l'incident.
+      Quatre preuves, rassemblées par des équipes différentes, doivent être corrélées pour
+      clore l'affaire. Chaque champ indique la mission qui l'a produite : demandez aux équipes
+      concernées.</p>
+
+    {% if error %}
+    <div class="err" role="alert">
+      {% if correct is defined %}
+      <p class="err-title">Corrélation incomplète</p>
+      <div class="gauge" role="img" aria-label="{{ correct }} preuve(s) correcte(s) sur {{ total }}">
+        {% for i in range(total) %}<span class="pip{{ ' on' if i < correct else '' }}"></span>{% endfor %}
+        <span class="gauge-n">{{ correct }}/{{ total }}</span>
+      </div>
+      {% else %}
+      <p class="err-title">Soumission refusée</p>
+      {% endif %}
+      <p class="err-msg">{{ error }}</p>
+    </div>
     {% endif %}
 
-    {% if not flag %}
-    <form method="post" action="/submit" autocomplete="off">
+    <form class="report" method="post" action="/submit" autocomplete="off">
       {% for key, label in fields %}
-      <div class="row">
-        <label for="f-{{ key }}">{{ label }}</label>
+      {% set src, missions = hints.get(key, ("", "")) %}
+      <div class="field">
+        <div class="field-head">
+          <span class="field-no" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span>
+          <label for="f-{{ key }}">{{ label }}</label>
+        </div>
         <input id="f-{{ key }}" name="{{ key }}" type="text" maxlength="200" required
-               value="{{ values.get(key, '') }}" spellcheck="false">
+               class="{{ 'mono' if key in mono_fields else '' }}" spellcheck="false"
+               autocapitalize="off" aria-describedby="h-{{ key }}"
+               value="{{ values.get(key, '') }}">
+        <p class="hint" id="h-{{ key }}">Source : {{ src }} <span class="missions">({{ missions }})</span></p>
       </div>
       {% endfor %}
-      <button type="submit">Soumettre le rapport</button>
+      <div class="actions">
+        <button type="submit" class="submit">Soumettre le rapport</button>
+        <p class="note">Le serveur indique combien de preuves concordent, jamais lesquelles.
+          Nombre de soumissions limité.</p>
+      </div>
     </form>
     {% endif %}
   </main>
+
+  <footer class="foot">Cellule de crise DécaFlop · Usage interne uniquement</footer>
+
+  {% if flag %}
+  <script>
+  // Copy without navigator.clipboard: the Pi is served over plain HTTP on a LAN
+  // IP, where the async clipboard API is disabled. Falls back to execCommand.
+  (function () {
+    var btn = document.querySelector('.copy'), out = document.querySelector('.copied');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var text = document.getElementById(btn.dataset.target).textContent.trim();
+      function done() { btn.textContent = 'Copié'; out.textContent = 'Flag copié dans le presse-papiers.';
+        setTimeout(function () { btn.textContent = 'Copier'; }, 1800); }
+      function legacy() {
+        var a = document.createElement('textarea'); a.value = text; a.setAttribute('readonly', '');
+        a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select();
+        try { document.execCommand('copy') ? done() : (out.textContent = 'Sélectionnez le flag et copiez-le.'); }
+        catch (e) { out.textContent = 'Sélectionnez le flag et copiez-le.'; }
+        a.remove();
+      }
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, legacy);
+      else legacy();
+    });
+  })();
+  </script>
+  {% endif %}
 </body>
 </html>
