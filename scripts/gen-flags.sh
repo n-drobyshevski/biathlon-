@@ -61,6 +61,12 @@ FLAG_15_SAP_ABAP=TRIATHLON{the_wall_$(tok 10)}
 # --- Finale (War Room, warroom/): revealed only by a fully correct incident report ---
 FLAG_FINALE=TRIATHLON{grand_maitre_$(tok 12)}
 
+# Phantom device of mission 08. ONE source for both consumers: the handout
+# generator (phantom_signal.pcap) and the War Room (accepted answer) read these
+# same two variables. Change them here only, then rebuild the handouts.
+ROGUE_MAC=aa:bb:cc:dd:ee:42
+ROGUE_IP=10.10.0.42
+
 SABOTEUR_NAME=viktor_lindqvist
 
 # CTFd session key (kept across rotations)
