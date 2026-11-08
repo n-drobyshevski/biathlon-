@@ -215,7 +215,7 @@ JOB_LOGS = {
         "Étape 2 : 47 enregistrements sélectionnés\n"
         "Avertissement : les contrôles d'autorisation sont désactivés dans ce rapport "
         "(voir le code source)\n"
-        "Étape 3 : export terminé — 47 enregistrements écrits\n"
+        "Étape 3 : export terminé, 47 enregistrements écrits\n"
         "Job ZDFLOP_RESULT_EXPORT terminé (00:00:04)"),
 }
 

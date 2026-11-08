@@ -62,7 +62,7 @@ def test_hub_home_links_missions_to_service(hub):
 def test_hub_contexte_links_share_without_creds(hub):
     ctx = hub.get("/contexte").data.decode()
     assert ":8020" in ctx                       # still names/links the share
-    assert "portail staff" in ctx               # points players at challenge 01
+    assert "mission 01" in ctx                  # points players at challenge 01
     assert "transition2026" not in ctx          # no longer prints the credentials
     assert "equipe-it" not in ctx
 

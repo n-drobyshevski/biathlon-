@@ -1,10 +1,12 @@
-"""Challenge 01's staff portal hands out the Intranet DécaFlop login (soft gate).
+"""Challenge 01's public site leaks the Intranet DécaFlop login (soft gate).
 
 The share's own authentication is unchanged; only the source of the credentials
-moves (hub -> staff portal). docker-compose feeds the SAME env to both the staff
-(01) and share containers, so the login shown on the portal is exactly the one
-the share accepts.
+moves: the staff portal no longer prints them, they ship base64-encoded in the
+front-end config every public page loads (/assets/site.config.js).
+docker-compose feeds the SAME env to both the staff (01) and share containers,
+so the leaked login is exactly the one the share accepts.
 """
+import base64
 import importlib.util
 import pathlib
 import re
@@ -23,7 +25,7 @@ def _load(name, path):
     return mod
 
 
-def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
+def test_public_site_leaks_login_the_share_accepts(dist, monkeypatch):
     user, pw = "crew-test-07", "gate-pw-test-4821"
     monkeypatch.setenv("SHARE_USER", user)
     monkeypatch.setenv("SHARE_PASSWORD", pw)
@@ -33,15 +35,21 @@ def test_staff_portal_reveals_login_the_share_accepts(dist, monkeypatch):
     if str(STAFF_APP) not in sys.path:
         sys.path.insert(0, str(STAFF_APP))
 
-    # 01 staff portal (reached via robots.txt): shows the share URL + login
+    # 01 staff portal (reached via robots.txt): shows the share URL, not the login
     staff = _load("staff_gate", STAFF_APP / "app.py")
     page = staff.app.test_client().get("/staff-portal-7f3a9",
                                        base_url="http://10.0.0.5:8001").data.decode()
     assert "http://10.0.0.5:8020" in page                       # host-relative share URL
     assert "TRIATHLON{staff_gate}" in page                      # 01's own flag kept
     assert "SAP DFlop ERP" in page                              # SAP-user note kept
-    shown_user = re.search(r"<dt>Identifiant</dt><dd><code>([^<]+)</code>", page).group(1)
-    shown_pass = re.search(r"<dt>Mot de passe</dt><dd><code>([^<]+)</code>", page).group(1)
+    assert user not in page and pw not in page                  # login no longer printed here
+
+    # the public site loads the front config, which carries the login in base64
+    client = staff.app.test_client()
+    assert "/assets/site.config.js" in client.get("/").data.decode()
+    js = client.get("/assets/site.config.js").data.decode()
+    svc = re.search(r'svc: "([A-Za-z0-9+/=]+)"', js).group(1)
+    shown_user, shown_pass = base64.b64decode(svc).decode().split(":", 1)
     assert (shown_user, shown_pass) == (user, pw)
 
     # the share, from the SAME env, accepts exactly those creds and rejects others

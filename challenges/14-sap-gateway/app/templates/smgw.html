@@ -1,10 +1,10 @@
 {% extends "_sap_base.html" %}
-{% block titlebar %}SMGW &mdash; Moniteur de la passerelle{% endblock %}
+{% block titlebar %}SMGW - Moniteur de la passerelle{% endblock %}
 {% block tcode %}SMGW{% endblock %}
 {% block status_class %}{% if error_msg %}sap-statusbar--error{% elif registered %}sap-statusbar--success{% else %}sap-statusbar--warning{% endif %}{% endblock %}
-{% block status_msg %}{% if error_msg %}{{ error_msg }}{% elif registered %}Programme {{ tp }} enregistré avec succès sur la passerelle.{% else %}Aucune restriction active — la passerelle est ouverte.{% endif %}{% endblock %}
+{% block status_msg %}{% if error_msg %}{{ error_msg }}{% elif registered %}Programme {{ tp }} enregistré avec succès sur la passerelle.{% else %}Aucune restriction active : la passerelle est ouverte.{% endif %}{% endblock %}
 {% block content %}
-<h1>Moniteur de la passerelle SAP — Fichiers de contrôle d'accès</h1>
+<h1>Moniteur de la passerelle SAP - Fichiers de contrôle d'accès</h1>
 
 <div class="sap-tabs" role="tablist">
   <a class="sap-tab sap-tab-active" href="/sap/smgw" role="tab" aria-selected="true">reginfo</a>

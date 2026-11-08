@@ -15,9 +15,10 @@ cat <<'BANNER'
 
  Les fichiers de preuve sont sur Intranet
  DécaFlop (port 8020) ; les services sur
- l'IP du Pi. curl/wget pour les récupérer.
+ l'IP du Pi, par exemple
+   wget http://<IP-du-Pi>:<port>/<chemin>
  Pour le partage (login du challenge 01) :
-   grab http://<IP-du-Pi>:8020/telecharger/<...>
+   grab http://<IP-du-Pi>:8020/telecharger/...
 
  En ligne (via Cloudflare), ce terminal n'a
  ni internet ni IP du Pi : visez le service

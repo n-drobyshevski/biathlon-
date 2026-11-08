@@ -1,5 +1,5 @@
 {% extends "_sap_base.html" %}
-{% block titlebar %}Ouverture de session SAP &mdash; Système DFL{% endblock %}
+{% block titlebar %}Ouverture de session SAP - Système DFL{% endblock %}
 {% block status_class %}{% if error %}sap-statusbar--error{% endif %}{% endblock %}
 {% block status_msg %}{% if error %}Utilisateur ou mot de passe incorrect.{% else %}Veuillez vous identifier.{% endif %}{% endblock %}
 {% block content %}
@@ -27,7 +27,7 @@
         Besoin d'aide ? Consultez la
         <a href="{{ wiki_url|default('/wiki') }}">Documentation Technique</a> de l'intranet.
       </p>
-      <div class="sap-login-foot">Système DFL &middot; Mandant 001</div>
+      <div class="sap-login-foot">Système DFL, mandant 001</div>
     </div>
   </div>
 </div>

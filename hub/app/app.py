@@ -338,7 +338,7 @@ def context():
                   "qui se joue en équipe"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
                             f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
-                            "se cache dans les ressources du site DécaFlop — commencez par la mission 01."),
+                            "se cache dans les ressources du site DécaFlop : commencez par la mission 01."),
         ("Périmètre", "Uniquement les services listés dans l'onglet Missions. Pas besoin d'internet."),
         ("Outils", "Un navigateur suffit, même sur un poste verrouillé. CyberChef et le terminal "
                    "d'équipe tournent sur le Pi, dans l'onglet <a href=\"/outils\">Outils</a>."),
@@ -460,7 +460,7 @@ GUIDE = {
            "Un navigateur suffit.",
            ["Ouvrez `/robots.txt` sur le site DécaFlop.",
             "Repérez la ligne `Disallow:` : elle donne un chemin vers un espace staff.",
-            "Ouvrez ce chemin : le portail staff affiche le flag (et l'identifiant du partage interne, utile plus tard)."]),
+            "Ouvrez ce chemin : le portail staff affiche le flag. Il signale aussi que l'identifiant du partage interne traîne dans les ressources du site, utile plus tard."]),
     "02": ("Un fichier peut en cacher un autre : ici une archive ZIP est collée à la fin d'une image PNG.",
            "Le site, puis CyberChef.",
            ["Dans l'espace presse (`/presse`), téléchargez l'affiche officielle.",

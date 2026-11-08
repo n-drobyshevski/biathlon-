@@ -21,8 +21,9 @@ app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-# Crew login for the internal file share "Intranet DécaFlop" (:8020). The staff
-# portal hands it out, so solving 01 is how players learn how to log in. Read
+# Crew login for the internal file share "Intranet DécaFlop" (:8020). It leaks
+# from the public site's front-end config (see below), so 01's recon is how
+# players learn how to log in. Read
 # from the SAME env the share reads, with the share's defaults, so the two stay
 # in sync (docker-compose feeds both services from one value).
 SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")
@@ -62,7 +63,7 @@ STAFF_BODY = """<h1 class="h1">Équipe événement de la finale 2026</h1>
    <dt>Adresse</dt><dd><a href="{share_url}">{share_url}</a></dd>
   </dl>
   <p class="status">Le compte de service de l'équipe n'est plus affiché ici&#160;: il a fuité une fois de trop.
-   Il reste hélas chargé par les pages publiques du site DécaFlop — à sortir des ressources front.</p>
+   Il reste hélas chargé par les pages publiques du site DécaFlop, à sortir des ressources front.</p>
  </section>
  <section class="wp"><h2>Comptes et identifiants</h2>
   <p>Tous les comptes staff suivent la convention <code>initiale du prénom + nom</code> et sont répliqués

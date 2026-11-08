@@ -17,13 +17,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% block titlebar %}SAP DFlop ERP &mdash; Client 001{% endblock %}{% endblock %}</title>
+  <title>{% block title %}{% block titlebar %}SAP DFlop ERP - Client 001{% endblock %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='sap_gui.css') }}">
 </head>
 <body>
   <div class="sap-titlebar">
     <span class="sap-title">{{ self.titlebar() }}</span>
-    <span class="sap-sys">Système DFL &middot; {{ sap_time }}</span>
+    <span class="sap-sys">Système DFL, {{ sap_time }}</span>
   </div>
 
   <div class="sap-toolbar">

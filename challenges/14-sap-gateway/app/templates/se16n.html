@@ -1,10 +1,10 @@
 {% extends "_sap_base.html" %}
-{% block titlebar %}SE16N &mdash; Explorateur de données{% endblock %}
+{% block titlebar %}SE16N - Explorateur de données{% endblock %}
 {% block tcode %}SE16N{% endblock %}
-{% block status_msg %}Table USR02 affichée — {{ rows|length }} entrée(s) trouvée(s).{% endblock %}
+{% block status_msg %}Table USR02 affichée : {{ rows|length }} entrée(s) trouvée(s).{% endblock %}
 {% block content %}
 <div class="sap-panel">
-  <div class="sap-panel-header">Explorateur de données — Table USR02 (Utilisateurs maîtres)</div>
+  <div class="sap-panel-header">Explorateur de données - Table USR02 (Utilisateurs maîtres)</div>
   <div class="sap-panel-body">
     <table class="sap-table">
       <thead>
