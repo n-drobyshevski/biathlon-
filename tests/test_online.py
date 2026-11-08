@@ -18,12 +18,12 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DOMAIN = "ctf.example.com"
 SUB = {"01": "site", "02": "site", "03": "site", "04": "site", "05": "share", "06": "sqli",
-       "07": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
-       "14": "sapgw", "15": "share"}
+       "07": "share", "08": "share", "09": "share", "10": "jwt", "11": "git", "12": "ssti", "13": "share",
+       "14": "sapgw", "15": "share", "16": "warroom"}
 # online: these each get their own internal network (shared with cloudflared
 # only); everything else (challenges, share, toolbox) sits on `internal`
-ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef"}
-SERVICES = ["hub", "staff", "share", "idor", "sqli", "jwt", "gitleak", "ssti", "sapgw",
+ONLINE_NET = {"ctfd": "scoreboard", "hub": "front", "cyberchef": "chef", "warroom": "warroom"}
+SERVICES = ["hub", "staff", "share", "idor", "sqli", "jwt", "gitleak", "ssti", "sapgw", "warroom",
             "ctfd", "cyberchef", "toolbox"]
 
 
@@ -215,7 +215,8 @@ def test_online_overlay_isolates_every_service():
         assert svc["cap_drop"] == ["ALL"], name
         assert svc.get("read_only") is True, name                      # app cannot rewrite itself
         cap = 1024 if name == "toolbox" else 256     # toolbox: 64 per player, in shell.sh
-        assert 0 < svc.get("pids_limit", 0) <= cap, name               # no fork bomb
+        pids = svc.get("pids_limit") or svc.get("deploy", {}).get("resources", {}).get("limits", {}).get("pids", 0)
+        assert 0 < pids <= cap, name                                    # no fork bomb (either form)
         for v in svc.get("volumes", []):
             if v["type"] == "volume":            # CTFd's data, the terminal homes, the hub's notepads
                 assert (name, v["source"]) in (("ctfd", "ctfd-data"), ("hub", "hub-data"),

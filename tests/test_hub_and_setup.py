@@ -227,3 +227,50 @@ def test_guide_covers_every_mission(hub_module):
     assert set(hub_module.GUIDE) == {m[0] for m in hub_module.MISSIONS}
     for num, (concept, tool, steps) in hub_module.GUIDE.items():
         assert concept and tool and 2 <= len(steps) <= 5, num
+
+
+# ---------------------------------------------------------------- challenge 08 wiring
+def test_08_hub_mission_points_at_the_share_not_the_file(hub, hub_module):
+    m = {x[0]: x for x in hub_module.MISSIONS}["08"]
+    assert m[1] == "Le Signal Fantôme" and m[2] == "Forensics" and m[3] == "Moyen" and m[4] == 125
+    assert m[6] == "share" and m[7] == []                                # the share, no direct file link
+    assert "adresse MAC" in m[5] and "IP" in m[5] and "Réseau / Captures terrain" in m[5]
+    home = hub.get("/").data.decode()
+    assert 'id="mission-08"' in home and "phantom_signal" not in home
+
+
+def test_08_is_registered_for_ctfd(monkeypatch):
+    """ctfd-setup builds challenges from the READMEs and the single FLAG_NN_* key in .env."""
+    spec = importlib.util.spec_from_file_location("ctfd_setup", ROOT / "scripts" / "ctfd-setup.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    ch = mod.parse_readme(str(ROOT / "challenges" / "08-forensics-phantom" / "README.md"), "192.168.8.2")
+    assert (ch["num"], ch["name"], ch["category"], ch["value"]) == ("08", "Le Signal Fantôme", "Forensics", 125)
+    assert len(ch["hints"]) == 1 and ch["hints"][0]["cost"] == 25
+    assert ch["hints"][0]["content"].startswith("Filtrez le trafic HTTP. Cherchez un POST vers /sap/gw/register.")
+    assert ch["connection_info"] == "http://192.168.8.2:8020" and "infected" in ch["description"]
+    online = mod.parse_readme(str(ROOT / "challenges" / "08-forensics-phantom" / "README.md"), "", "ctf.example.com")
+    assert online["connection_info"] == "https://share.ctf.example.com"      # online mode needs CONNECT_SUB["08"]
+    env = mod.read_env(str(ROOT / ".env.example"))
+    assert [k for k in env if k.startswith("FLAG_08_")] == ["FLAG_08_PHANTOM"]
+
+
+# ---------------------------------------------------------------- CTFd hints for stuck points
+def test_stuck_point_hints_and_costs():
+    spec = importlib.util.spec_from_file_location("ctfd_hints", ROOT / "scripts" / "ctfd-setup.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    def hints(num):
+        path = next((ROOT / "challenges").glob(f"{num}-*/README.md"))
+        return [(h["cost"], h["content"]) for h in mod.parse_readme(str(path), "x")["hints"]]
+    h01 = hints("01")
+    assert [c for c, _ in h01] == [0, 10, 20, 50]                     # free nudge first, credentials last
+    assert "robots.txt" in h01[0][1] and "{{SHARE_USER}} / {{SHARE_PASSWORD}}" in h01[3][1]
+    assert (75, "Le hash BCODE utilise MD5(MOT_DE_PASSE_EN_MAJUSCULES). Utilisez la wordlist courte "
+                "/usr/share/wordlists/sap_default.txt dans le terminal. Ne lancez PAS rockyou.txt.") in hints("09")
+    assert any(c == 50 and "jwt_secrets.txt" in t and "-m 16500" in t for c, t in hints("10"))
+    assert any(c == 25 and "pas l'ordre des affectations" in t for c, t in hints("15"))
+    for num in ("01", "09", "10", "15"):                              # titles stay Indice 1..n in order
+        path = next((ROOT / "challenges").glob(f"{num}-*/README.md"))
+        assert [h["title"] for h in mod.parse_readme(str(path), "x")["hints"]] == \
+               [f"Indice {i}" for i in range(1, len(hints(num)) + 1)]

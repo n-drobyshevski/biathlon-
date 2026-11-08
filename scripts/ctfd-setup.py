@@ -62,8 +62,11 @@ HOST_PORT_RE = re.compile(r"http://<CTF-HOST>:\d+")
 # Online mode: the subdomain each challenge's **Connect:** line points at
 # (same names as the hub's *_URL values in docker-compose.cloudflare.yml).
 CONNECT_SUB = {"01": "site", "02": "site", "03": "site", "04": "site",
-               "05": "share", "07": "share", "09": "share", "13": "share", "15": "share",
-               "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw"}
+               "05": "share", "07": "share", "08": "share", "09": "share", "13": "share", "15": "share",
+               "06": "sqli", "10": "jwt", "11": "git", "12": "ssti", "14": "sapgw", "16": "warroom"}
+
+# Missions whose flag is not named FLAG_<NN>_*: the finale's is FLAG_FINALE (the War Room's variable).
+FLAG_ALIAS = {"16": "FLAG_FINALE"}
 
 
 def read_env(path):
@@ -94,7 +97,7 @@ def parse_readme(path, host, domain=None):
     # description: everything after the title, up to the hints.
     # Evidence files are no longer handed out by the hub: each challenge is
     # reached through a live service (its **Connect:** line — the DécaFlop site
-    # for 02/03, the internal share "Intranet DécaFlop" :8020 for 05/07/09/13/15),
+    # for 02/03, the internal share "Intranet DécaFlop" :8020 for 05/07/08/09/13/15),
     # so there are no hub /fichiers download links to generate here.
     body = text[m.end():].split("<details>", 1)[0].strip()
     if domain:                                     # online: one subdomain per service
@@ -168,6 +171,9 @@ def main():
     ap.add_argument("--user-mode", choices=("users", "teams"), default="users",
                     help="CTFd account mode (default: users = everyone plays solo)")
     ap.add_argument("--dry-run", action="store_true", help="parse and print, change nothing")
+    ap.add_argument("--unlock-gate", action="store_true",
+                    help="make challenge 01's credentials hint free (cost 0), then exit; run it ~45 min "
+                         "into the event if teams are stuck at the soft gate")
     args = ap.parse_args()
 
     env = read_env(args.env)
@@ -179,8 +185,18 @@ def main():
                   for d in sorted(os.listdir(os.path.join(ROOT, "challenges")))
                   if os.path.exists(os.path.join(ROOT, "challenges", d, "README.md"))]
 
+    # Hints quoting the share login follow .env, so a rotated password never leaves a wrong hint.
+    creds = {"{{SHARE_USER}}": env.get("SHARE_USER") or "equipe-it",
+             "{{SHARE_PASSWORD}}": env.get("SHARE_PASSWORD") or "transition2026"}
+    for ch in challenges:
+        for h in ch["hints"]:
+            for k, v in creds.items():
+                h["content"] = h["content"].replace(k, v)
+
     for ch in challenges:                          # flag for mission NN = FLAG_NN_* in .env
         keys = [k for k in env if k.startswith(f"FLAG_{ch['num']}_")]
+        if not keys and FLAG_ALIAS.get(ch["num"]) in env:
+            keys = [FLAG_ALIAS[ch["num"]]]
         ch["flag"] = env[keys[0]] if len(keys) == 1 else None
 
     if args.dry_run:
@@ -203,6 +219,26 @@ def main():
 
     api = CTFd(env.get("CTFD_URL") or os.environ.get("CTFD_URL") or "http://localhost:8000", token)
     ensure_user_mode(api, args.user_mode)
+
+
+    # Soft-gate safety net. CTFd 3.8 has no time-based hint unlock (a hint's only
+    # 'requirements' are other hints), so the "after 45 minutes" rule is applied by
+    # the organiser: this zeroes the cost of challenge 01's credentials hint. Teams
+    # still click to reveal it, but it no longer costs points. Same effect by hand:
+    # CTFd admin > Challenges > 01 > Hints > edit the 'post-it' hint > Cost 0.
+    if args.unlock_gate:
+        gate = next(c for c in challenges if c["num"] == "01")
+        cid = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}.get(gate["name"])
+        if cid is None:
+            raise SystemExit("Challenge 01 is not in CTFd yet: run this script once without --unlock-gate.")
+        hints = [api.call("GET", f"/hints/{h['id']}") for h in api.call("GET", f"/challenges/{cid}/hints")]
+        target = [h for h in hints if "post-it" in (h.get("content") or "")]
+        if not target:
+            raise SystemExit("No 'post-it' hint on challenge 01: re-run this script without --unlock-gate first.")
+        for h in target:
+            api.call("PATCH", f"/hints/{h['id']}", {"cost": 0})
+        print(f"Soft gate opened: challenge 01 hint {target[0]['id']} is now free (cost 0).")
+        return
     existing = {c["name"]: c["id"] for c in api.call("GET", "/challenges?view=admin")}
     ids = {}
 

@@ -70,7 +70,7 @@ def test_root_and_all_folders_browse(share, share_module):
 # ---------------------------------------------------------------- downloads
 def test_every_evidence_file_byte_identical(share, share_module, dist):
     evidence = [f for f in share_module.FILES if not f["decoy"]]
-    assert len(evidence) == 8
+    assert len(evidence) == 10     # +abap_lisezmoi.txt (15), +phantom_signal.zip (08)
     for f in evidence:
         r = share.get(url_for_file(f))
         assert r.status_code == 200, f["path"]
@@ -211,3 +211,69 @@ def test_login_cookie_does_not_clash_with_ctfd(share_module):
     cookies = r.headers.getlist("Set-Cookie")
     assert any(h.startswith("intranet_session=") for h in cookies)
     assert not any(h.startswith("session=") for h in cookies)
+
+# ---------------------------------------------------------------- wiki (Documentation Technique)
+WIKI_PAGES = {
+    "/wiki/mots-de-passe-sap": ["Mots de passe SAP legacy (table USR02)", "MD5( MOT_DE_PASSE_EN_MAJUSCULES )",
+                                "EXAMPLE", "8e3b72508e05135569ace4ed9b96d137", "UFLAG",
+                                "sont les suspects prioritaires"],
+    "/wiki/raccourcis-sap-gui": ["Raccourcis SAP GUI (.sap)", "Enregistrer le mot de passe",
+                                 "Base64", "pas du chiffrement"],
+    "/wiki/lire-du-code-abap": ["Lire du code ABAP (notions minimales)", "CONCATENATE", "lv_",
+                                "sans aucun séparateur"],
+}
+
+
+@pytest.mark.parametrize("path", ["/wiki", *WIKI_PAGES])
+def test_wiki_needs_login(share_anon, path):
+    r = share_anon.get(path)
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+
+
+def test_wiki_index_lists_three_articles(share):
+    r = share.get("/wiki")
+    assert r.status_code == 200
+    body = r.data.decode()
+    for path in WIKI_PAGES:
+        assert f'href="{path}"' in body
+
+
+@pytest.mark.parametrize("path,needles", WIKI_PAGES.items())
+def test_wiki_article_renders_french(share, path, needles):
+    r = share.get(path)
+    assert r.status_code == 200
+    body = r.data.decode()
+    for needle in needles:
+        assert needle in body, needle
+    assert "Documentation interne DécaFlop" in body and "usage audit uniquement" in body
+
+
+def test_wiki_example_hash_is_md5_of_uppercase():
+    import hashlib
+    assert hashlib.md5(b"EXAMPLE").hexdigest() == "8e3b72508e05135569ace4ed9b96d137"
+
+
+def test_wiki_tab_in_nav_on_every_page(share):
+    for path in ("/", "/documents", "/annuaire", "/aide", "/wiki"):
+        assert ">Documentation Technique</a>" in share.get(path).data.decode(), path
+
+
+def test_wiki_unknown_article_is_404(share):
+    assert share.get("/wiki/inconnu").status_code == 404
+    assert share.get("/wiki/..%2fapp").status_code == 404
+
+
+# ---------------------------------------------------------------- challenge 08 placement
+def test_phantom_capture_is_listed_under_reseau_behind_the_login(share, share_anon):
+    path = "/d/R%C3%A9seau/Captures%20terrain"
+    assert share_anon.get(path).status_code == 302
+    assert share_anon.get("/telecharger/R%C3%A9seau/Captures%20terrain/phantom_signal.zip").status_code == 302
+    assert "R\u00e9seau" in share.get("/documents").data.decode()
+    page = share.get(path).data.decode()
+    assert "phantom_signal.zip" in page
+    assert "phantom_signal.pcap" not in page                      # only the wrapped archive is offered
+    from html import unescape
+    prev = unescape(share.get("/d/R%C3%A9seau/Captures%20terrain?f=phantom_signal.zip").data.decode())
+    assert "Un équipement inconnu s'est connecté au réseau. Identifiez-le." in prev
+    assert "mot de passe : infected" in prev
+    assert share.get("/telecharger/R%C3%A9seau/Captures%20terrain/phantom_signal.pcap").status_code == 404

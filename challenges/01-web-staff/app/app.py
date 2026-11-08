@@ -21,8 +21,9 @@ app = Flask(__name__)
 app.register_blueprint(shop)   # public storefront pages (decor)
 FLAG = os.environ.get("FLAG", "TRIATHLON{placeholder}")
 
-# Crew login for the internal file share "Intranet DécaFlop" (:8020). The staff
-# portal hands it out, so solving 01 is how players learn how to log in. Read
+# Crew login for the internal file share "Intranet DécaFlop" (:8020). It leaks
+# from the public site's front-end config (see below), so 01's recon is how
+# players learn how to log in. Read
 # from the SAME env the share reads, with the share's defaults, so the two stay
 # in sync (docker-compose feeds both services from one value).
 SHARE_USER = os.environ.get("SHARE_USER", "equipe-it")

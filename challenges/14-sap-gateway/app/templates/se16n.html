@@ -1,0 +1,46 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}SE16N - Explorateur de données{% endblock %}
+{% block tcode %}SE16N{% endblock %}
+{% block status_msg %}Table USR02 affichée : {{ rows|length }} entrée(s) trouvée(s).{% endblock %}
+{% block content %}
+<div class="sap-panel">
+  <div class="sap-panel-header">Explorateur de données - Table USR02 (Utilisateurs maîtres)</div>
+  <div class="sap-panel-body">
+    <table class="sap-table">
+      <thead>
+        <tr>
+          <th>Identifiant (BNAME)</th>
+          <th>Empreinte (BCODE)
+            <span class="sap-tooltip">
+              <button type="button" class="sap-tooltip-trigger" aria-label="Aide sur BCODE">&#9432;</button>
+              <span class="sap-tooltip-bubble" role="tooltip">BCODE : empreinte legacy du mot de passe SAP. Algorithme = MD5( MOT_DE_PASSE_EN_MAJUSCULES ). Un simple hachage MD5 sans sel : c'est cassable par attaque dictionnaire. Voir la Documentation Technique de l'intranet.</span>
+            </span>
+          </th>
+          <th>Type (USTYP)</th>
+          <th>Dernière connexion (LDATE)</th>
+          <th>Heure (LTIME)</th>
+          <th>Statut (UFLAG)
+            <span class="sap-tooltip sap-tooltip-right">
+              <button type="button" class="sap-tooltip-trigger" aria-label="Aide sur UFLAG">&#9432;</button>
+              <span class="sap-tooltip-bubble" role="tooltip">UFLAG = 0 : compte actif. UFLAG = 64 : compte verrouillé.</span>
+            </span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr{% if r.hot %} class="sap-row-highlight"{% endif %}>
+          <td>{{ r.BNAME }}</td>
+          <td>{{ r.BCODE }}</td>
+          <td>{{ r.USTYP }}</td>
+          <td title="{{ r.LDATE }}">{{ r.ldate_fmt }}</td>
+          <td title="{{ r.LTIME }}">{{ r.ltime_fmt }}</td>
+          <td>{{ r.UFLAG }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="sap-mute">Astuce : croisez ces horodatages avec les métadonnées EXIF de la photo de l'équipe (mission 03).</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,282 @@
+/*
+ * SAP GUI for HTML (WebGUI) look, early 2010s enterprise, for challenge 14.
+ * Shared by every SAP screen in this app: logon, SMGW, SE16N, SM37.
+ * Self-contained: no web fonts, no images, no external URLs (offline Pi).
+ * Icons are plain Unicode glyphs so nothing has to be fetched.
+ */
+
+/* ------------------------------------------------------------ global */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: #f4f4f4;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+}
+a { color: #00458a; }
+a:hover { color: #002a55; }
+:focus-visible { outline: 1px dotted #000; outline-offset: 1px; }
+code, pre, kbd, .sap-mono { font-family: "Courier New", Courier, monospace; }
+.sap-sr {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.sap-mute { color: #666; }
+.sap-num { text-align: right; font-variant-numeric: tabular-nums; }
+.sap-nowrap { white-space: nowrap; }
+
+/* ---------------------------------------------------------- title bar */
+.sap-titlebar {
+  display: flex; align-items: center;
+  height: 24px; padding: 4px 10px;
+  background: #33475b; color: #fff;
+  font-weight: bold; font-size: 13px; line-height: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sap-titlebar .sap-sys {
+  margin-left: auto; padding-left: 12px;
+  font-weight: normal; font-size: 11px; color: #c9d4df;
+}
+
+/* ------------------------------------------------------------- toolbar */
+.sap-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 4px 6px;
+  background: #e6e6e6;
+  border-bottom: 1px solid #808080;
+}
+.sap-toolbar form { display: flex; align-items: center; gap: 6px; margin: 0; }
+.sap-toolbar .sap-sep {
+  width: 1px; align-self: stretch; margin: 0 2px;
+  background: #a0a0a0; box-shadow: 1px 0 0 #fff;
+}
+.sap-toolbar .sap-help { margin-left: auto; font-size: 11px; white-space: nowrap; }
+
+/* ------------------------------------------------------------- buttons */
+.sap-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #f0f0f0;
+  border: 1px solid #999;
+  padding: 2px 8px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color: #000;
+  line-height: 16px;
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 0;
+}
+.sap-btn:hover { background: #e0e0e0; text-decoration: none; }
+.sap-btn:active { background: #d4d4d4; }
+.sap-btn:disabled, .sap-btn[aria-disabled="true"] {
+  color: #999; background: #f4f4f4; border-color: #c4c4c4;
+  cursor: default; pointer-events: none;
+}
+.sap-btn .sap-ico { font-weight: bold; line-height: 1; }
+.sap-btn-enter .sap-ico { color: #1b5e20; }
+.sap-btn-back  .sap-ico { color: #8d6e00; }
+.sap-btn-exit  .sap-ico { color: #b71c1c; }
+
+/* ----------------------------------------------------- command field */
+.sap-cmdfield {
+  width: 160px;
+  border: 1px solid #999;
+  padding: 2px 4px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  background: #fff;
+  color: #000;
+  border-radius: 0;
+}
+.sap-cmdfield:focus { outline: none; border-color: #3b7dd8; }
+
+/* ------------------------------------------------------------ content */
+.sap-content { padding: 16px 20px 40px; min-height: 60vh; }
+.sap-content h1 {
+  font-size: 15px; font-weight: bold; color: #33475b;
+  margin: 0 0 12px;
+}
+.sap-content h2 { font-size: 13px; font-weight: bold; margin: 16px 0 8px; }
+.sap-content p { margin: 0 0 10px; max-width: 90ch; }
+
+/* ------------------------------------------------- table (ALV grid) */
+.sap-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #999;
+  margin: 0 0 14px;
+}
+.sap-table th {
+  background: #d9d9d9;
+  border: 1px solid #999;
+  padding: 4px 6px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sap-table td {
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: "Courier New", Courier, monospace;
+  vertical-align: top;
+}
+/* Non-data (label/prose) cells opt out of the monospace look. */
+.sap-table td.sap-txt { font-family: Arial, Helvetica, sans-serif; }
+.sap-table tr:nth-child(even) td { background: #f7f7f7; }
+.sap-table tr:hover td { background: #e8f0fe; }
+.sap-table tr.sap-row-highlight td,
+.sap-table tr.sap-row-highlight:nth-child(even) td { background: #fff9c4; }
+.sap-table tr.sap-row-highlight:hover td { background: #fff3a0; }
+
+/* ------------------------------------------------------------- panel */
+.sap-panel {
+  background: #fff;
+  border: 1px solid #999;
+  margin: 0 0 14px;
+}
+.sap-panel-header {
+  background: #d9d9d9;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 12px;
+  border-bottom: 1px solid #999;
+}
+.sap-panel-body { padding: 10px; }
+
+/* ------------------------------------------------------- form layout */
+.sap-formrow {
+  display: flex; align-items: flex-start; flex-wrap: wrap;
+  margin: 0 0 8px;
+}
+.sap-formrow label {
+  display: inline-block;
+  width: 220px;
+  font-size: 12px;
+  padding-top: 3px;
+}
+.sap-formrow input,
+.sap-formrow select,
+.sap-formrow textarea {
+  border: 1px solid #999;
+  padding: 2px 4px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  background: #fff;
+  color: #000;
+  border-radius: 0;
+}
+.sap-formrow input[type="text"],
+.sap-formrow input:not([type]),
+.sap-formrow .sap-mono { font-family: "Courier New", Courier, monospace; }
+.sap-formrow input:focus,
+.sap-formrow select:focus,
+.sap-formrow textarea:focus { outline: none; border-color: #3b7dd8; }
+
+/* ----------------------------------------------------------- tooltip */
+/* CSS-only. Works on hover, on keyboard focus, and on tap: the trigger
+ * is a <button> inside a .sap-tooltip wrapper, revealed via :hover and
+ * :focus-within so touch devices get it on tap too. */
+.sap-tooltip { position: relative; display: inline-block; }
+.sap-tooltip > .sap-tooltip-trigger {
+  display: inline-block;
+  border: 0; background: none; padding: 0; margin: 0;
+  font: inherit; color: #00458a;
+  cursor: help;
+}
+.sap-tooltip > .sap-tooltip-bubble {
+  position: absolute;
+  left: 0; top: 100%; margin-top: 4px;
+  display: none;
+  background: #ffffe1;
+  border: 1px solid #666;
+  padding: 6px 8px;
+  max-width: 340px;
+  width: max-content;
+  font-size: 11px;
+  font-weight: normal;
+  text-transform: none;
+  white-space: normal;   /* inside a nowrap <th> the bubble must still wrap */
+  color: #000;
+  line-height: 1.4;
+  text-align: left;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.sap-tooltip:hover > .sap-tooltip-bubble,
+.sap-tooltip:focus-within > .sap-tooltip-bubble { display: block; }
+
+/* --------------------------------------------------------- status bar */
+.sap-statusbar {
+  position: fixed; bottom: 0; left: 0; width: 100%;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-top: 1px solid #999;
+  background: #d9e1f2;
+  color: #000;
+  z-index: 50;
+}
+.sap-statusbar--success { background: #c8e6c9; }
+.sap-statusbar--warning { background: #fff3cd; }
+.sap-statusbar--error   { background: #f8d7da; }
+
+/* -------------------------------------------------- status messages */
+.sap-msg { padding: 4px 8px; margin: 0 0 12px; border: 1px solid; }
+.sap-msg--success { background: #c8e6c9; border-color: #7cb87f; }
+.sap-msg--warning { background: #fff3cd; border-color: #e5d36d; }
+.sap-msg--error   { background: #f8d7da; border-color: #e8a6ad; color: #7a0000; }
+
+/* ------------------------------------------------- logon screen */
+.sap-login { max-width: 420px; margin: 40px auto; }
+.sap-login .sap-panel-body { padding: 16px; }
+.sap-login .sap-formrow label { width: 130px; }
+.sap-login .sap-formrow input { width: 200px; }
+.sap-login .sap-btns { margin-top: 12px; }
+.sap-login-foot {
+  margin-top: 14px; padding-top: 8px;
+  border-top: 1px solid #ccc;
+  font-size: 11px; color: #666;
+}
+.sap-login-hint { margin-top: 10px; font-size: 11px; color: #555; }
+
+/* ------------------------------------------------- menu tiles */
+.sap-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 0; }
+.sap-tile {
+  display: block; width: 230px;
+  border: 1px solid #999; background: #fff;
+  text-decoration: none; color: #000;
+}
+.sap-tile:hover { background: #e8f0fe; text-decoration: none; }
+.sap-tile-code {
+  background: #33475b; color: #fff;
+  font-weight: bold; font-size: 12px;
+  padding: 4px 8px;
+}
+.sap-tile-desc { padding: 8px; font-size: 12px; }
+
+/* ------------------------------------------------- tabs, section title, pre */
+.sap-tabs { display: flex; gap: 2px; margin: 0 0 12px; border-bottom: 1px solid #999; }
+.sap-tab {
+  padding: 4px 14px; border: 1px solid #999; border-bottom: 0;
+  background: #e6e6e6; color: #333; text-decoration: none;
+}
+.sap-tab:hover { background: #dcdcdc; text-decoration: none; }
+.sap-tab-active { background: #fff; font-weight: bold; position: relative; top: 1px; }
+.sap-tab[aria-disabled="true"] { color: #888; cursor: default; }
+.sap-h2 { font-size: 13px; font-weight: bold; margin: 16px 0 8px; }
+.sap-pre {
+  margin: 0 0 10px; padding: 8px 10px;
+  background: #fafafa; border: 1px solid #ccc;
+  font-family: "Courier New", Courier, monospace; font-size: 12px;
+  white-space: pre-wrap; overflow-wrap: anywhere; color: #222;
+}
+.sap-flag { background: #fff9c4; border-color: #e5d36d; font-weight: bold; }
+
+/* Tooltip on a right-hand column: open towards the left so it stays on screen. */
+.sap-tooltip-right > .sap-tooltip-bubble { left: auto; right: 0; }

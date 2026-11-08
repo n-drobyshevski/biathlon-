@@ -1,0 +1,12 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}SM37 - Journal du job{% endblock %}
+{% block tcode %}SM37{% endblock %}
+{% block status_msg %}Journal du job {{ job }} affiché.{% endblock %}
+{% block content %}
+<div class="sap-panel">
+  <div class="sap-panel-header">Journal du job</div>
+  <div class="sap-panel-body"><pre class="sap-pre">{{ log }}</pre></div>
+</div>
+<p class="sap-mute">Le code source de ce rapport est disponible dans les développements Basis (mission 15).</p>
+<p><a href="/sap/sm37">Retour à l'aperçu des jobs</a></p>
+{% endblock %}

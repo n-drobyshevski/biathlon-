@@ -30,8 +30,8 @@ x-locked-app: &locked-app
   read_only: true
   tmpfs: ["/tmp:size=32m,mode=1777"]
   init: true
-  pids_limit: 128
-  cpus: 1.0
+  # pids/cpu caps: in each service's deploy.resources.limits (compose refuses
+  # pids_limit/cpus next to a deploy.resources block)
 
 services:
   # ---- Players' entry point (not a challenge) ----------------------------
@@ -56,7 +56,12 @@ services:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
       - hub-data:/data                        # Bloc-notes; wipe: docker compose exec hub python notes_admin.py vider --oui
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8080:5000"]
-    mem_limit: 96m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 01 · Web · easy ---------------------------------------------------
@@ -76,7 +81,12 @@ services:
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8001:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- Internal file share (Intranet DécaFlop) ------------------------------
@@ -93,7 +103,12 @@ services:
     volumes:
       - ./handouts/dist:/handouts:ro          # built by ./scripts/build-handouts.sh
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8020:5000"]
-    mem_limit: 96m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 04 · Web · medium (IDOR) -----------------------------------------
@@ -103,7 +118,12 @@ services:
     environment:
       FLAG: "${FLAG_04_IDOR}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8004:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 06 · Web · medium (SQLi auth bypass) -----------------------------
@@ -113,7 +133,12 @@ services:
     environment:
       FLAG: "${FLAG_06_SQLI}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8006:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 10 · Web · hard (JWT weak secret) --------------------------------
@@ -127,7 +152,12 @@ services:
       FLAG: "${FLAG_10_JWT}"
       JWT_SECRET: "${JWT_SECRET:-DecaFlop2026}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8010:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 11 · Web · hard (exposed .git) -----------------------------------
@@ -143,7 +173,12 @@ services:
       SITE_DIR: /tmp/site
       HOME: /tmp
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8011:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 12 · Web · hard (SSTI) -------------------------------------------
@@ -156,7 +191,12 @@ services:
     environment:
       FLAG: "${FLAG_12_SSTI}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8012:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- 14 · SAP · medium (gateway reginfo, simulated) -------------------
@@ -164,9 +204,37 @@ services:
     <<: *locked-app
     build: ./challenges/14-sap-gateway
     environment:
-      FLAG: "${FLAG_14_SAP_GW}"
+      FLAG_14: "${FLAG_14_SAP_GW}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8014:5000"]
-    mem_limit: 128m
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+          pids: 128
+    restart: unless-stopped
+
+  # ---- Finale · War Room (final incident report) ------------------------
+  # http://<PiIP>:8099 — players pool the findings of every track into one
+  # report; only a fully correct one reveals the Grandmaster Flag.
+  # It gets ONLY its own flag and the rogue-device answer from .env (never the
+  # whole file: no other mission's flag may sit in this container). It listens
+  # on 8099 itself (gunicorn, one worker: the rate-limit counters are in memory).
+  # An unset ROGUE_* is passed as "" and the app then uses its built-in default.
+  warroom:
+    <<: *locked-app
+    build: ./warroom
+    environment:
+      FLAG_FINALE: "${FLAG_FINALE}"
+      ROGUE_MAC: "${ROGUE_MAC:-}"
+      ROGUE_IP: "${ROGUE_IP:-}"
+    ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8099:8099"]
+    deploy:                 # (not mem_limit: the online overlay merges a pids/cpu cap here)
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.5'
+          pids: 128
     restart: unless-stopped
 
   # ---- Scoreboard: CTFd (teams, flags, hints, scores) --------------------

@@ -10,10 +10,12 @@ Challenges produced:
   03 exif    -> transition_shot.jpg     (flag + GPS + timestamp in EXIF)
   05 pcap    -> timing_booth.pcap       (HTTP Basic-Auth creds = flag)
   07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
+  08 pcap    -> phantom_signal.pcap + phantom_signal.zip (password 'infected'; rogue device
+               POSTs to the SAP gateway over cleartext HTTP)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
   13 sap     -> dflop_erp.sap           (SAP GUI shortcut with a saved password)
-  15 sap     -> ZDFLOP_RESULT_EXPORT.abap (hardcoded credential in ABAP source)
+  15 sap     -> ZDFLOP_RESULT_EXPORT.abap, abap_lisezmoi.txt (hardcoded token in ABAP source)
 """
 import io, os, sys, zipfile, struct, socket, hashlib, base64, subprocess, tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
@@ -443,6 +445,159 @@ def gen_usb():
     print("[07] referee_usb.img")
 
 # ---------------------------------------------------------------------------
+# 08 · Le Signal Fantôme (medium) — a rogue device on the booth segment
+#
+# Cleartext only (no WPA handshake to crack): `strings`, tshark or CyberChef
+# are enough. The rogue's MAC + IP are a CLUE for the finale, not the flag; the
+# flag is in the HTTP response the SAP gateway sends back to the rogue.
+# Built with raw struct like 05 (no scapy dependency in the toolbox image).
+# ---------------------------------------------------------------------------
+def _mac(text):
+    return bytes(int(x, 16) for x in text.split(":"))
+
+def _eth2(dst_mac, src_mac, ethertype, payload):
+    return struct.pack("!6s6sH", _mac(dst_mac), _mac(src_mac), ethertype) + payload
+
+def _arp(op, sha, spa, tha, tpa):
+    body = struct.pack("!HHBBH6s4s6s4s", 1, 0x0800, 6, 4, op, _mac(sha),
+                       socket.inet_aton(spa), _mac(tha), socket.inet_aton(tpa))
+    dst = "ff:ff:ff:ff:ff:ff" if op == 1 else tha
+    return _eth2(dst, sha, 0x0806, body)
+
+def _udp_frame_mac(smac, dmac, src, dst, sport, dport, payload):
+    hdr = struct.pack("!HHHH", sport, dport, 8 + len(payload), 0)
+    pseudo = socket.inet_aton(src) + socket.inet_aton(dst) + struct.pack("!BBH", 0, 17, len(hdr) + len(payload))
+    chk = _csum(pseudo + hdr + payload) or 0xffff
+    hdr = hdr[:6] + struct.pack("!H", chk)
+    return _eth2(dmac, smac, 0x0800, _ipv4(src, dst, 17, hdr + payload))
+
+def _tcp_frame(smac, dmac, src, dst, sport, dport, seq, ack, flags, data=b""):
+    return _eth2(dmac, smac, 0x0800, _ipv4(src, dst, 6, _tcp(sport, dport, seq, ack, flags, src, dst, data)))
+
+def _dns_name(name):
+    return b"".join(bytes([len(x)]) + x.encode() for x in name.split(".")) + b"\x00"
+
+def _dns_query(txid, name):
+    return struct.pack("!HHHHHH", txid, 0x0100, 1, 0, 0, 0) + _dns_name(name) + struct.pack("!HH", 1, 1)
+
+def _dns_answer(txid, name, ip):
+    return (struct.pack("!HHHHHH", txid, 0x8180, 1, 1, 0, 0) + _dns_name(name) + struct.pack("!HH", 1, 1)
+            + struct.pack("!HHHIH", 0xc00c, 1, 1, 300, 4) + socket.inet_aton(ip))
+
+PHANTOM_ZIP_PASSWORD = "infected"      # the usual malware-sample convention
+
+# The rogue device of challenge 08. The War Room finale (warroom/app.py) accepts
+# these as the "equipement fantome" answer and reads the SAME env var names with
+# the SAME defaults; tests/test_warroom.py fails if the two ever diverge. If you
+# override them, set them in .env so the handouts and the War Room both see them.
+ROGUE_MAC = flag("ROGUE_MAC", "") or "aa:bb:cc:dd:ee:42"      # empty counts as unset
+ROGUE_IP = flag("ROGUE_IP", "") or "10.10.0.42"
+
+def gen_phantom():
+    import random, datetime
+    f = os.environ.get("FLAG_08_PHANTOM") or flag("FLAG_08", "TRIATHLON{phantom_placeholder}")
+    rnd = random.Random(0x08)                                  # stable jitter and ISNs
+    t0 = datetime.datetime(2026, 11, 1, 18, 40, 0, tzinfo=datetime.timezone.utc).timestamp()
+
+    # Legitimate booth segment 10.10.0.0/24 (+ the router, which also answers DNS)
+    GW   = ("10.10.0.1", "00:0c:29:4e:71:01")
+    BOOTH, CHIP, SCREEN = (("10.10.0.5", "3c:52:82:7e:90:05"), ("10.10.0.6", "b8:27:eb:3c:11:06"),
+                           ("10.10.0.7", "dc:a6:32:19:ab:07"))
+    ROGUE = (ROGUE_IP, ROGUE_MAC)                              # does not belong here
+    SAP_IP = "10.20.0.30"                                      # behind the router
+
+    pkts = []                                                  # (seconds after t0, frame)
+    def add(t, frame):
+        pkts.append((t, frame))
+
+    # --- smoke: ARP chatter (12 frames) ---
+    for i, (a, b) in enumerate([(BOOTH, CHIP), (SCREEN, BOOTH), (BOOTH, SCREEN), (CHIP, GW),
+                                (SCREEN, GW), (BOOTH, CHIP)]):
+        t = 3 + i * 19 + rnd.random()
+        add(t, _arp(1, a[1], a[0], "00:00:00:00:00:00", b[0]))
+        add(t + 0.0004, _arp(2, b[1], b[0], a[1], a[0]))
+
+    # --- smoke: chip-reader syslog to the booth collector (12 frames) ---
+    for i in range(12):
+        t = 5 + i * 9.7 + rnd.random()
+        stamp = datetime.datetime.fromtimestamp(t0 + t, datetime.timezone.utc)
+        msg = (f"<14>Nov  1 {stamp:%H:%M:%S} chip-reader-01 chipd[311]: tag read ok "
+               f"epc=E2801160{rnd.randrange(16**8):08X} bib={1040 + rnd.randrange(30)} "
+               f"ant={1 + i % 2} rssi=-{45 + rnd.randrange(15)}").encode()
+        add(t, _udp_frame_mac(CHIP[1], BOOTH[1], CHIP[0], BOOTH[0], 40514, 514, msg))
+
+    # --- smoke: DNS from the results screen and booth PC (16 frames) ---
+    names = [("timing.decaflop.local", "10.10.0.5"), ("results.decaflop.local", "10.20.0.12"),
+             ("ntp.decaflop.local", "10.10.0.1"), ("syslog.decaflop.local", "10.10.0.5")]
+    for i in range(8):
+        name, ip = names[i % 4]
+        host = SCREEN if i % 2 == 0 else BOOTH
+        t = 8 + i * 14.3 + rnd.random()
+        txid = rnd.randrange(65536); sp = 33000 + rnd.randrange(2000)
+        add(t, _udp_frame_mac(host[1], GW[1], host[0], GW[0], sp, 53, _dns_query(txid, name)))
+        add(t + 0.002, _udp_frame_mac(GW[1], host[1], GW[0], host[0], 53, sp, _dns_answer(txid, name, ip)))
+
+    # --- the phantom: first sign of the rogue (gratuitous ARP, then asks for the router) ---
+    add(7.31, _arp(1, ROGUE[1], ROGUE[0], "00:00:00:00:00:00", ROGUE[0]))
+    add(9.02, _arp(1, ROGUE[1], ROGUE[0], "00:00:00:00:00:00", GW[0]))
+    add(9.0224, _arp(2, GW[1], GW[0], ROGUE[1], ROGUE[0]))
+
+    # --- the rogue resolves the SAP gateway, then registers a program over HTTP ---
+    qname = "dfl-sap.decaflop.local"
+    add(62.40, _udp_frame_mac(ROGUE[1], GW[1], ROGUE[0], GW[0], 51877, 53, _dns_query(0x4242, qname)))
+    add(62.4026, _udp_frame_mac(GW[1], ROGUE[1], GW[0], ROGUE[0], 53, 51877, _dns_answer(0x4242, qname, SAP_IP)))
+
+    body_req = f"program=Z_EXPLOIT_RFC&host={ROGUE_IP}".encode()
+    req = (b"POST /sap/gw/register HTTP/1.1\r\n"
+           b"Host: dfl-sap.decaflop.local:8014\r\n"
+           b"User-Agent: SAP-RFC-Exploit\r\n"
+           b"Content-Type: application/x-www-form-urlencoded\r\n"
+           + f"Content-Length: {len(body_req)}\r\n".encode() +
+           b"Connection: close\r\n\r\n" + body_req)
+    body_resp = ("Programme Z_EXPLOIT_RFC enregistré avec succès sur la passerelle.\n"
+                 f"Clé d'enregistrement : {f}\n").encode("utf-8")
+    resp = (b"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n"
+            + f"Content-Length: {len(body_resp)}\r\n".encode() +
+            b"Connection: close\r\n\r\n" + body_resp)
+
+    c_isn, s_isn = rnd.randrange(1 << 31), rnd.randrange(1 << 31)
+    cm, sm, cip, sp_ = ROGUE[1], GW[1], ROGUE[0], 51878        # the router carries it to the gateway
+    def to_sap(t, seq, ack, flags, data=b""):
+        add(t, _tcp_frame(cm, sm, cip, SAP_IP, sp_, 8014, seq, ack, flags, data))
+    def from_sap(t, seq, ack, flags, data=b""):
+        add(t, _tcp_frame(sm, cm, SAP_IP, cip, 8014, sp_, seq, ack, flags, data))
+    t = 63.10
+    to_sap(t, c_isn, 0, 0x02)                                              # SYN
+    from_sap(t + 0.0011, s_isn, c_isn + 1, 0x12)                           # SYN,ACK
+    to_sap(t + 0.0014, c_isn + 1, s_isn + 1, 0x10)                         # ACK
+    to_sap(t + 0.0030, c_isn + 1, s_isn + 1, 0x18, req)                    # POST
+    from_sap(t + 0.0042, s_isn + 1, c_isn + 1 + len(req), 0x10)            # ACK
+    from_sap(t + 0.2610, s_isn + 1, c_isn + 1 + len(req), 0x18, resp)      # 200 OK + flag
+    to_sap(t + 0.2622, c_isn + 1 + len(req), s_isn + 1 + len(resp), 0x10)  # ACK
+    from_sap(t + 0.2625, s_isn + 1 + len(resp), c_isn + 1 + len(req), 0x11)  # FIN,ACK
+    to_sap(t + 0.2640, c_isn + 1 + len(req), s_isn + 2 + len(resp), 0x11)  # FIN,ACK
+    from_sap(t + 0.2651, s_isn + 2 + len(resp), c_isn + 2 + len(req), 0x10)  # ACK
+
+    pkts.sort(key=lambda x: x[0])
+    pcap_path = os.path.join(OUT, "phantom_signal.pcap")
+    with open(pcap_path, "wb") as fh:
+        fh.write(struct.pack("!IHHiIII", 0xa1b2c3d4, 2, 4, 0, 0, 65535, 1))   # same header as 05
+        for t, pkt in pkts:
+            ts = t0 + t
+            fh.write(struct.pack("!IIII", int(ts), int((ts % 1) * 1_000_000), len(pkt), len(pkt)) + pkt)
+    # EDR-safe packaging: corporate EDR tends to quarantine a bare capture holding
+    # an exploit user-agent, so players get it as a ZIP with the usual sample
+    # password. This is only a wrapper (the password is printed next to the file
+    # on the share); it is not part of the puzzle. The raw pcap stays in OUT for
+    # organisers and tests but is not on the share's file map.
+    out_zip = os.path.join(OUT, "phantom_signal.zip")
+    if os.path.exists(out_zip):
+        os.remove(out_zip)
+    subprocess.run(["zip", "-j", "-P", PHANTOM_ZIP_PASSWORD, out_zip, pcap_path],
+                   check=True, stdout=subprocess.DEVNULL)
+    print("[08] phantom_signal.pcap, phantom_signal.zip (password:", PHANTOM_ZIP_PASSWORD + ")")
+
+# ---------------------------------------------------------------------------
 # 09 · SAP USR02 (HARD, finale) — identify + crack the saboteur's legacy hash
 # ---------------------------------------------------------------------------
 def gen_sap():
@@ -618,12 +773,25 @@ FORM normalize CHANGING cv_part TYPE string.
   cv_part = reverse( cv_part ).
 ENDFORM.
 """
-    with open(os.path.join(OUT, "ZDFLOP_RESULT_EXPORT.abap"), "w") as fh:
-        fh.write(abap)
-    print("[15] ZDFLOP_RESULT_EXPORT.abap")
+    lisezmoi = (
+        "Lisez-moi : rapport ZDFLOP_RESULT_EXPORT\n"
+        "\n"
+        "- Le jeton n'est pas stocké en un seul morceau : aucune ligne ne le contient en entier.\n"
+        "- Vérifiez sur quel système (sy-sysid) chaque branche du IF s'exécute : l'en-tête dit lequel est la production.\n"
+        "- Cherchez l'instruction CONCATENATE : l'ordre des variables y compte, pas l'ordre des affectations.\n"
+        "- Un PERFORM ... CHANGING peut transformer une variable avant qu'elle ne serve : lisez le FORM appelé.\n"
+        "- Rappel : le wiki de l'intranet propose l'article \"Lire du code ABAP (notions minimales)\".\n"
+    )
+    # Hard guarantees, checked at generation time: the whole flag is in neither file.
+    assert f not in abap and f not in lisezmoi and dev != f
+    # UTF-8, LF line endings, whatever the host OS is
+    for name, text in (("ZDFLOP_RESULT_EXPORT.abap", abap), ("abap_lisezmoi.txt", lisezmoi)):
+        with open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+    print("[15] ZDFLOP_RESULT_EXPORT.abap, abap_lisezmoi.txt")
 
 
 if __name__ == "__main__":
-    gen_stego(); gen_exif(); gen_pcap(); gen_usb(); gen_sap()
+    gen_stego(); gen_exif(); gen_pcap(); gen_usb(); gen_phantom(); gen_sap()
     gen_sap_shortcut(); gen_sap_abap()
     print("\nAll handouts written to", OUT)

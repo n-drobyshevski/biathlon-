@@ -64,6 +64,11 @@ RUN chmod 0755 /usr/local/bin/player-shell /usr/local/bin/grab /usr/local/bin/to
 RUN cp /etc/passwd /etc/toolbox/passwd.base && cp /etc/group /etc/toolbox/group.base \
     && ln -sf /work/.etc/passwd /etc/passwd && ln -sf /work/.etc/group /etc/group
 
+# Curated wordlists for john / hashcat (challenges 09 and 10): short on purpose, so a
+# crack finishes in seconds on the Pi. World-readable; root-owned so players cannot edit them.
+COPY wordlists/sap_default.txt wordlists/jwt_secrets.txt /usr/share/wordlists/
+RUN chmod 644 /usr/share/wordlists/sap_default.txt /usr/share/wordlists/jwt_secrets.txt
+
 WORKDIR /work
 EXPOSE 7681
 

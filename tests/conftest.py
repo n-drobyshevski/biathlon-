@@ -24,6 +24,7 @@ TEST_FLAGS = {
     "FLAG_03_EXIF": "TRIATHLON{exif_meta_test}",
     "FLAG_05_PCAP": "TRIATHLON{pcap_creds_test}",
     "FLAG_07_USB": "TRIATHLON{usb_carve_test}",
+    "FLAG_08_PHANTOM": "TRIATHLON{phantom_pcap_test}",
     "FLAG_09_SAP_USR02": "TRIATHLON{sap_usr02_test}",
     "SABOTEUR_NAME": "viktor_lindqvist",
     "FLAG_13_SAP_SHORTCUT": "TRIATHLON{sap_shortcut_test}",
@@ -50,6 +51,7 @@ def dist(tmp_path_factory):
     gen.gen_exif()
     gen.gen_pcap()
     gen.gen_usb()
+    gen.gen_phantom()
     gen.gen_sap()
     gen.gen_sap_shortcut()
     gen.gen_sap_abap()

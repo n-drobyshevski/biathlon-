@@ -176,8 +176,8 @@ def test_10_docs_page_is_intranet(monkeypatch):
 def test_11_index_and_nginx_listing(tmp_path, monkeypatch):
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    (bindir / "python").write_text("#!/bin/sh\nexit 0\n")
-    (bindir / "python").chmod(0o755)
+    (bindir / "gunicorn").write_text("#!/bin/sh\nexit 0\n")      # the entrypoint's final exec
+    (bindir / "gunicorn").chmod(0o755)
     site = tmp_path / "site"
     env = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}", SITE_DIR=str(site), FLAG="TRIATHLON{g}")
     subprocess.run(["sh", str(APPS["11"] / "entrypoint.sh")], check=True, env=env, capture_output=True)
@@ -202,12 +202,132 @@ def test_12_ssti_still_evaluates(monkeypatch):
 # ---------------------------------------------------------------- 14
 def test_14_register_escapes_and_gives_flag(monkeypatch):
     c = _client("14", monkeypatch, FLAG="TRIATHLON{gw_x}")
+    # The gateway now sits behind the Level 3 SAP logon; reach it unauthenticated
+    # and you are bounced to the logon screen, not handed the flag.
+    assert c.post("/sap/gw/register", data={"tp": "x"}).status_code == 302
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
     assert "TRIATHLON{" not in c.get("/").data.decode()
     page = c.post("/sap/gw/register", data={"tp": "<img src=x>"}).data.decode()
     assert "TRIATHLON{gw_x}" in page
     assert "<img src=x>" not in page and "&lt;img src=x&gt;" in page
     assert "cela vous donne" not in page
     assert c.get("/sap/gw/reginfo").mimetype == "text/plain"
+
+
+def test_14_smgw_page_and_flag_env(monkeypatch):
+    monkeypatch.delenv("FLAG", raising=False)
+    c = _client("14", monkeypatch, FLAG_14="TRIATHLON{from_14}")
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    assert c.get("/sap/cmd?cmd=smgw").headers["Location"].endswith("/sap/smgw")
+    page = c.get("/sap/smgw").data.decode()
+    assert "Fichiers de contrôle d'accès" in page and "FULL" in page and "sap-tooltip-bubble" in page
+    assert "sap-statusbar--warning" in page and "TRIATHLON{" not in page
+    done = c.post("/sap/gw/register", data={"tp": "Z_ANY", "host": "203.0.113.9"}).data.decode()
+    assert "sap-statusbar--success" in done and "Journal d'enregistrement" in done
+    assert "TRIATHLON{from_14}" in done
+    # reginfo stays a plain-text ACL file and never carries the flag
+    r = c.get("/sap/gw/reginfo")
+    assert r.mimetype == "text/plain" and b"TRIATHLON{" not in r.data
+
+
+def test_14_se16n_matches_usr02_csv_handout(monkeypatch, dist):
+    """The on-screen USR02 table and SAP_USR02_export.csv are the same data."""
+    import csv
+    from html import unescape
+    mod = _load("intra_14_se16n", APPS["14"] / "app.py")
+    c = mod.app.test_client()
+    assert c.get("/sap/se16n?table=USR02").status_code == 302          # behind the logon
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    page = c.get("/sap/se16n?table=USR02").data.decode()
+    handout = list(csv.DictReader(open(dist / "SAP_USR02_export.csv")))
+    screen = {r["BNAME"]: r for r in mod.USR02}
+    assert [r["BNAME"] for r in handout] == [r["BNAME"] for r in mod.USR02]
+    for h in handout:
+        r = screen[h["BNAME"]]
+        assert (r["BCODE"], r["LDATE"], r["LTIME"], r["MANDT"]) == (h["BCODE"], h["TRDAT"], h["LTIME"], h["MANDT"])
+        assert r["UFLAG"] == int(h["UFLAG"])
+        assert h["BCODE"] in page                                       # and it is what is rendered
+    assert page.count("sap-row-highlight") == 1 and "VLINDQVIST" in page.split("sap-row-highlight")[1][:80]
+    assert "5 entrée(s) trouvée(s)" in unescape(page) and "TRIATHLON{" not in page
+    bad = c.get("/sap/se16n?table=USR01").data.decode()
+    assert "Table non autorisée pour cet audit." in bad and "sap-table" not in bad
+
+
+def test_14_sm37_job_overview_and_log(monkeypatch):
+    from html import unescape
+    c = _client("14", monkeypatch, FLAG_14="TRIATHLON{sm37_x}")
+    assert c.get("/sap/sm37").status_code == 302 and c.get("/sap/sm37/log?job=X").status_code == 302
+    c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    page = c.get("/sap/sm37").data.decode()
+    assert page.count("sap-row-highlight") == 1 and page.count('href="/sap/sm37/log?job=ZDFLOP_RESULT_EXPORT"') == 1
+    assert page.index("18:42:00") < page.index("02:00:00")            # most recent first
+    log = c.get("/sap/sm37/log?job=ZDFLOP_RESULT_EXPORT")
+    text = unescape(log.data.decode())
+    assert log.status_code == 200 and "47 enregistrements sélectionnés" in text and "mission 15" in text
+    assert "TRIATHLON{" not in page and "TRIATHLON{" not in text      # no flag on either screen
+    for job in ("ZDFLOP_NIGHTLY_SYNC", "<b>x</b>", ""):
+        r = c.get("/sap/sm37/log", query_string={"job": job})
+        assert r.status_code == 404 and "Journal introuvable." in r.data.decode()
+        assert "<b>x</b>" not in r.data.decode()
+
+
+def test_15_abap_handout_and_reading_note(dist, share):
+    # the report's puzzle itself (decoy, order, reverse) is pinned in test_abap.py
+    flag = "TRIATHLON{sap_abap_test}"                       # FLAG_15_SAP_ABAP in conftest
+    raw = (dist / "ZDFLOP_RESULT_EXPORT.abap").read_bytes()
+    assert b"\r" not in raw and flag.encode() not in raw   # LF, never one literal
+    note = (dist / "abap_lisezmoi.txt").read_bytes()
+    assert b"\r" not in note and flag.encode() not in note
+    text = note.decode("utf-8")
+    assert 6 <= text.count("\n") <= 8
+    for word in ("sy-sysid", "CONCATENATE", "PERFORM", "Lire du code ABAP"):
+        assert word in text, word
+    for spoiler in ("lv_k3", "lv_k1", "reverse", "'DFL'", " DFL "):  # tips, not the answer
+        assert spoiler not in text, spoiler
+    # players can actually fetch both files from the share
+    for name in ("ZDFLOP_RESULT_EXPORT.abap", "abap_lisezmoi.txt"):
+        assert share.get(f"/telecharger/Basis%20SAP/D%C3%A9veloppements/{name}").status_code == 200
+
+
+def test_08_phantom_pcap_is_cleartext_and_names_the_rogue(dist):
+    """phantom_signal.pcap: rogue device, HTTP POST, flag only in the 200 OK."""
+    import datetime
+    import struct
+    flag = b"TRIATHLON{phantom_pcap_test}"                  # FLAG_08_PHANTOM in conftest
+    raw = (dist / "phantom_signal.pcap").read_bytes()
+    assert struct.unpack("!IHHiIII", raw[:24])[0] == 0xa1b2c3d4 and struct.unpack("!I", raw[20:24])[0] == 1
+    frames, off = [], 24
+    while off < len(raw):
+        sec, usec, n, _ = struct.unpack("!IIII", raw[off:off + 16])
+        frames.append((sec + usec / 1e6, raw[off + 16:off + 16 + n]))
+        off += 16 + n
+    assert len(frames) >= 50
+    lo = datetime.datetime(2026, 11, 1, 18, 40, tzinfo=datetime.timezone.utc).timestamp()
+    assert all(lo <= t <= lo + 120 for t, _ in frames)             # the 18:40-18:42 window, in 2026
+    assert [t for t, _ in frames] == sorted(t for t, _ in frames)
+    assert flag in raw                                              # solvable with `strings`
+    carrying = [f for _, f in frames if flag in f]
+    assert len(carrying) == 1 and b"HTTP/1.1 200 OK" in carrying[0]
+    post = [f for _, f in frames if b"POST /sap/gw/register HTTP/1.1" in f]
+    assert len(post) == 1 and flag not in post[0]
+    assert b"User-Agent: SAP-RFC-Exploit" in post[0] and b"program=Z_EXPLOIT_RFC&host=10.10.0.42" in post[0]
+    assert b"Host: dfl-sap.decaflop.local:8014" in post[0]
+    rogue_mac = bytes.fromhex("aabbccddee42")
+    assert post[0][6:12] == rogue_mac                               # sent from the rogue's MAC
+    arp = [(t, f) for t, f in frames if f[12:14] == b"\x08\x06" and f[22:28] == rogue_mac]
+    assert arp and arp[0][1][28:32] == bytes([10, 10, 0, 42])      # ARP announce for 10.10.0.42
+    assert arp[0][0] - lo < 15                                      # early in the capture
+    assert not any(f[6:12] == rogue_mac for t, f in frames if t < arp[0][0])
+
+
+def test_08_capture_ships_in_a_password_zip(dist):
+    import zipfile
+    zf = zipfile.ZipFile(dist / "phantom_signal.zip")
+    assert zf.namelist() == ["phantom_signal.pcap"]
+    with pytest.raises(RuntimeError):
+        zf.read("phantom_signal.pcap")                                  # needs the password
+    assert zf.read("phantom_signal.pcap", pwd=b"infected") == (dist / "phantom_signal.pcap").read_bytes()
+    assert b"TRIATHLON{phantom_pcap_test}" not in (dist / "phantom_signal.zip").read_bytes()  # encrypted
 
 
 # ------------------------------------------------- flag pages, copy rules
@@ -221,6 +341,7 @@ def test_flag_pages_have_no_long_dashes_or_player_talk(monkeypatch, shop):
     c04.get("/login")
     c10 = _client("10", monkeypatch, FLAG="TRIATHLON{b}")
     c14 = _client("14", monkeypatch, FLAG="TRIATHLON{c}")
+    c14.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
     pages = {
         "01 portal": shop.get("/staff-portal-7f3a9").data.decode(),
         "01 robots": shop.get("/robots.txt").data.decode(),

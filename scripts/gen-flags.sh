@@ -46,6 +46,7 @@ FLAG_04_IDOR=TRIATHLON{brick_session_$(tok 10)}
 FLAG_05_PCAP=TRIATHLON{missed_the_mount_line_$(tok 10)}
 FLAG_06_SQLI=TRIATHLON{drafting_penalty_$(tok 10)}
 FLAG_07_USB=TRIATHLON{spare_tube_$(tok 10)}
+FLAG_08_PHANTOM=TRIATHLON{false_start_$(tok 10)}
 
 FLAG_09_SAP_USR02=TRIATHLON{photo_finish_$(tok 10)}
 
@@ -56,6 +57,15 @@ FLAG_12_SSTI=TRIATHLON{finisher_medal_$(tok 10)}
 FLAG_13_SAP_SHORTCUT=TRIATHLON{race_belt_$(tok 10)}
 FLAG_14_SAP_GW=TRIATHLON{open_water_$(tok 10)}
 FLAG_15_SAP_ABAP=TRIATHLON{the_wall_$(tok 10)}
+
+# --- Finale (War Room, warroom/): revealed only by a fully correct incident report ---
+FLAG_FINALE=TRIATHLON{grand_maitre_$(tok 12)}
+
+# Phantom device of mission 08. ONE source for both consumers: the handout
+# generator (phantom_signal.pcap) and the War Room (accepted answer) read these
+# same two variables. Change them here only, then rebuild the handouts.
+ROGUE_MAC=aa:bb:cc:dd:ee:42
+ROGUE_IP=10.10.0.42
 
 SABOTEUR_NAME=viktor_lindqvist
 

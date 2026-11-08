@@ -1,0 +1,36 @@
+{% extends "wiki/wiki_base.html" %}
+{% block content %}
+<h2>Un fichier texte</h2>
+<p>Un raccourci SAP GUI (extension <code>.sap</code>) est un simple fichier texte au format INI. Il se lit avec
+n'importe quel éditeur de texte, sans outil particulier.</p>
+<pre class="block"><code>[System]
+Name=PRD
+Description=Production DécaFlop
+Client=100
+
+[User]
+Name=EXEMPLE
+Password=ZXhhbXBsZQ==
+
+[Function]
+Command=SESSION_MANAGER</code></pre>
+
+<h2>Le champ Password</h2>
+<p>Lorsque la case <b>« Enregistrer le mot de passe »</b> est cochée à la création du raccourci, SAP GUI
+écrit la ligne <code>Password=</code> en Base64.</p>
+<p><b>Ce n'est pas du chiffrement : c'est un simple encodage.</b> Il n'y a aucune clé et il se défait en
+une commande. Toute personne qui peut lire le fichier peut lire le mot de passe.</p>
+<table>
+  <thead><tr><th>Valeur dans le fichier</th><th>Après décodage Base64</th></tr></thead>
+  <tbody><tr><td><code>ZXhhbXBsZQ==</code></td><td><code>example</code></td></tr></tbody>
+</table>
+
+<h2>Où se trouvent ces fichiers</h2>
+<p>Les raccourcis <code>.sap</code> traînent là où on ne les cherche pas :</p>
+<ul>
+  <li>les sauvegardes de postes portables ;</li>
+  <li>les profils itinérants (<em>roaming profiles</em>) ;</li>
+  <li>les dossiers de téléchargements et les partages de service.</li>
+</ul>
+<p>Pensez à les inclure dans toute recherche de secrets sur un poste ou dans une sauvegarde.</p>
+{% endblock %}

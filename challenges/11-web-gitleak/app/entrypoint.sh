@@ -100,4 +100,8 @@ printf '.env\n__pycache__/\n' > .gitignore
 git add -A
 git commit -q -m "Déplace les secrets vers des variables d'environnement; ajoute .gitignore"
 
-exec python /app/app.py
+# gunicorn, same settings as every Flask service (see the other Dockerfiles).
+# Run from the app's own folder (/app in the image), wherever the script is called from.
+cd "$(dirname "$0")"
+exec gunicorn --bind 0.0.0.0:5000 --workers 2 --threads 4 --timeout 120 \
+     --preload --worker-tmp-dir /dev/shm --access-logfile - app:app

@@ -204,6 +204,11 @@ MISSIONS = [
      "Supprimer un fichier n'efface pas ses octets. Notre image de la clé est dans "
      "le partage interne (Arbitrage / Pièces) : récupérez ce qui a été effacé.",
      "share", []),
+    ("08", "Le Signal Fantôme", "Forensics", "Moyen", 125,
+     "La veille de la course, un équipement inconnu est apparu sur le segment réseau "
+     "de la cabine de chronométrage. Retrouvez son adresse MAC et son IP : elles "
+     "serviront au rapport d'incident final. La capture du réseau est dans le "
+     "partage interne (Réseau / Captures terrain).", "share", []),
     ("09", "Qui a truqué la course ?", "SAP", "Difficile", 250,
      "La table des résultats ZRACE_RESULT a été modifiée la veille de la finale. "
      "Le système a conservé la table des utilisateurs USR02 : comptes, dernières "
@@ -234,13 +239,19 @@ MISSIONS = [
     ("15", "En dur", "SAP", "Moyen", 150,
      "Un rapport ABAP, ZDFLOP_RESULT_EXPORT, pousse les résultats par RFC. "
      "Son jeton d'export n'est « pas censé » figurer dans le code. La source "
-     "est dans le partage interne (Basis SAP / Développements) : lisez-la et "
-     "jugez.", "share", []),
+     "est dans le partage interne (Basis SAP / Développements), avec une courte "
+     "note de lecture : lisez-la et jugez.", "share", []),
+    ("16", "Rapport d'Incident Final", "Collaboratif", "Final", 300,
+     "Mission d'équipe, à ne pas jouer seul. La cellule de crise doit corréler toutes les preuves "
+     "et déposer le rapport de clôture : identité du saboteur, vecteur d'attaque, heure de "
+     "l'incident et équipement fantôme. Il faut les trouvailles des équipes Web, Forensics et SAP : "
+     "mettez-les en commun, puis rendez-vous dans la salle de crise.", "warroom", []),
 ]
 
 PORTS = {"site": ("SITE_URL", 8001), "share": ("SHARE_URL", 8020),
          "idor": ("IDOR_URL", 8004), "sqli": ("SQLI_URL", 8006),
-         "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014)}
+         "jwt": ("JWT_URL", 8010), "git": ("GIT_URL", 8011), "ssti": ("SSTI_URL", 8012), "sapgw": ("SAPGW_URL", 8014),
+         "warroom": ("WARROOM_URL", 8099)}
 
 
 def service_url(key):
@@ -269,11 +280,12 @@ def live_where(key):
     return (urlsplit(override).netloc if override else "") or LIVE_LABEL[key][1]
 
 
-LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3"}
+LEVEL_CLASS = {"Facile": "lv1", "Moyen": "lv2", "Difficile": "lv3", "Final": "lv4"}
 LIVE_LABEL = {"site": ("Site DécaFlop", ":8001"), "share": ("Intranet DécaFlop", ":8020"),
               "idor": ("Espace athlètes", ":8004"), "sqli": ("Admin résultats", ":8006"),
               "jwt": ("Results API", ":8010"), "git": ("Site chronométrage", ":8011"),
-              "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014")}
+              "ssti": ("Générateur de certificats", ":8012"), "sapgw": ("Gateway SAP", ":8014"),
+              "warroom": ("Salle de crise (War Room)", ":8099")}
 COLS = "ABCDEFGH"
 
 
@@ -323,7 +335,10 @@ def crisis_cell():
         state = saved.get(num, notes.STATES[0])
         opts = "".join(f'<option{" selected" if o == state else ""}>{o}</option>' for o in notes.STATES)
         status = f'<select data-k="{num}" aria-label="Statut de la mission {num}">{opts}</select>' + submit
-        rows.append((f' class="mission" id="mission-{num}" data-statut="{state}"', [
+        if level == "Final":      # the team capstone gets its own section and styling
+            rows.append(("", [("Synthèse finale : mission d'équipe, à jouer ensemble une fois les autres "
+                               "pistes réunies", ' colspan="8" class="sect"')]))
+        rows.append((f' class="mission{" finale" if level == "Final" else ""}" id="mission-{num}" data-statut="{state}"', [
             (num, ""), (f'<span class="mn">{num}</span> <b>{fr(title)}</b>', ""), (fr(brief), ' class="desc"'), (cat, ""),
             (f'<span class="chip {LEVEL_CLASS[level]}">{level}</span>', ""), (str(pts), ' class="num"'),
             (access(live), ' class="acc"'), (status, "")]))
@@ -358,11 +373,12 @@ def context():
         ("Contexte", "La veille de la finale, quelqu'un s'est introduit dans les systèmes de l'événement "
                      "et a truqué la liste de départ en échangeant les puces de chronométrage. Vous êtes "
                      "l'équipe IT d'urgence : suivez la piste à travers le site DécaFlop, la cabine de "
-                     "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La dernière "
-                     "mission désigne le coupable."),
+                     "chronométrage, la clé USB d'un arbitre et le système SAP DFlop ERP. La mission 09 "
+                     "désigne le coupable ; la synthèse finale (16) boucle le dossier en équipe."),
         ("Format des flags", "<code>TRIATHLON{...}</code>"),
         ("Missions", f"{len(MISSIONS)} missions, {sum(m[4] for m in MISSIONS)} points"),
-        ("Ordre", "Conseillé dans l'ordre, mais chaque mission se joue seule"),
+        ("Ordre", "Conseillé dans l'ordre, chaque mission se joue seule, sauf la synthèse finale (16), "
+                  "qui se joue en équipe"),
         ("Partage interne", "Les fichiers de preuve sont sur « Intranet DécaFlop », l'espace documentaire "
                             f"interne ({live_where('share')}). L'identifiant de connexion ne s'affiche plus : il "
                             "se cache dans les ressources du site DécaFlop : commencez par la mission 01."),
@@ -485,7 +501,7 @@ GUIDE = {
            "Un navigateur suffit.",
            ["Ouvrez `/robots.txt` sur le site DécaFlop.",
             "Repérez la ligne `Disallow:` : elle donne un chemin vers un espace staff.",
-            "Ouvrez ce chemin : le portail staff affiche le flag (et l'identifiant du partage interne, utile plus tard)."]),
+            "Ouvrez ce chemin : le portail staff affiche le flag. Il signale aussi que l'identifiant du partage interne traîne dans les ressources du site, utile plus tard."]),
     "02": ("Un fichier peut en cacher un autre : ici une archive ZIP est collée à la fin d'une image PNG.",
            "Le site, puis CyberChef.",
            ["Dans l'espace presse (`/presse`), téléchargez l'affiche officielle.",
@@ -520,6 +536,21 @@ GUIDE = {
            ["Dans le partage, dossier Arbitrage puis Pièces, téléchargez `referee_usb.img` dans un dossier vide.",
             "Dans CyberChef, appliquez `Extract Files` : l'image PNG cachée est détectée et extraite.",
             "Ouvrez l'image PNG extraite : le flag y est écrit."]),
+    "08": ("Un équipement qui n'a rien à faire sur un réseau se repère à son adresse MAC et à son trafic en clair.",
+           "Le partage interne, puis le terminal de l'équipe (`unzip`, `tshark`) ou CyberChef.",
+           ["Dans le partage, dossier Réseau puis Captures terrain, téléchargez `phantom_signal.zip` "
+            "et décompressez-la avec le mot de passe indiqué dans la description du fichier.",
+            "Dans la capture, filtrez le trafic HTTP et repérez la requête `POST` vers `/sap/gw/register`.",
+            "La machine qui émet cette requête est l'intrus : notez son adresse MAC et son IP "
+            "(elle apparaît aussi dans une annonce ARP au début de la capture).",
+            "La réponse `200 OK` de la passerelle contient une clé d'enregistrement : c'est le flag."]),
+    "16": ("Un incident se clôt en recoupant les preuves de plusieurs équipes : aucune piste ne suffit seule.",
+           "La salle de crise (War Room), avec ce que les autres équipes ont trouvé.",
+           ["Réunissez les équipes Web, Forensics et SAP : chacune détient une pièce du rapport.",
+            "Identité et heure : audit SAP et photo d'équipe (missions 03, 09). Vecteur : passerelle SAP (missions 09, 14).",
+            "Équipement fantôme : adresse MAC ou IP relevée dans la capture réseau (mission 08).",
+            "Saisissez les quatre champs dans la salle de crise : le flag apparaît quand tout concorde. "
+            "Recopiez-le dans le tableau des scores."]),
     "09": ("Un ancien hachage de mot de passe peut se casser avec une liste de mots. Ici le champ BCODE vaut "
            "le MD5 du mot de passe mis en majuscules.",
            "Le partage interne, puis CyberChef (ou le terminal).",
@@ -558,8 +589,9 @@ GUIDE = {
             "La réponse affiche une Clé d'enregistrement : c'est le flag."]),
     "15": ("Un secret écrit en dur dans le code peut être découpé, mélangé et caché derrière une condition "
            "pour échapper à une simple recherche.",
-           "Le partage interne, puis CyberChef.",
-           ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`.",
+           "Le partage interne, sa Documentation Technique si le code ABAP vous est inconnu, puis CyberChef.",
+           ["Dans le partage, Basis SAP puis Développements, ouvrez `ZDFLOP_RESULT_EXPORT.abap`. "
+            "La note `abap_lisezmoi.txt`, à côté, donne des conseils de lecture.",
             "Le jeton dépend du système (`sy-sysid`). L'en-tête dit que DFL est la production : le jeton complet "
             "de la branche hors production est un leurre.",
             "Dans la branche de production, l'ordre des morceaux est donné par `CONCATENATE lv_k3 lv_k1 lv_k2`.",

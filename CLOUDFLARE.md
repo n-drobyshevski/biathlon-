@@ -101,6 +101,7 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
 | `git.<domain>` | HTTP | `gitleak:5000` |
 | `ssti.<domain>` | HTTP | `ssti:5000` |
 | `sapgw.<domain>` | HTTP | `sapgw:5000` |
+| `warroom.<domain>` | HTTP | `warroom:8099` |
 | `cyberchef.<domain>` | HTTP | `cyberchef:80` |
 | `terminal.<domain>` | HTTP | `toolbox:7681` |
 
@@ -123,7 +124,7 @@ is the **internal** docker name and port, never the Pi's IP or a host port:
 **Do this before anyone gets the URL.** It is what keeps the open internet out.
 
 1. Zero Trust → **Access → Applications → Add an application → Self-hosted**.
-2. Application domain: `*.<domain>` (a wildcard covers all 12 hostnames and any
+2. Application domain: `*.<domain>` (a wildcard covers all 13 hostnames and any
    you add later). If you prefer, create one application per hostname instead,
    but then **every** hostname from step 2 must be listed.
 3. Session duration: the length of the event, e.g. 12 h.

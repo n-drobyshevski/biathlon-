@@ -1,0 +1,11 @@
+{# Wiki shell. Rendered to a fragment; app.py wraps it in the Intranet chrome (intranet.page). #}
+<h1 class="h1"><a href="/wiki">Documentation Technique</a>{% if title %}<span class="sep">/</span>{{ title }}{% endif %}</h1>
+{% block banner %}
+<div class="status" role="note">Documentation interne DécaFlop — usage audit uniquement.</div>
+{% endblock %}
+<div class="wiki-art">
+{% block content %}{% endblock %}
+</div>
+{% block footer %}
+<p style="margin-top:22px"><a href="/wiki">&larr; Retour à la Documentation Technique</a></p>
+{% endblock %}

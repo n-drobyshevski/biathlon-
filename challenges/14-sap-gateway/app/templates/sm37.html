@@ -1,0 +1,28 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}SM37 - Aperçu des jobs{% endblock %}
+{% block tcode %}SM37{% endblock %}
+{% block status_msg %}{{ jobs|length }} job(s) trouvé(s).{% endblock %}
+{% block content %}
+<h1>Aperçu des jobs - Système DFL, Mandant 001</h1>
+<table class="sap-table">
+  <thead>
+    <tr>
+      <th>Nom du job</th><th>Statut</th><th>Utilisateur</th>
+      <th>Date de début</th><th>Heure de début</th><th>Durée</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for j in jobs %}
+    <tr{% if j.hot %} class="sap-row-highlight"{% endif %}>
+      <td>{% if j.hot %}<a href="/sap/sm37/log?job={{ j.name }}">{{ j.name }}</a>{% else %}{{ j.name }}{% endif %}</td>
+      <td class="sap-txt">{{ j.status }}</td>
+      <td>{{ j.user }}</td>
+      <td>{{ j.date }}</td>
+      <td>{{ j.time }}</td>
+      <td>{{ j.duration }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="sap-mute">Un job d'export exécuté MANUELLEMENT à 18:42 la veille de la course, alors qu'il tourne normalement de nuit en automatique.</p>
+{% endblock %}

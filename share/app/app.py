@@ -32,7 +32,7 @@ import zipfile
 from html import escape as esc
 from urllib.parse import quote, urlencode
 
-from flask import Flask, Response, abort, redirect, request, send_from_directory, session
+from flask import Flask, Response, abort, redirect, render_template, request, send_from_directory, session
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # sibling intranet.py
 import capture  # noqa: E402
@@ -80,11 +80,12 @@ def fr_dt(when, sep=" "):
 # type, author, when ('YYYY-MM-DD HH:MM'), version, description, and either a
 # handout 'source' (served from HANDOUT_DIR) or decoy 'text' (generated).
 # --------------------------------------------------------------------------
-DEPT_ORDER = ["Direction de course", "Chronométrage", "Arbitrage", "Basis SAP", "IT",
+DEPT_ORDER = ["Direction de course", "Chronométrage", "Réseau", "Arbitrage", "Basis SAP", "IT",
               "Logistique", "Communication"]
 DEPT_DESC = {
     "Direction de course": "Organisation de la finale, réunions, dossier incident",
     "Chronométrage": "Captures et documents de la cabine de chronométrage",
+    "Réseau": "Captures et relevés réseau pris sur le terrain",
     "Arbitrage": "Jury, consignes et pièces remises par les arbitres",
     "Basis SAP": "Administration du système SAP DFlop ERP (DFL)",
     "IT": "Outils, procédures et sauvegardes de l'équipe IT",
@@ -284,6 +285,11 @@ _DESKTOP_INI = "[.ShellClassInfo]\r\nLocalizedResourceName=Bureau\r\n"
 FILES = [
     ev(("Chronométrage", "Captures", "timing_booth.pcap"), "pcap", "Capture réseau (PCAP)",
        "Équipe IT d'urgence", "2026-11-01 22:14", "1.0", "Capture du Wi-Fi staff, cabine de chronométrage"),
+    ev(("Réseau", "Captures terrain", "phantom_signal.zip"), "zip", "Archive ZIP (chiffrée)",
+       "Équipe IT d'urgence", "2026-11-01 23:40", "1.0",
+       "Capture du segment de la cabine de chronométrage, nuit du 1er novembre. "
+       "Un équipement inconnu s'est connecté au réseau. Identifiez-le. "
+       "Archive protégée, mot de passe : infected."),
     ev(("Arbitrage", "Pièces", "referee_usb.img"), "img", "Image disque brute",
        "Arbitrage", "2026-11-01 20:03", "1.0", "Image de la clé USB retrouvée en cabine"),
     ev(("Basis SAP", "Exports", "SAP_USR02_export.csv"), "csv", "Feuille CSV",
@@ -297,7 +303,9 @@ FILES = [
     ev(("IT", "Sauvegardes postes", "portable-equipe-03", "dflop_erp.sap"), "sap", "Raccourci SAP GUI",
        "Équipe IT d'urgence", "2026-10-30 11:20", "1.0", "Sauvegarde du bureau du portable 03"),
     ev(("Basis SAP", "Développements", "ZDFLOP_RESULT_EXPORT.abap"), "abap", "Source ABAP",
-       "Basis SAP", "2026-10-28 16:48", "3.4", "Rapport d'export des résultats (RFC)"),
+       "Basis SAP", "2026-10-28 16:48", "3.4", "Rapport d'export des résultats vers le portail"),
+    ev(("Basis SAP", "Développements", "abap_lisezmoi.txt"), "txt", "Document texte",
+       "Basis SAP", "2026-10-28 16:52", "1.0", "Note d'accompagnement du rapport"),
     # --- mundane decoys (generated text, no clues) ---
     # A Basis working note that casually names the SAP gateway monitor (:8014,
     # challenge 14) and the ABAP dev folder — service names only, no secrets.
@@ -483,7 +491,7 @@ def display_user():
 
 
 TOPNAV = [("/", "Accueil"), ("/documents", "Documents"), ("/annuaire", "Annuaire"),
-          ("/activite", "Activité récente")]
+          ("/wiki", "Documentation Technique"), ("/activite", "Activité récente")]
 
 
 def quick_launch(current_section, current_path=()):
@@ -497,14 +505,16 @@ def quick_launch(current_section, current_path=()):
             f'<li>{a("/documents", "Documents", current_section == "docs" and not current_path)}'
             f'<ul>{depts}</ul></li>'
             f'<li>{a("/annuaire", "Annuaire", current_section == "dir")}</li>'
+            f'<li>{a("/wiki", "Documentation Technique", current_section == "wiki")}</li>'
             f'<li>{a("/activite", "Activité récente", current_section == "activity")}</li>'
             f'<li>{a("/aide", "Aide", current_section == "help")}</li>'
             '</ul>')
 
 
 def page(title, section, body, current_path=(), q=""):
-    suite_on = {"home": "news", "docs": "docs", "dir": "dir"}.get(section)
-    top_on = {"home": "/", "docs": "/documents", "dir": "/annuaire", "activity": "/activite"}.get(section)
+    suite_on = {"home": "news", "docs": "docs", "dir": "dir", "wiki": "wiki"}.get(section)
+    top_on = {"home": "/", "docs": "/documents", "dir": "/annuaire", "wiki": "/wiki",
+              "activity": "/activite"}.get(section)
     topnav = [(h, lbl, h == top_on) for h, lbl in TOPNAV]
     return intranet.page(
         title + " - " + SITE, body, app="intranet", site_title=SITE, site_href="/", logo="DF",
@@ -688,6 +698,41 @@ def help_page():
             '<p style="margin-top:10px"><a href="/annuaire">Voir l\'annuaire complet</a></p></section>'
             '</div></div>')
     return html(page("Aide", "help", body))
+
+
+# --------------------------------------------------------------------------
+# Documentation Technique (wiki): static French articles, rendered from
+# templates/wiki/ and wrapped in the Intranet chrome. No user input is echoed.
+# --------------------------------------------------------------------------
+WIKI_ARTICLES = [
+    {"slug": "mots-de-passe-sap", "template": "wiki/mots_de_passe_sap.html",
+     "title": "Mots de passe SAP legacy (table USR02)",
+     "summary": "Comment les anciens mots de passe sont stockés dans BCODE, et quels champs de la table "
+                "utiliser pour un audit."},
+    {"slug": "raccourcis-sap-gui", "template": "wiki/raccourcis_sap_gui.html",
+     "title": "Raccourcis SAP GUI (.sap)",
+     "summary": "Que contient un fichier .sap, et pourquoi le mot de passe qu'il enregistre n'est pas "
+                "chiffré."},
+    {"slug": "lire-du-code-abap", "template": "wiki/lire_du_code_abap.html",
+     "title": "Lire du code ABAP (notions minimales)",
+     "summary": "Variables, CONCATENATE et commentaires : le strict nécessaire pour relire un programme."},
+]
+WIKI_BY_SLUG = {a["slug"]: a for a in WIKI_ARTICLES}
+
+
+@app.get("/wiki")
+def wiki_index():
+    body = render_template("wiki/wiki_index.html", title="", articles=WIKI_ARTICLES)
+    return html(page("Documentation Technique", "wiki", body))
+
+
+@app.get("/wiki/<slug>")
+def wiki_article(slug):
+    art = WIKI_BY_SLUG.get(slug)
+    if art is None:
+        abort(404)
+    body = render_template(art["template"], title=art["title"])
+    return html(page(art["title"] + " - Documentation Technique", "wiki", body))
 
 
 # --------------------------------------------------------------------------

@@ -1,0 +1,28 @@
+{% extends "wiki/wiki_base.html" %}
+{% block content %}
+<h2>Les notions minimales</h2>
+<table>
+  <thead><tr><th>Élément</th><th>Rôle</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATA</code></td><td>Déclare une variable. Le préfixe <code>lv_</code> désigne une variable locale (<em>local variable</em>).</td></tr>
+    <tr><td><code>CONCATENATE a b c INTO resultat</code></td><td>Assemble les chaînes <code>a</code>, <code>b</code> et <code>c</code> <b>sans aucun séparateur</b>.</td></tr>
+    <tr><td><code>IF sy-sysid = 'XXX'. ... ELSE. ... ENDIF.</code></td><td>Exécute une branche ou l'autre selon le système SAP courant (<code>sy-sysid</code>, par exemple développement ou production).</td></tr>
+    <tr><td><code>PERFORM f CHANGING v</code></td><td>Appelle le sous-programme <code>FORM f</code>, qui peut modifier la variable <code>v</code> avant la suite du programme.</td></tr>
+    <tr><td><code>*</code> en début de ligne</td><td>Ligne de commentaire, ignorée à l'exécution.</td></tr>
+  </tbody>
+</table>
+
+<h2>Exemple</h2>
+<pre class="block"><code>* Assemble deux morceaux de texte
+DATA lv_p1 TYPE string VALUE 'abc'.
+DATA lv_p2 TYPE string VALUE 'def'.
+CONCATENATE lv_p1 lv_p2 INTO DATA(lv_resultat).</code></pre>
+<p>Après exécution, <code>lv_resultat</code> contient <code>abcdef</code> : les deux morceaux sont collés
+l'un à l'autre, sans espace entre eux.</p>
+
+<h2>À surveiller</h2>
+<p><b>Les développeurs découpent parfois les secrets en plusieurs morceaux</b> pour qu'une recherche
+<code>grep</code> sur la valeur complète ne donne rien. Lorsque vous voyez plusieurs variables
+<code>lv_</code> aux valeurs courtes assemblées par un <code>CONCATENATE</code>, reconstituez le résultat
+en recollant les morceaux dans l'ordre indiqué par l'instruction.</p>
+{% endblock %}

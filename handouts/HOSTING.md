@@ -138,7 +138,8 @@ docker compose up -d --force-recreate
 
 | Component | Approx RAM |
 |-----------|-----------|
-| 7 challenge containers + the hub + the file share (`mem_limit` 96–128 MB each) | ~0.5–0.8 GB actual |
+| 7 challenge containers + the hub + the file share (gunicorn, 2 workers each; capped at 256 MB / 0.5 CPU each) | ~0.6–0.9 GB actual |
+| War Room (gunicorn, 1 worker, capped at 64 MB) | ~40 MB |
 | CTFd (in docker-compose, SQLite + `WORKERS 1`, `mem_limit` 768 MB) | ~0.4–0.7 GB |
 | CyberChef (static, `mem_limit` 96 MB) | ~15–30 MB actual |
 | Terminal toolbox (`mem_limit` 1.5 GB, `cpus 2.0`) | ~50 MB + ~10 MB per player idle; **hashcat ~0.7 GB** the first time a player runs a hash mode (kernel compile), ~0.45 GB after; git-dumper ~90 MB, tshark ~85 MB |

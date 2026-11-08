@@ -42,6 +42,7 @@ enough for 6 people to split up and work in parallel.
 | 05 | The Timing Booth | Forensics (pcap) | Medium | 100 | handout |
 | 06 | Results Admin | Web (SQLi) | Medium | 125 | live (`:8006`) |
 | 07 | The Referee's USB | Forensics (carving) | Medium | 125 | handout |
+| 08 | Le Signal Fantôme | Forensics (network) | Medium | 125 | handout |
 | 09 | Who Rigged the Race? 🏁 | **SAP** | **Hard** | 250 | handout (finale) |
 
 The finale (09) closes the sabotage story. Missions **10–15** are an optional
@@ -56,8 +57,9 @@ are independent of the main trail.
 | 13 | Saved for Convenience | **SAP** | Easy | 75 | handout |
 | 14 | The Open Gateway | **SAP** | Medium | 150 | live (`:8014`) |
 | 15 | Hardcoded | **SAP** | Medium | 150 | handout |
+| 16 | Rapport d'Incident Final | **Synthèse** (team) | Final | 300 | live (`:8099`, War Room) |
 
-**14 challenges** · 4 easy · 6 medium · 4 hard. Total **1750 pts**.
+**16 challenges** · 4 easy · 7 medium · 4 hard · 1 final (team). Total **2175 pts**.
 Flag format: `TRIATHLON{...}`.
 
 Each challenge folder has a player-facing `README.md` (prompt + point-costed
@@ -134,12 +136,13 @@ On the **internal share** `Intranet DécaFlop` (`:8020`, log in `equipe-it` /
 
 ```
 Chronométrage / Captures / timing_booth.pcap                     -> 05
+Réseau / Captures terrain / phantom_signal.zip (mot de passe: infected) -> 08
 Arbitrage / Pièces / referee_usb.img                             -> 07
 Basis SAP / Exports / SAP_USR02_export.csv, sap_hint.txt         -> 09
 IT / Outils / wordlist.txt                                       -> 09
 Direction de course / Dossier incident / case_file.zip           -> 09
 IT / Sauvegardes postes / portable-equipe-03 / dflop_erp.sap     -> 13
-Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap           -> 15
+Basis SAP / Développements / ZDFLOP_RESULT_EXPORT.abap, abap_lisezmoi.txt  -> 15
 ```
 
 Clicking a file name opens a read-only viewer (`/apercu/<chemin>`): text, ABAP

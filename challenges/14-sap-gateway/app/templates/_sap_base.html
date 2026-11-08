@@ -1,0 +1,56 @@
+{#
+  Base template for the mock SAP GUI for HTML screens (challenge 14).
+  Reused by the logon screen, SMGW, SE16N and SM37.
+  All player-facing text is French; the look comes from static/sap_gui.css.
+
+  Variables a view may pass:
+    back_url  - target of the Back (Retour) button (default "/")
+    tcode     - transaction code shown in the command field
+    wiki_url  - absolute URL to the Intranet "Documentation Technique" wiki.
+                Host-configurable so it works on raw IPs and online
+                subdomains alike; falls back to a relative path.
+  Blocks a view may override: title, titlebar, tcode, content,
+    status_class, status_msg.
+#}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% block titlebar %}SAP DFlop ERP - Client 001{% endblock %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='sap_gui.css') }}">
+</head>
+<body>
+  <div class="sap-titlebar">
+    <span class="sap-title">{{ self.titlebar() }}</span>
+    <span class="sap-sys">Système DFL, {{ sap_time }}</span>
+  </div>
+
+  <div class="sap-toolbar">
+    <form method="get" action="/sap/cmd">
+      <a class="sap-btn sap-btn-back" href="{{ back_url|default('/') }}" title="Retour (F3)">
+        <span class="sap-ico" aria-hidden="true">&#8629;</span> Retour
+      </a>
+      <button class="sap-btn sap-btn-enter" type="submit" title="Entrée">
+        <span class="sap-ico" aria-hidden="true">&#10004;</span> Entrée
+      </button>
+      <span class="sap-sep" aria-hidden="true"></span>
+      <label class="sap-sr" for="sap-cmd">Code transaction</label>
+      <input class="sap-cmdfield" id="sap-cmd" name="cmd"
+             value="{% block tcode %}{{ tcode|default('') }}{% endblock %}"
+             autocomplete="off" spellcheck="false" placeholder="ex. SE16N">
+    </form>
+    <span class="sap-help">
+      <a href="{{ wiki_url|default('/wiki') }}">Documentation Technique</a>
+    </span>
+  </div>
+
+  <main class="sap-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <div class="sap-statusbar {% block status_class %}{% endblock %}">
+    {% block status_msg %}Prêt.{% endblock %}
+  </div>
+</body>
+</html>

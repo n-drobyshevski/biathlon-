@@ -163,14 +163,15 @@ def _challenge(num, monkeypatch, **env):
 def test_every_challenge_page_links_hub_and_tools(monkeypatch):
     for num in ("04", "06", "10", "12", "14"):
         c = _challenge(num, monkeypatch)
-        page = c.get("/", base_url="http://10.0.0.5:8004").data.decode()
+        path = "/sap/logon" if num == "14" else "/"                  # 14: "/" redirects to the SAP logon
+        page = c.get(path, base_url="http://10.0.0.5:8004").data.decode()
         nav = fab_html(page)
         assert "http://10.0.0.5:8080/" in hrefs(nav), num            # main button: cellule de crise
         assert "http://10.0.0.5:8080/outils" in hrefs(nav), num      # Outils
         assert "8020" not in nav, num                                # intranet locked before login
         assert "/static/fab.css" in page and c.get("/static/fab.css").status_code == 200, num
         c.set_cookie("dflop_intranet", "1", domain="10.0.0.5")
-        nav = fab_html(c.get("/", base_url="http://10.0.0.5:8004").data.decode())
+        nav = fab_html(c.get(path, base_url="http://10.0.0.5:8004").data.decode())
         assert "http://10.0.0.5:8020/" in hrefs(nav), num            # unlocked after the share login
 
 
@@ -178,7 +179,9 @@ def test_challenge_shortcuts_leave_api_and_text_alone(monkeypatch):
     c10 = _challenge("10", monkeypatch)
     r = c10.get("/api/token")
     assert r.mimetype == "application/json" and "dfab" not in r.data.decode()
-    r = _challenge("14", monkeypatch).get("/sap/gw/reginfo")
+    c14 = _challenge("14", monkeypatch)
+    c14.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})   # Level 3 logon
+    r = c14.get("/sap/gw/reginfo")
     assert r.mimetype == "text/plain" and "dfab" not in r.data.decode()
     r = _challenge("12", monkeypatch).post("/generate", data={"name": "{{7*7}}"})
     assert "49" in r.data.decode() and "dfab" in r.data.decode()  # SSTI still works, page decorated

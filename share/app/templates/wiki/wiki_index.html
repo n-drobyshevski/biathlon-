@@ -1,0 +1,16 @@
+{% extends "wiki/wiki_base.html" %}
+{% block banner %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block content %}
+<p class="lead">Notes de la DSI pour lire et auditer un système SAP hérité. Trois fiches courtes, à usage interne.</p>
+<div class="wiki-cards">
+{% for a in articles %}
+  <a class="wiki-card" href="/wiki/{{ a.slug }}">
+    <h2>{{ a.title }}</h2>
+    <p>{{ a.summary }}</p>
+    <span class="more">Lire la fiche</span>
+  </a>
+{% endfor %}
+</div>
+<div class="status" role="note">Documentation interne DécaFlop — usage audit uniquement.</div>
+{% endblock %}

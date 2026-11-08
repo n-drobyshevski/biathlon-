@@ -1,0 +1,8 @@
+{% extends "_sap_base.html" %}
+{% block titlebar %}{{ titlebar_text|default('SAP DFlop ERP - Client 001') }}{% endblock %}
+{% block status_class %}{{ status_class_val|default('') }}{% endblock %}
+{% block status_msg %}{{ status_msg_val|default('Prêt.') }}{% endblock %}
+{% block content %}
+{% if heading %}<h1>{{ heading }}</h1>{% endif %}
+{% if message %}<p>{{ message }}</p>{% endif %}
+{% endblock %}

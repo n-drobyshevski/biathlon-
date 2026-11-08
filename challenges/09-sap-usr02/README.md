@@ -21,3 +21,4 @@ saved SAP GUI shortcut in challenge 13 points at.
 <details><summary>Hint 1 (−25)</summary>USR02 column <code>TRDAT</code>/<code>LTIME</code> = last logon date/time. Which user logged on on 2026-11-01 around 18:42?</details>
 <details><summary>Hint 2 (−40)</summary><code>BCODE</code> here is MD5(UPPERCASE(password)). Crack VLINDQVIST's hash with <code>wordlist.txt</code> (or <code>hashcat -m 0</code>).</details>
 <details><summary>Hint 3 (−70)</summary>The cracked password is <code>CHIP7</code>. Run <code>unzip -P CHIP7 case_file.zip</code>.</details>
+<details><summary>Hint 4 (−75)</summary>Le hash BCODE utilise MD5(MOT_DE_PASSE_EN_MAJUSCULES). Utilisez la wordlist courte /usr/share/wordlists/sap_default.txt dans le terminal. Ne lancez PAS rockyou.txt.</details>
