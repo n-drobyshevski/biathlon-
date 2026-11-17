@@ -16,12 +16,21 @@ with the SAME defaults as handouts/generate.py (ROGUE_MAC / ROGUE_IP). A
 service cannot import another service's code (each Docker build only sees its
 own folder), so tests/test_warroom.py fails if the two ever diverge.
 
+The page is a closure form ("Rapport de clôture d'incident"). Its structured
+inputs are only a front end: the date and time pickers post time_date and
+time_clock, joined here into the same string check_time() already reads (a
+plain "time" field still works, e.g. for scripts), and the MAC/IP toggle only
+changes the input's hints. The track sign-off boxes are required by the browser
+and ignored by the server. The attempt log lives in the player's browser; the
+server only hands it a random id per scored attempt and the per-IP quota.
+
 Listens on port 8099. In production run it with gunicorn (see Dockerfile) using
 ONE worker: the rate-limit counters live in memory and must be shared.
 """
 import math
 import os
 import re
+import secrets
 import threading
 import time
 from collections import deque
@@ -59,6 +68,9 @@ INCIDENT_TIME = os.environ.get("WARROOM_INCIDENT_TIME", "18:42")
 # (an empty ROGUE_IP would otherwise accept an empty answer).
 ROGUE_MAC = os.environ.get("ROGUE_MAC") or "aa:bb:cc:dd:ee:42"
 ROGUE_IP = os.environ.get("ROGUE_IP") or "10.10.0.42"
+# Full name shown in the closure report after a solve (same var and default as
+# handouts/generate.py, which writes it into case_file.zip).
+SABOTEUR_NAME = (os.environ.get("SABOTEUR_NAME") or "viktor_lindqvist").replace("_", " ").title()
 
 
 def _norm(text):
@@ -99,7 +111,8 @@ def check_device(value):
     return len(digits) == 12 and digits == _mac_digits(ROGUE_MAC)
 
 
-# (form key, French label, checker)
+# (form key, French label, checker). The template renders the labels and the
+# per-field structure (date/time pickers, MAC/IP toggle) itself.
 FIELDS = [
     ("saboteur", "Identité du saboteur", check_saboteur),
     ("vector", "Vecteur d'attaque", check_vector),
@@ -135,13 +148,37 @@ def rate_check(ip):
         return 0
 
 
+def quota(ip):
+    """(submissions left now, seconds until each used slot frees up). Records nothing."""
+    now = _now()
+    with _lock:
+        live = [t for t in _hits.get(ip, ()) if now - t < RATE_WINDOW]
+    frees = [max(1, math.ceil(RATE_WINDOW - (now - t))) for t in live]
+    return max(0, RATE_LIMIT - len(live)), frees
+
+
 # --------------------------------------------------------------------------
 # Routes
 # --------------------------------------------------------------------------
 def page(status=200, **ctx):
     ctx.setdefault("values", {})
-    html = render_template("index.html", fields=[(k, label) for k, label, _ in FIELDS], **ctx)
+    left, frees = quota(request.remote_addr or "?")
+    html = render_template("index.html", fields=dict((k, label) for k, label, _ in FIELDS),
+                           quota_left=left, quota_max=RATE_LIMIT, quota_frees=frees,
+                           saboteur_name=SABOTEUR_NAME, incident_date=INCIDENT_DATE,
+                           incident_time=INCIDENT_TIME, rogue_mac=ROGUE_MAC, rogue_ip=ROGUE_IP, **ctx)
     return html, status
+
+
+# Everything the form may post (the visa_* boxes are browser-side only).
+FORM_KEYS = ("saboteur", "vector", "time", "time_date", "time_clock", "device", "device_kind")
+
+
+def answers(values):
+    """The four answers to check: the date/time pickers are joined into one "time"."""
+    time_answer = values["time"] or " ".join(v for v in (values["time_date"], values["time_clock"]) if v)
+    return {"saboteur": values["saboteur"], "vector": values["vector"],
+            "time": time_answer, "device": values["device"]}
 
 
 @app.after_request
@@ -157,14 +194,15 @@ def index():
 
 @app.post("/submit")
 def submit():
-    values = {k: request.form.get(k, "")[:MAX_FIELD_LEN] for k, _, _ in FIELDS}
+    values = {k: request.form.get(k, "")[:MAX_FIELD_LEN] for k in FORM_KEYS}
+    given = answers(values)
     wait = rate_check(request.remote_addr or "?")
     if wait:
-        resp = page(429, values=values,
+        resp = page(429, values=values, locked=wait,
                     error=f"Trop de tentatives. Patientez {wait} seconde(s) avant de soumettre à nouveau.")
         return resp[0], 429, {"Retry-After": str(wait)}
 
-    correct = sum(1 for k, _, check in FIELDS if check(values[k]))
+    correct = sum(1 for k, _, check in FIELDS if check(given[k]))
     if correct == len(FIELDS):
         flag = os.environ.get("FLAG_FINALE", "")
         if not flag:                                       # never hand out a placeholder
@@ -173,7 +211,7 @@ def submit():
                         error="Le rapport est exact, mais le flag final n'est pas configuré. "
                               "Prévenez l'organisateur.")
         return page(values=values, flag=flag)
-    return page(values=values, correct=correct, total=len(FIELDS),
+    return page(values=values, correct=correct, total=len(FIELDS), attempt=secrets.token_hex(6),
                 error=f"Erreur de corrélation : {correct} champ(s) correct(s) sur {len(FIELDS)}. "
                       "Vérifiez vos preuves avec les autres équipes.")
 

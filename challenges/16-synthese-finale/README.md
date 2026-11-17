@@ -4,16 +4,18 @@
 > une pièce du dossier. Seule la corrélation de toutes les preuves permet de clore
 > l'incident : à vous de mettre vos trouvailles en commun.
 
-**Connect:** `http://<CTF-HOST>:8099` — salle de crise (War Room), le tableau de bord du rapport d'incident final.
+**Connect:** `http://<CTF-HOST>:8099` — salle de crise (War Room), le rapport de clôture d'incident à déposer.
 
 Le flag n'est pas caché dans un fichier : il est révélé par le tableau de bord de la
 salle de crise lorsque les quatre champs du rapport concordent : l'identité du
 saboteur, le vecteur d'attaque, l'heure de l'incident et l'équipement fantôme
 (adresse MAC ou IP). Chaque champ indique la mission qui produit la preuve.
 
-En cas d'erreur, le tableau de bord indique combien de champs sont exacts, jamais
-lesquels. Le nombre de soumissions est limité : vérifiez vos preuves avec les autres
-équipes avant de soumettre.
+En cas d'erreur, le rapport revient avec le nombre de champs exacts, jamais
+lesquels. Le nombre de dépôts est limité (le guichet affiche ceux qui restent) et
+chaque pôle (Web, Forensics, SAP) doit viser le rapport avant le dépôt : vérifiez
+vos preuves avec les autres équipes avant de déposer. Vos dépôts précédents restent
+notés dans le registre en bas de page, dans votre navigateur.
 
 Une fois le flag affiché, recopiez-le ici.
 

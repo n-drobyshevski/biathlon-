@@ -1,131 +1,231 @@
 {#
-  War Room: final incident-report console (last screen of the CTF).
+  War Room: the finale's closure form ("Rapport de clôture d'incident"), styled
+  as an official French incident document on a desk.
   Context from warroom/app.py (keep in sync):
-    fields   list of (key, French label); keys: saboteur, vector, time, device
-    values   dict key -> what the player typed (kept so nothing is retyped)
-    error    French message (wrong report, rate limit, misconfiguration) or absent
-    correct, total   how many fields are right on a wrong report (never which ones)
-    flag     the Grandmaster Flag, present ONLY on success
-  The page never marks an individual field as right or wrong: the gauge fills
-  from the left and is not tied to any field.
+    fields        dict key -> French label; keys: saboteur, vector, time, device
+    values        what the player posted (refilled so nothing is retyped):
+                  saboteur, vector, time_date, time_clock, device, device_kind
+    error         French message (wrong report, rate limit, misconfiguration) or absent
+    correct, total, attempt   on a wrong report: the count (never which fields)
+                  and a random id the browser log uses to record it once
+    locked        seconds to wait, on a rate-limited submission
+    quota_left, quota_max, quota_frees   per-IP deposit counter and the seconds
+                  until each used slot frees up (static/report.js counts down)
+    flag          the Grandmaster Flag, present ONLY on success, with the closure
+                  facts: saboteur_name, incident_date, incident_time, rogue_mac, rogue_ip
+  The page never marks an individual field as right or wrong. Source hints name
+  missions and tracks only, never a term that could be typed as an answer.
 #}
-{%- set hints = {
-  "saboteur": ("Audit SAP / photo d'équipe", "missions 03, 09"),
-  "vector":   ("Passerelle SAP / USR02", "missions 09, 14"),
-  "time":     ("Métadonnées EXIF", "mission 03"),
-  "device":   ("Capture réseau", "mission 08"),
+{%- set sources = {
+  "saboteur": ("Missions 03, 09", "pôles Forensics et SAP"),
+  "vector":   ("Missions 09, 14", "pôle SAP"),
+  "time":     ("Mission 03", "pôle Forensics"),
+  "device":   ("Mission 08", "pôle Forensics"),
 } -%}
-{%- set mono_fields = ("time", "device") -%}
+{%- set d = incident_date.split('-') -%}
+{%- set date_fr = (d[2] ~ '/' ~ d[1] ~ '/' ~ d[0]) if d|length == 3 else incident_date -%}
+{%- set kind = values.get('device_kind') if values.get('device_kind') in ('mac', 'ip') else 'mac' -%}
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if flag %}Cas résolu{% else %}Rapport d'incident final{% endif %} - Cellule de crise</title>
+  <title>{% if flag %}Dossier clos{% else %}Rapport de clôture{% endif %} · DFL-2026-1101</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="{{ 'is-solved' if flag else 'is-open' }}">
-  <header class="band">
-    <span class="band-dot" aria-hidden="true"></span>
-    <span class="band-text">Confidentiel — Cellule de crise</span>
-    <span class="band-ref">Dossier DFL-2026-1101 · Diffusion restreinte</span>
+<main class="desk">
+<article class="doc">
+
+  <header class="doc-head">
+    <div class="org">Cellule de crise · DécaFlop
+      <small>Finale régionale de triathlon 2026 · Équipe IT d'urgence</small></div>
+    <div class="marks"><span class="tlp">TLP:AMBER</span><span>Diffusion restreinte</span></div>
   </header>
 
-  <main class="console">
-    <p class="kicker">Opération Dernière Transition</p>
-    <h1>Rapport d'Incident Final — Opération Dernière Transition</h1>
+  <h1>Rapport de clôture d'incident</h1>
+  <p class="doc-sub">{% if flag %}Rapport accepté par la cellule de crise.{% else %}Formulaire à remplir
+    ensemble par les pôles Web, Forensics et SAP. Chaque conclusion vient d'une mission différente :
+    rassemblez les preuves avant de déposer.{% endif %}</p>
 
-    {% if flag %}
-    <section class="solved" role="status" aria-labelledby="solved-title">
-      <div class="stamp" aria-hidden="true">Cas résolu</div>
-      <h2 id="solved-title">Cas résolu</h2>
-      <p class="solved-lead">Les quatre preuves concordent. Le rapport de clôture est accepté
-        par la cellule de crise.</p>
+  <table class="meta">
+    <tr><th scope="row">Dossier</th><td class="mono">DFL-2026-1101</td>
+        <th scope="row">Ouvert le</th><td>{{ date_fr }}</td></tr>
+    <tr><th scope="row">Objet</th><td>Falsification de la liste de départ</td>
+        <th scope="row">Statut</th><td>{% if flag %}<b>Clos</b>{% else %}En cours d'instruction{% endif %}</td></tr>
+  </table>
 
-      <p class="flag-label" id="flag-label">Flag du Grand Maître</p>
-      <div class="flagbox">
-        <code id="flag" aria-labelledby="flag-label">{{ flag }}</code>
-        <button type="button" class="copy" data-target="flag">Copier</button>
-      </div>
-      <p class="copied" role="status" aria-live="polite"></p>
+{% if flag %}
+  <section class="closed" aria-labelledby="closed-h">
+    <div class="stamp" aria-hidden="true">Dossier clos<small>{{ date_fr }} · Cellule de crise</small></div>
 
-      <p class="closing">Viktor Lindqvist (utilisateur SAP <span class="mono">VLINDQVIST</span>) est
-        formellement identifié comme le saboteur. Le job d'export
-        <span class="mono">ZDFLOP_RESULT_EXPORT</span>, lancé manuellement le 1er novembre à 18:42,
-        a servi à truquer les résultats de la course. Dossier clos.</p>
-      <p class="thanks">Merci à toutes les équipes de la cellule de crise.</p>
-    </section>
+    <h2 class="sec" id="closed-h">Décision de clôture</h2>
+    <p class="decision">Les quatre conclusions concordent avec les preuves. Le rapport est accepté et le
+      dossier DFL-2026-1101 est clos.</p>
 
-    {% else %}
-    <p class="intro">La cellule de crise doit déposer le rapport de clôture de l'incident.
-      Quatre preuves, rassemblées par des équipes différentes, doivent être corrélées pour
-      clore l'affaire. Chaque champ indique la mission qui l'a produite : demandez aux équipes
-      concernées.</p>
-
-    {% if error %}
-    <div class="err" role="alert">
-      {% if correct is defined %}
-      <p class="err-title">Corrélation incomplète</p>
-      <div class="gauge" role="img" aria-label="{{ correct }} preuve(s) correcte(s) sur {{ total }}">
-        {% for i in range(total) %}<span class="pip{{ ' on' if i < correct else '' }}"></span>{% endfor %}
-        <span class="gauge-n">{{ correct }}/{{ total }}</span>
-      </div>
-      {% else %}
-      <p class="err-title">Soumission refusée</p>
-      {% endif %}
-      <p class="err-msg">{{ error }}</p>
+    <h2 class="sec" id="flag-label">Flag du Grand Maître</h2>
+    <div class="flagbox">
+      <code id="flag" aria-labelledby="flag-label">{{ flag }}</code>
+      <button type="button" class="copy" data-target="flag">Copier</button>
     </div>
-    {% endif %}
+    <p class="copied" role="status" aria-live="polite"></p>
 
-    <form class="report" method="post" action="/submit" autocomplete="off">
-      {% for key, label in fields %}
-      {% set src, missions = hints.get(key, ("", "")) %}
-      <div class="field">
-        <div class="field-head">
-          <span class="field-no" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span>
-          <label for="f-{{ key }}">{{ label }}</label>
-        </div>
-        <input id="f-{{ key }}" name="{{ key }}" type="text" maxlength="200" required
-               class="{{ 'mono' if key in mono_fields else '' }}" spellcheck="false"
-               autocapitalize="off" aria-describedby="h-{{ key }}"
-               value="{{ values.get(key, '') }}">
-        <p class="hint" id="h-{{ key }}">Source : {{ src }} <span class="missions">({{ missions }})</span></p>
-      </div>
-      {% endfor %}
-      <div class="actions">
-        <button type="submit" class="submit">Soumettre le rapport</button>
-        <p class="note">Le serveur indique combien de preuves concordent, jamais lesquelles.
-          Nombre de soumissions limité.</p>
-      </div>
-    </form>
-    {% endif %}
-  </main>
+    <h2 class="sec">Conclusions retenues</h2>
+    <table class="facts">
+      <tr><th scope="row">Saboteur</th>
+        <td>{{ saboteur_name }}, utilisateur SAP <span class="mono">VLINDQVIST</span> (mandant 001).</td>
+        <td class="src">M03 · M09</td></tr>
+      <tr><th scope="row">Vecteur</th>
+        <td>Passerelle SAP ouverte : sans liste de contrôle <span class="mono">reginfo</span>/<span class="mono">secinfo</span>,
+          elle accepte n'importe quel programme externe. Le compte s'appuyait sur un mot de passe faible
+          au hachage hérité (export <span class="mono">USR02</span>).</td>
+        <td class="src">M09 · M14</td></tr>
+      <tr><th scope="row">Heure</th>
+        <td>{{ date_fr }} à {{ incident_time }} : dernière connexion du compte dans <span class="mono">USR02</span>,
+          à la même minute que la photo de la zone de transition.</td>
+        <td class="src">M03</td></tr>
+      <tr><th scope="row">Équipement</th>
+        <td>Machine inconnue <span class="mono">{{ rogue_mac }}</span> / <span class="mono">{{ rogue_ip }}</span>,
+          branchée sur le réseau de la cabine de chronométrage. Elle s'est enregistrée auprès de la passerelle SAP.</td>
+        <td class="src">M08</td></tr>
+    </table>
 
-  <footer class="foot">Cellule de crise DécaFlop · Usage interne uniquement</footer>
+    <h2 class="sec">Faits établis</h2>
+    <ul class="story">
+      <li>La veille de la finale, un équipement inconnu apparaît sur le réseau de la cabine de
+        chronométrage et s'enregistre auprès de la passerelle SAP, restée sans liste de contrôle.</li>
+      <li>Le {{ date_fr }} à {{ incident_time }}, le compte <span class="mono">VLINDQVIST</span> se connecte
+        et la table de résultats <span class="mono">ZRACE_RESULT</span> est modifiée.</li>
+      <li>Les affectations des puces de chronométrage sont échangées : la liste de départ de la finale
+        est truquée.</li>
+      <li>La photo de la zone de transition, la capture réseau, l'export des comptes SAP et l'audit de
+        la passerelle désignent la même personne.</li>
+    </ul>
+    <p class="conclusion"><b>{{ saboteur_name }}</b> est formellement identifié comme l'auteur de la
+      falsification. Le dossier est transmis à la direction de course.</p>
 
-  {% if flag %}
-  <script>
-  // Copy without navigator.clipboard: the Pi is served over plain HTTP on a LAN
-  // IP, where the async clipboard API is disabled. Falls back to execCommand.
-  (function () {
-    var btn = document.querySelector('.copy'), out = document.querySelector('.copied');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var text = document.getElementById(btn.dataset.target).textContent.trim();
-      function done() { btn.textContent = 'Copié'; out.textContent = 'Flag copié dans le presse-papiers.';
-        setTimeout(function () { btn.textContent = 'Copier'; }, 1800); }
-      function legacy() {
-        var a = document.createElement('textarea'); a.value = text; a.setAttribute('readonly', '');
-        a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select();
-        try { document.execCommand('copy') ? done() : (out.textContent = 'Sélectionnez le flag et copiez-le.'); }
-        catch (e) { out.textContent = 'Sélectionnez le flag et copiez-le.'; }
-        a.remove();
-      }
-      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, legacy);
-      else legacy();
-    });
-  })();
-  </script>
+    <div class="sign"><span>Visé : pôles Web, Forensics, SAP</span><span class="mono">Réf. DFL-2026-1101/CLO</span></div>
+    <p class="thanks">Merci à toutes les équipes de la cellule de crise.</p>
+  </section>
+
+{% else %}
+  {% if error and correct is defined %}
+  <div class="err" role="alert" data-attempt="{{ attempt }}" data-correct="{{ correct }}" data-total="{{ total }}">
+    <p class="ret-title">Retourné pour complément
+      <span class="pips" role="img" aria-label="{{ correct }} conclusion(s) concordante(s) sur {{ total }}">
+        {%- for i in range(total) %}<i{% if i < correct %} class="on"{% endif %}></i>{% endfor -%}
+      </span><b class="mono">{{ correct }}/{{ total }}</b></p>
+    <p>{{ error }}</p>
+    <p class="ret-note">Le service ne dit pas lesquelles. Votre saisie est notée au registre des dépôts.</p>
+  </div>
+  {% elif error and locked %}
+  <div class="lock" role="alert">
+    <p><b>Guichet fermé.</b> {{ error }}</p>
+    <p class="ret-note">Vos réponses sont conservées.</p>
+  </div>
+  {% elif error %}
+  <div class="err" role="alert"><p class="ret-title">Dépôt refusé</p><p>{{ error }}</p></div>
   {% endif %}
+
+  <div class="guichet{{ ' closed' if not quota_left else '' }}" id="guichet"
+       data-left="{{ quota_left }}" data-max="{{ quota_max }}" data-frees="{{ quota_frees|join(',') }}">
+    <span class="g-label">Guichet des dépôts</span>
+    <span class="pips" aria-hidden="true">
+      {%- for i in range(quota_max) %}<i{% if i < quota_left %} class="on"{% endif %}></i>{% endfor -%}
+    </span>
+    <span class="g-text" aria-live="polite">{% if quota_left -%}
+      {{ quota_left }} dépôt(s) disponible(s) sur {{ quota_max }} cette minute
+      {%- else -%}
+      Guichet fermé · prochain dépôt dans {{ quota_frees|min if quota_frees else 0 }} s
+      {%- endif %}</span>
+  </div>
+
+  <form class="report" method="post" action="{{ url_for('submit') }}" autocomplete="off">
+    <h2 class="sec">1. Conclusions de l'enquête</h2>
+
+    <div class="row">
+      <label class="lbl" for="f-saboteur">1.1 {{ fields.saboteur }}
+        <small>{{ sources.saboteur[0] }} · {{ sources.saboteur[1] }}</small></label>
+      <div class="in">
+        <input id="f-saboteur" name="saboteur" type="text" maxlength="200" required spellcheck="false"
+               autocapitalize="off" placeholder="Nom ou identifiant" value="{{ values.get('saboteur', '') }}">
+      </div>
+    </div>
+
+    <div class="row">
+      <label class="lbl" for="f-vector">1.2 {{ fields.vector }}
+        <small>{{ sources.vector[0] }} · {{ sources.vector[1] }}</small></label>
+      <div class="in">
+        <input id="f-vector" name="vector" type="text" maxlength="200" required spellcheck="false"
+               autocapitalize="off" placeholder="Système ou technique utilisé" value="{{ values.get('vector', '') }}">
+      </div>
+    </div>
+
+    <div class="row" role="group" aria-labelledby="l-time">
+      <p class="lbl" id="l-time">1.3 {{ fields.time }}
+        <small>{{ sources.time[0] }} · {{ sources.time[1] }}</small></p>
+      <div class="in">
+        <div class="pair">
+          <label class="sub" for="f-time-date">Date
+            <input id="f-time-date" name="time_date" type="date" required value="{{ values.get('time_date', '') }}"></label>
+          <label class="sub" for="f-time-clock">Heure
+            <input id="f-time-clock" name="time_clock" type="time" required value="{{ values.get('time_clock', '') }}"></label>
+        </div>
+        <span class="ex">Telles que relevées dans la preuve, à la minute près.</span>
+      </div>
+    </div>
+
+    <div class="row" role="group" aria-labelledby="l-device">
+      <p class="lbl" id="l-device">1.4 {{ fields.device }}
+        <small>{{ sources.device[0] }} · {{ sources.device[1] }}</small></p>
+      <div class="in">
+        <div class="kind" role="radiogroup" aria-label="Type d'adresse">
+          <label><input type="radio" name="device_kind" value="mac"{{ ' checked' if kind == 'mac' else '' }}><span>MAC</span></label>
+          <label><input type="radio" name="device_kind" value="ip"{{ ' checked' if kind == 'ip' else '' }}><span>IP</span></label>
+        </div>
+        <input id="f-device" name="device" type="text" maxlength="200" required spellcheck="false"
+               autocapitalize="off" class="mono" aria-labelledby="l-device" aria-describedby="x-device"
+               placeholder="{{ '192.168.1.20' if kind == 'ip' else '00:11:22:33:44:55' }}"
+               value="{{ values.get('device', '') }}">
+        <span class="ex" id="x-device" data-mac="Six octets, séparés ou non : 00:11:22:33:44:55"
+              data-ip="Adresse IPv4 : 192.168.1.20">{% if kind == 'ip' %}Adresse IPv4 : 192.168.1.20{% else %}Six octets, séparés ou non : 00:11:22:33:44:55{% endif %}</span>
+      </div>
+    </div>
+
+    <h2 class="sec">2. Visa des pôles</h2>
+    <p class="sec-note">Chaque pôle relit les quatre conclusions avant le dépôt. À recocher à chaque dépôt.</p>
+    <div class="visas">
+      {%- for key, name in [("web", "Pôle Web"), ("fx", "Pôle Forensics"), ("sap", "Pôle SAP")] %}
+      <label class="visa"><input type="checkbox" name="visa_{{ key }}" value="1" required>
+        <span><b>{{ name }}</b>Conclusions relues et validées</span></label>
+      {%- endfor %}
+    </div>
+
+    <div class="act">
+      <button type="submit" class="submit" id="submit">Déposer le rapport</button>
+      <p class="note">Le service indique combien de conclusions concordent, jamais lesquelles.
+        {{ quota_max }} dépôts par minute.</p>
+    </div>
+  </form>
+
+  <section class="log" id="log" hidden aria-labelledby="log-h">
+    <h2 class="sec" id="log-h">3. Registre des dépôts</h2>
+    <div class="log-scroll">
+      <table class="log-t">
+        <thead><tr><th scope="col">N°</th><th scope="col">Heure</th><th scope="col">Saboteur</th>
+          <th scope="col">Vecteur</th><th scope="col">Incident</th><th scope="col">Équipement</th>
+          <th scope="col">Résultat</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="log-foot"><span>Tenu dans ce navigateur uniquement.</span>
+      <button type="button" id="log-clear">Effacer le registre</button></div>
+  </section>
+{% endif %}
+
+</article>
+<p class="foot">Cellule de crise DécaFlop · Usage interne uniquement</p>
+</main>
+<script src="{{ url_for('static', filename='report.js') }}" defer></script>
 </body>
 </html>

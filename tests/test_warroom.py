@@ -53,7 +53,63 @@ def test_form_is_french_and_has_no_flag(client):
     for label in ("Identité du saboteur", "Vecteur d'attaque", "Heure de l'incident",
                   "Équipement fantôme (MAC ou IP)"):
         assert label in page
-    assert page.count("<input") == 4 and "TRIATHLON{" not in page
+    for name in ("saboteur", "vector", "time_date", "time_clock", "device"):
+        assert f'name="{name}"' in page
+    assert 'type="date"' in page and 'type="time"' in page and "TRIATHLON{" not in page
+
+
+def test_blank_form_names_no_accepted_answer(wr, client):
+    """Source hints name missions and tracks only: no hint can be typed in as an answer."""
+    page = unescape(client.get("/").data.decode()).casefold()
+    for answer in (*wr.SABOTEUR_ANSWERS, *wr.VECTOR_ANSWERS, wr.ROGUE_MAC, wr.ROGUE_IP,
+                   wr.INCIDENT_TIME, "lindqvist"):
+        assert answer.casefold() not in page, answer
+
+
+def test_every_track_signs_off_in_the_browser_only(client):
+    page = client.get("/").data.decode()
+    for key in ("web", "fx", "sap"):
+        assert f'name="visa_{key}" value="1" required' in page
+    assert FLAG in post(client).data.decode()                          # the server ignores them
+
+
+def test_date_and_time_pickers_are_joined_for_the_check(client):
+    data = {**RIGHT, "time": "", "time_date": "2026-11-01", "time_clock": "18:42"}
+    r = client.post("/submit", data=data, environ_overrides={"REMOTE_ADDR": "10.6.0.1"})
+    assert FLAG in r.data.decode()
+    for date, clock in (("2026-11-02", "18:42"), ("2026-11-01", "18:43"), ("2026-11-01", ""), ("", "")):
+        data = {**RIGHT, "time": "", "time_date": date, "time_clock": clock}
+        page = client.post("/submit", data=data, environ_overrides={"REMOTE_ADDR": "10.6.1.1"}).data.decode()
+        assert FLAG not in page and "3 champ(s) correct(s) sur 4" in page
+
+
+def test_wrong_report_refills_the_form_and_carries_a_log_id(client):
+    data = {**RIGHT, "time": "", "time_date": "2026-11-01", "time_clock": "18:40",
+            "device": "10.10.0.17", "device_kind": "ip"}
+    page = client.post("/submit", data=data, environ_overrides={"REMOTE_ADDR": "10.6.2.1"}).data.decode()
+    assert 'value="2026-11-01"' in page and 'value="18:40"' in page and 'value="10.10.0.17"' in page
+    assert 'value="ip" checked' in page
+    assert 'data-attempt="' in page and 'data-correct="2"' in page and 'data-total="4"' in page
+
+
+def test_quota_counter_shows_what_is_left(client):
+    assert 'data-left="5" data-max="5" data-frees=""' in client.get("/", environ_overrides={"REMOTE_ADDR": "10.7.0.1"}).data.decode()
+    post(client, ip="10.7.0.1", device="nope")
+    page = post(client, ip="10.7.0.1", device="nope").data.decode()
+    assert 'data-left="3" data-max="5"' in page
+    for _ in range(3):
+        post(client, ip="10.7.0.1", device="nope")
+    page = post(client, ip="10.7.0.1", device="nope").data.decode()          # the 6th: refused
+    assert 'data-left="0"' in page and "Guichet fermé" in page
+
+
+def test_closure_report_only_after_a_solve(client):
+    wrong = post(client, ip="10.7.1.1", device="nope").data.decode()
+    assert "Dossier clos" not in wrong and "Viktor Lindqvist" not in wrong
+    page = unescape(post(client, ip="10.7.1.2").data.decode())
+    assert "Dossier clos" in page and FLAG in page
+    for fact in ("Viktor Lindqvist", "VLINDQVIST", "01/11/2026", "18:42", "aa:bb:cc:dd:ee:42", "10.10.0.42"):
+        assert fact in page, fact
 
 
 # ---------------------------------------------------------------- success and failure

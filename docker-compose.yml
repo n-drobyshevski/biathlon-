@@ -217,8 +217,9 @@ services:
   # ---- Finale · War Room (final incident report) ------------------------
   # http://<PiIP>:8099 — players pool the findings of every track into one
   # report; only a fully correct one reveals the Grandmaster Flag.
-  # It gets ONLY its own flag and the rogue-device answer from .env (never the
-  # whole file: no other mission's flag may sit in this container). It listens
+  # It gets ONLY its own flag, the rogue-device answer and the saboteur's display
+  # name (shown in the closure report after a solve) from .env (never the whole
+  # file: no other mission's flag may sit in this container). It listens
   # on 8099 itself (gunicorn, one worker: the rate-limit counters are in memory).
   # An unset ROGUE_* is passed as "" and the app then uses its built-in default.
   warroom:
@@ -228,6 +229,7 @@ services:
       FLAG_FINALE: "${FLAG_FINALE}"
       ROGUE_MAC: "${ROGUE_MAC:-}"
       ROGUE_IP: "${ROGUE_IP:-}"
+      SABOTEUR_NAME: "${SABOTEUR_NAME:-}"
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8099:8099"]
     deploy:                 # (not mem_limit: the online overlay merges a pids/cpu cap here)
       resources:
