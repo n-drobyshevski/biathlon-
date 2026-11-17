@@ -4,10 +4,10 @@
  *  - deposit counter: counts the per-IP quota back up as slots free, and holds
  *    the submit button while the window is closed;
  *  - MAC/IP toggle: swaps the device field's example;
- *  - deposit log ("Registre des dépôts"): each scored attempt, kept in this
+ *  - deposit history ("Historique des dépôts"): each scored attempt, kept in this
  *    browser's localStorage only, recorded once per server-issued attempt id;
  *  - "cadre réservé": receipt time (browser clock) and deposit number (log);
- *  - "Lu et approuvé" sign-offs: writes the signing time next to each visa;
+ *  - track visas ("Lu et approuvé"): writes the signing time under each box;
  *  - flag copy without navigator.clipboard (the Pi serves plain HTTP).
  */
 (function () {
@@ -36,19 +36,18 @@
     var max = +g.dataset.max || 0, left = +g.dataset.left || 0;
     var frees = (g.dataset.frees || '').split(',').filter(Boolean).map(Number).sort(function (a, b) { return a - b; });
     var start = Date.now();
-    var pips = g.querySelectorAll('.pips i'), text = g.querySelector('.g-text');
+    var text = g.querySelector('.g-text');
     var paint = function () {
       var gone = (Date.now() - start) / 1000;
       var avail = Math.min(max, left + frees.filter(function (f) { return f <= gone; }).length);
-      for (var i = 0; i < pips.length; i++) pips[i].classList.toggle('on', i < avail);
       g.classList.toggle('closed', avail === 0);
       if (avail > 0) {
-        text.textContent = avail + (avail > 1 ? ' dépôts disponibles' : ' dépôt disponible') + ' sur ' + max + ' cette minute';
+        text.textContent = 'Dépôts restants cette minute : ' + avail + ' sur ' + max + '.';
         if (submit) submit.disabled = false;
         if (lock) lock.hidden = true;
       } else {
         var next = frees.length ? Math.max(0, Math.ceil(frees[0] - gone)) : 0;
-        text.textContent = 'Guichet fermé · prochain dépôt dans ' + mmss(next);
+        text.textContent = 'Prochain dépôt possible dans ' + mmss(next) + '.';
         if (submit) submit.disabled = true;
       }
       return avail < max;
@@ -111,20 +110,22 @@
       if (!armed) {
         clear.textContent = "Confirmer l'effacement";
         clear.classList.add('confirm');
-        armed = setTimeout(function () { armed = null; clear.textContent = 'Effacer le registre'; clear.classList.remove('confirm'); }, 4000);
+        armed = setTimeout(function () { armed = null; clear.textContent = "Effacer l'historique"; clear.classList.remove('confirm'); }, 4000);
         return;
       }
       clearTimeout(armed); armed = null;
       list = []; save(list); render();
-      clear.textContent = 'Effacer le registre'; clear.classList.remove('confirm');
+      clear.textContent = "Effacer l'historique"; clear.classList.remove('confirm');
     });
   }
   render();
 
   // ---------------------------------------------------------- cadre réservé
-  var now = document.querySelector('[data-now]'), depot = document.querySelector('[data-depot]');
+  var stamps = document.querySelectorAll('[data-now]'), depot = document.querySelector('[data-depot]');
   var solved = document.body.classList.contains('is-solved');
-  if (now && (result || solved || document.querySelector('.lock'))) now.textContent = today() + ' à ' + clock();
+  if (result || solved || document.querySelector('.lock')) {
+    for (var n = 0; n < stamps.length; n++) stamps[n].textContent = today() + ' à ' + clock();
+  }
   if (depot && result) depot.textContent = String(list.length);
   else if (depot && solved) depot.textContent = String(list.length + 1);
 
@@ -132,8 +133,8 @@
   var boxes = document.querySelectorAll('.visa input[type="checkbox"]');
   for (var b = 0; b < boxes.length; b++) {
     boxes[b].addEventListener('change', function (ev) {
-      var at = ev.target.closest('.visa').querySelector('.v-at');
-      if (at) at.textContent = ev.target.checked ? 'à ' + clock().slice(0, 5) : '';
+      var at = ev.target.closest('td').querySelector('.v-at');
+      if (at) at.textContent = ev.target.checked ? 'le ' + today() + ' à ' + clock().slice(0, 5) : '';
     });
   }
 

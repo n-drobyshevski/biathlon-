@@ -100,7 +100,7 @@ def test_quota_counter_shows_what_is_left(client):
     for _ in range(3):
         post(client, ip="10.7.0.1", device="nope")
     page = post(client, ip="10.7.0.1", device="nope").data.decode()          # the 6th: refused
-    assert 'data-left="0"' in page and "Guichet fermé" in page
+    assert 'data-left="0"' in page and "Prochain dépôt possible dans" in page
 
 
 def test_closure_report_only_after_a_solve(client):
