@@ -6,6 +6,8 @@
  *  - MAC/IP toggle: swaps the device field's example;
  *  - deposit log ("Registre des dépôts"): each scored attempt, kept in this
  *    browser's localStorage only, recorded once per server-issued attempt id;
+ *  - "cadre réservé": receipt time (browser clock) and deposit number (log);
+ *  - "Lu et approuvé" sign-offs: writes the signing time next to each visa;
  *  - flag copy without navigator.clipboard (the Pi serves plain HTTP).
  */
 (function () {
@@ -15,6 +17,7 @@
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function clock() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+  function today() { var d = new Date(); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
   function mmss(s) { return Math.floor(s / 60) + ':' + pad(s % 60); }
   function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
   function load() {
@@ -117,6 +120,22 @@
     });
   }
   render();
+
+  // ---------------------------------------------------------- cadre réservé
+  var now = document.querySelector('[data-now]'), depot = document.querySelector('[data-depot]');
+  var solved = document.body.classList.contains('is-solved');
+  if (now && (result || solved || document.querySelector('.lock'))) now.textContent = today() + ' à ' + clock();
+  if (depot && result) depot.textContent = String(list.length);
+  else if (depot && solved) depot.textContent = String(list.length + 1);
+
+  // ---------------------------------------------------------- visas: signing time
+  var boxes = document.querySelectorAll('.visa input[type="checkbox"]');
+  for (var b = 0; b < boxes.length; b++) {
+    boxes[b].addEventListener('change', function (ev) {
+      var at = ev.target.closest('.visa').querySelector('.v-at');
+      if (at) at.textContent = ev.target.checked ? 'à ' + clock().slice(0, 5) : '';
+    });
+  }
 
   // ---------------------------------------------------------- copy the flag
   var btn = document.querySelector('.copy'), out = document.querySelector('.copied');

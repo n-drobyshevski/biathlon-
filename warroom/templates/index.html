@@ -1,6 +1,8 @@
 {#
-  War Room: the finale's closure form ("Rapport de clôture d'incident"), styled
-  as an official French incident document on a desk.
+  War Room: the finale's closure form ("Rapport de clôture d'incident"), drawn
+  as an official French incident document (form CC-07) on a desk: TLP marking at
+  top and bottom, required-field asterisks, a "cadre réservé" box where the
+  crisis cell stamps its verdict, "Lu et approuvé" sign-offs per track.
   Context from warroom/app.py (keep in sync):
     fields        dict key -> French label; keys: saboteur, vector, time, device
     values        what the player posted (refilled so nothing is retyped):
@@ -15,6 +17,8 @@
                   facts: saboteur_name, incident_date, incident_time, rogue_mac, rogue_ip
   The page never marks an individual field as right or wrong. Source hints name
   missions and tracks only, never a term that could be typed as an answer.
+  "Reçu le" and "Dépôt n°" are filled in by static/report.js (browser clock and
+  browser log); the server keeps no history.
 #}
 {%- set sources = {
   "saboteur": ("Missions 03, 09", "pôles Forensics et SAP"),
@@ -25,6 +29,7 @@
 {%- set d = incident_date.split('-') -%}
 {%- set date_fr = (d[2] ~ '/' ~ d[1] ~ '/' ~ d[0]) if d|length == 3 else incident_date -%}
 {%- set kind = values.get('device_kind') if values.get('device_kind') in ('mac', 'ip') else 'mac' -%}
+{%- set ref = 'DFL-2026-1101/CLO' -%}
 <!doctype html>
 <html lang="fr">
 <head>
@@ -34,44 +39,106 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="{{ 'is-solved' if flag else 'is-open' }}">
+{# Ink grain for the rubber stamps: punches small holes in the stamp's colour. #}
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <filter id="ink" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="noise"/>
+    <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.2 2.65" result="mask"/>
+    <feComposite in="SourceGraphic" in2="mask" operator="in"/>
+  </filter>
+</svg>
 <main class="desk">
 <article class="doc">
+  <div class="watermark" aria-hidden="true">Diffusion restreinte</div>
 
   <header class="doc-head">
-    <div class="org">Cellule de crise · DécaFlop
-      <small>Finale régionale de triathlon 2026 · Équipe IT d'urgence</small></div>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">CdC</span>
+      <div class="org">Cellule de crise · DécaFlop
+        <small>Finale régionale de triathlon 2026 · Équipe IT d'urgence</small></div>
+    </div>
     <div class="marks"><span class="tlp">TLP:AMBER</span><span>Diffusion restreinte</span></div>
   </header>
+  <div class="ref-line"><span class="mono">Réf. {{ ref }}</span><span>Formulaire CC-07 · rév. 10/2026</span><span>Page 1/1</span></div>
 
   <h1>Rapport de clôture d'incident</h1>
-  <p class="doc-sub">{% if flag %}Rapport accepté par la cellule de crise.{% else %}Formulaire à remplir
-    ensemble par les pôles Web, Forensics et SAP. Chaque conclusion vient d'une mission différente :
-    rassemblez les preuves avant de déposer.{% endif %}</p>
+  <p class="doc-sub">{% if flag %}Rapport accepté par la cellule de crise. Le présent document vaut
+    clôture du dossier.{% else %}À remplir conjointement par les pôles Web, Forensics et SAP. Chaque
+    conclusion provient d'une mission différente : rassemblez les preuves avant le dépôt.{% endif %}</p>
 
-  <table class="meta">
-    <tr><th scope="row">Dossier</th><td class="mono">DFL-2026-1101</td>
-        <th scope="row">Ouvert le</th><td>{{ date_fr }}</td></tr>
-    <tr><th scope="row">Objet</th><td>Falsification de la liste de départ</td>
-        <th scope="row">Statut</th><td>{% if flag %}<b>Clos</b>{% else %}En cours d'instruction{% endif %}</td></tr>
-  </table>
+  <div class="top">
+    <table class="meta">
+      <caption>0. Identification du dossier</caption>
+      <tr><th scope="row">Dossier</th><td class="mono">DFL-2026-1101</td></tr>
+      <tr><th scope="row">Objet</th><td>Falsification de la liste de départ de la finale</td></tr>
+      <tr><th scope="row">Ouvert le</th><td>{{ date_fr }}</td></tr>
+      <tr><th scope="row">Gravité</th><td>Majeure · cellule de crise activée</td></tr>
+      <tr><th scope="row">Rédacteur</th><td>Équipe IT d'urgence</td></tr>
+      <tr><th scope="row">Destinataires</th><td>Direction de course · Jury de course · Direction DécaFlop</td></tr>
+      <tr><th scope="row">Statut</th><td>{% if flag %}<b>Clos</b>{% else %}En cours d'instruction{% endif %}</td></tr>
+    </table>
+
+    <aside class="cadre" aria-labelledby="cadre-h">
+      <p class="cadre-h" id="cadre-h">Cadre réservé à la cellule de crise</p>
+      <dl class="cadre-dl">
+        <div><dt>Reçu le</dt><dd data-now>{% if not error and not flag %}—{% endif %}</dd></div>
+        <div><dt>Dépôt n°</dt><dd data-depot>—</dd></div>
+      </dl>
+      <div class="verdict">
+      {% if flag %}
+        <span class="rstamp ok-stamp">Accepté</span>
+        <p class="v-text">Quatre conclusions sur quatre. Dossier clos.</p>
+      {% elif error and correct is defined %}
+        <div class="err" role="alert" data-attempt="{{ attempt }}" data-correct="{{ correct }}" data-total="{{ total }}">
+          <span class="rstamp">Retourné pour complément</span>
+          <p class="v-count"><span class="pips" role="img" aria-label="{{ correct }} conclusion(s) concordante(s) sur {{ total }}">
+            {%- for i in range(total) %}<i{% if i < correct %} class="on"{% endif %}></i>{% endfor -%}
+            </span><b class="mono">{{ correct }}/{{ total }}</b></p>
+          <p class="v-text">{{ error }}</p>
+          <p class="v-note">Le service ne précise pas lesquelles.</p>
+        </div>
+      {% elif error and locked %}
+        <div class="lock" role="alert">
+          <span class="rstamp amber">Guichet fermé</span>
+          <p class="v-text">{{ error }}</p>
+          <p class="v-note">Vos réponses sont conservées.</p>
+        </div>
+      {% elif error %}
+        <div class="err" role="alert"><span class="rstamp">Dépôt refusé</span><p class="v-text">{{ error }}</p></div>
+      {% else %}
+        <p class="v-wait">En attente de dépôt.</p>
+      {% endif %}
+      </div>
+    </aside>
+  </div>
 
 {% if flag %}
   <section class="closed" aria-labelledby="closed-h">
-    <div class="stamp" aria-hidden="true">Dossier clos<small>{{ date_fr }} · Cellule de crise</small></div>
+    <svg class="seal" viewBox="0 0 200 200" role="img" aria-label="Tampon : dossier clos, cellule de crise DécaFlop">
+      <defs><path id="seal-ring" d="M100 100 m-74 0 a74 74 0 1 1 148 0 a74 74 0 1 1 -148 0"/></defs>
+      <circle cx="100" cy="100" r="94" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="100" cy="100" r="86" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text font-size="14.5" font-weight="700" letter-spacing="2.2" fill="currentColor">
+        <textPath href="#seal-ring" startOffset="0">CELLULE DE CRISE · DÉCAFLOP · FINALE 2026 ·</textPath></text>
+      <text x="100" y="96" text-anchor="middle" font-size="25" font-weight="700" letter-spacing="2" fill="currentColor">CLOS</text>
+      <text x="100" y="118" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1" fill="currentColor">{{ date_fr }}</text>
+    </svg>
 
-    <h2 class="sec" id="closed-h">Décision de clôture</h2>
-    <p class="decision">Les quatre conclusions concordent avec les preuves. Le rapport est accepté et le
-      dossier DFL-2026-1101 est clos.</p>
+    <h2 class="sec" id="closed-h">1. Décision de clôture</h2>
+    <p class="decision">Les quatre conclusions concordent avec les preuves réunies par les pôles. Le rapport
+      est accepté et le dossier DFL-2026-1101 est clos.</p>
 
-    <h2 class="sec" id="flag-label">Flag du Grand Maître</h2>
+    <h2 class="sec" id="flag-label">2. Flag du Grand Maître</h2>
     <div class="flagbox">
       <code id="flag" aria-labelledby="flag-label">{{ flag }}</code>
       <button type="button" class="copy" data-target="flag">Copier</button>
     </div>
     <p class="copied" role="status" aria-live="polite"></p>
 
-    <h2 class="sec">Conclusions retenues</h2>
+    <h2 class="sec">3. Conclusions retenues</h2>
     <table class="facts">
+      <thead><tr><th scope="col">Point</th><th scope="col">Conclusion</th><th scope="col" class="src">Pièces</th></tr></thead>
       <tr><th scope="row">Saboteur</th>
         <td>{{ saboteur_name }}, utilisateur SAP <span class="mono">VLINDQVIST</span> (mandant 001).</td>
         <td class="src">M03 · M09</td></tr>
@@ -90,7 +157,7 @@
         <td class="src">M08</td></tr>
     </table>
 
-    <h2 class="sec">Faits établis</h2>
+    <h2 class="sec">4. Faits établis</h2>
     <ul class="story">
       <li>La veille de la finale, un équipement inconnu apparaît sur le réseau de la cabine de
         chronométrage et s'enregistre auprès de la passerelle SAP, restée sans liste de contrôle.</li>
@@ -102,31 +169,18 @@
         la passerelle désignent la même personne.</li>
     </ul>
     <p class="conclusion"><b>{{ saboteur_name }}</b> est formellement identifié comme l'auteur de la
-      falsification. Le dossier est transmis à la direction de course.</p>
+      falsification. Le dossier est transmis à la direction de course pour suite à donner.</p>
 
-    <div class="sign"><span>Visé : pôles Web, Forensics, SAP</span><span class="mono">Réf. DFL-2026-1101/CLO</span></div>
+    <div class="signoff">
+      <div class="sig"><p class="sig-role">Visa des pôles</p><p class="hand">Web · Forensics · SAP</p></div>
+      <div class="sig"><p class="sig-role">Pour la cellule de crise, le chef de cellule</p>
+        <svg class="scribble" viewBox="0 0 180 54" aria-hidden="true"><path d="M6 38c10-22 18-30 22-24 4 7-10 26-4 27 7 1 14-30 22-28 6 2-3 24 4 24s10-17 16-17c5 0-1 15 5 15 7 0 11-20 18-19 6 1-2 18 5 18 8 0 18-16 30-17 9-1 18 4 30 2M40 47c30-5 70-7 110-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
     <p class="thanks">Merci à toutes les équipes de la cellule de crise.</p>
   </section>
 
 {% else %}
-  {% if error and correct is defined %}
-  <div class="err" role="alert" data-attempt="{{ attempt }}" data-correct="{{ correct }}" data-total="{{ total }}">
-    <p class="ret-title">Retourné pour complément
-      <span class="pips" role="img" aria-label="{{ correct }} conclusion(s) concordante(s) sur {{ total }}">
-        {%- for i in range(total) %}<i{% if i < correct %} class="on"{% endif %}></i>{% endfor -%}
-      </span><b class="mono">{{ correct }}/{{ total }}</b></p>
-    <p>{{ error }}</p>
-    <p class="ret-note">Le service ne dit pas lesquelles. Votre saisie est notée au registre des dépôts.</p>
-  </div>
-  {% elif error and locked %}
-  <div class="lock" role="alert">
-    <p><b>Guichet fermé.</b> {{ error }}</p>
-    <p class="ret-note">Vos réponses sont conservées.</p>
-  </div>
-  {% elif error %}
-  <div class="err" role="alert"><p class="ret-title">Dépôt refusé</p><p>{{ error }}</p></div>
-  {% endif %}
-
   <div class="guichet{{ ' closed' if not quota_left else '' }}" id="guichet"
        data-left="{{ quota_left }}" data-max="{{ quota_max }}" data-frees="{{ quota_frees|join(',') }}">
     <span class="g-label">Guichet des dépôts</span>
@@ -141,10 +195,10 @@
   </div>
 
   <form class="report" method="post" action="{{ url_for('submit') }}" autocomplete="off">
-    <h2 class="sec">1. Conclusions de l'enquête</h2>
+    <h2 class="sec">1. Conclusions de l'enquête <span class="req">* champ obligatoire</span></h2>
 
     <div class="row">
-      <label class="lbl" for="f-saboteur">1.1 {{ fields.saboteur }}
+      <label class="lbl" for="f-saboteur">1.1 {{ fields.saboteur }} <span class="star">*</span>
         <small>{{ sources.saboteur[0] }} · {{ sources.saboteur[1] }}</small></label>
       <div class="in">
         <input id="f-saboteur" name="saboteur" type="text" maxlength="200" required spellcheck="false"
@@ -153,7 +207,7 @@
     </div>
 
     <div class="row">
-      <label class="lbl" for="f-vector">1.2 {{ fields.vector }}
+      <label class="lbl" for="f-vector">1.2 {{ fields.vector }} <span class="star">*</span>
         <small>{{ sources.vector[0] }} · {{ sources.vector[1] }}</small></label>
       <div class="in">
         <input id="f-vector" name="vector" type="text" maxlength="200" required spellcheck="false"
@@ -162,7 +216,7 @@
     </div>
 
     <div class="row" role="group" aria-labelledby="l-time">
-      <p class="lbl" id="l-time">1.3 {{ fields.time }}
+      <p class="lbl" id="l-time">1.3 {{ fields.time }} <span class="star">*</span>
         <small>{{ sources.time[0] }} · {{ sources.time[1] }}</small></p>
       <div class="in">
         <div class="pair">
@@ -176,7 +230,7 @@
     </div>
 
     <div class="row" role="group" aria-labelledby="l-device">
-      <p class="lbl" id="l-device">1.4 {{ fields.device }}
+      <p class="lbl" id="l-device">1.4 {{ fields.device }} <span class="star">*</span>
         <small>{{ sources.device[0] }} · {{ sources.device[1] }}</small></p>
       <div class="in">
         <div class="kind" role="radiogroup" aria-label="Type d'adresse">
@@ -193,11 +247,15 @@
     </div>
 
     <h2 class="sec">2. Visa des pôles</h2>
-    <p class="sec-note">Chaque pôle relit les quatre conclusions avant le dépôt. À recocher à chaque dépôt.</p>
+    <p class="sec-note">Le référent de chaque pôle relit les quatre conclusions puis vise. Les visas sont
+      à renouveler à chaque dépôt.</p>
     <div class="visas">
       {%- for key, name in [("web", "Pôle Web"), ("fx", "Pôle Forensics"), ("sap", "Pôle SAP")] %}
-      <label class="visa"><input type="checkbox" name="visa_{{ key }}" value="1" required>
-        <span><b>{{ name }}</b>Conclusions relues et validées</span></label>
+      <label class="visa">
+        <span class="v-role">Référent {{ name|lower }} <span class="star">*</span></span>
+        <span class="v-line"><span class="hand" aria-hidden="true">Lu et approuvé</span><span class="v-at" aria-hidden="true"></span></span>
+        <span class="v-box"><input type="checkbox" name="visa_{{ key }}" value="1" required> Viser le rapport</span>
+      </label>
       {%- endfor %}
     </div>
 
@@ -212,9 +270,9 @@
     <h2 class="sec" id="log-h">3. Registre des dépôts</h2>
     <div class="log-scroll">
       <table class="log-t">
-        <thead><tr><th scope="col">N°</th><th scope="col">Heure</th><th scope="col">Saboteur</th>
+        <thead><tr><th scope="col">N°</th><th scope="col">Reçu à</th><th scope="col">Saboteur</th>
           <th scope="col">Vecteur</th><th scope="col">Incident</th><th scope="col">Équipement</th>
-          <th scope="col">Résultat</th></tr></thead>
+          <th scope="col">Avis</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -223,8 +281,12 @@
   </section>
 {% endif %}
 
+  <footer class="doc-foot">
+    <span class="tlp">TLP:AMBER</span>
+    <span>DécaFlop SAS · Cellule de crise · Usage interne uniquement</span>
+    <span class="mono">{{ ref }} · p. 1/1</span>
+  </footer>
 </article>
-<p class="foot">Cellule de crise DécaFlop · Usage interne uniquement</p>
 </main>
 <script src="{{ url_for('static', filename='report.js') }}" defer></script>
 </body>
