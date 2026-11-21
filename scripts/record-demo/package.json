@@ -1,0 +1,11 @@
+{
+  "name": "decaflop-record-demo",
+  "private": true,
+  "description": "Records the demo video of the DécaFlop CTF lab (see README.md).",
+  "scripts": {
+    "record": "node record.js"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

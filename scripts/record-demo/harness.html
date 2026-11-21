@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>harness</title>
+<style>
+  :root{--chrome:#dfe3ea;--toolbar:#f6f7f9;--text:#1f2329;--muted:#5f6670;--accent:#1a73e8}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#141821;font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif}
+  #root{position:absolute;left:0;top:0;width:1280px;height:720px;transform:scale(var(--k,1.5));transform-origin:0 0;overflow:hidden}
+  #bg{position:fixed;inset:0;background:
+      radial-gradient(1200px 700px at 15% 10%,#3a4a7a 0%,transparent 60%),
+      radial-gradient(900px 600px at 90% 90%,#5b3a6e 0%,transparent 55%),#161a26}
+  #stage{position:fixed;inset:0;transform-origin:0 0;transition:transform .9s cubic-bezier(.65,0,.35,1)}
+  #win{position:absolute;left:24px;top:18px;right:24px;bottom:18px;border-radius:12px;overflow:hidden;
+    background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+  #tabs{height:38px;background:var(--chrome);display:flex;align-items:flex-end;padding:0 8px;gap:6px;position:relative}
+  .lights{display:flex;gap:8px;align-self:center;margin:0 12px 0 6px}
+  .lights i{width:12px;height:12px;border-radius:50%;display:block}
+  .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+  .tab{height:32px;max-width:230px;min-width:150px;background:#c7ccd4;border-radius:9px 9px 0 0;display:flex;align-items:center;
+    gap:8px;padding:0 10px 0 11px;font-size:12.5px;color:#3a3f47;position:relative;transition:background .15s;flex:0 1 auto}
+  .tab.active{background:var(--toolbar);color:var(--text)}
+  .tab .ttl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tab .x{color:var(--muted);font-size:15px;width:16px;text-align:center;border-radius:50%;flex:none}
+  .fav{width:16px;height:16px;border-radius:4px;color:#fff;font:700 10px/16px inherit;text-align:center;flex:none}
+  .spin{width:15px;height:15px;border-radius:50%;border:2px solid #c9d3f5;border-top-color:var(--accent);
+    animation:sp .7s linear infinite;flex:none;display:none}
+  .tab.loading .spin{display:block} .tab.loading .fav{display:none}
+  .newtab{align-self:center;color:var(--muted);font-size:19px;margin-left:4px;width:26px;height:26px;border-radius:7px;text-align:center;line-height:26px}
+  #bar{height:40px;background:var(--toolbar);display:flex;align-items:center;gap:6px;padding:0 10px;border-bottom:1px solid #d9dde3;position:relative}
+  .nav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#4a5059}
+  .nav svg{width:16px;height:16px}
+  .nav.dis{color:#b4b9c0}
+  #omni{flex:1;height:30px;border-radius:15px;background:#e9ecf1;display:flex;align-items:center;gap:8px;padding:0 14px;
+    font-size:13.5px;color:var(--text);margin:0 6px;transition:background .15s,box-shadow .15s}
+  #omni.focus{background:#fff;box-shadow:0 0 0 2px var(--accent)}
+  #omni .ns{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12.5px;padding-right:8px;border-right:1px solid #cfd4db}
+  #omni .ns svg{width:14px;height:14px}
+  #url{white-space:pre;overflow:hidden}
+  #url .h{color:var(--text)} #url .p{color:var(--muted)}
+  #url.typing::after{content:"";display:inline-block;width:1px;height:15px;background:var(--text);vertical-align:-3px;animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}} @keyframes sp{to{transform:rotate(360deg)}}
+  .reload .x{display:none} #bar.loading .reload .r{display:none} #bar.loading .reload .x{display:block}
+  #prog{position:absolute;left:0;bottom:-1px;height:2px;background:var(--accent);width:0;opacity:0}
+  #views{position:absolute;left:0;top:78px;width:100%;height:calc(100% - 78px);background:#fff}
+  #views iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;visibility:hidden}
+  #views iframe.show{visibility:visible}
+  #cur{position:absolute;left:0;top:0;width:24px;height:24px;pointer-events:none;z-index:10;transform:translate(-100px,-100px);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+  #cur svg{width:24px;height:24px;transition:transform .12s} #cur.down svg{transform:scale(.82)}
+  .ripple{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;pointer-events:none;z-index:9;border:2px solid rgba(26,115,232,.8);animation:rp .5s ease-out forwards}
+  @keyframes rp{from{transform:scale(.3);opacity:1}to{transform:scale(1.2);opacity:0}}
+  #cap{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);width:82%;text-align:center;z-index:20;opacity:0;transition:opacity .3s;pointer-events:none}
+  #cap.on{opacity:1}
+  #cap span{background:rgba(8,8,10,.8);color:#fff;font-size:19px;line-height:1.62;padding:2px 11px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  #cap b{color:#ffd27a;font-weight:600} #cap code{font-family:ui-monospace,Menlo,monospace;font-size:17px;background:rgba(255,255,255,.16);padding:1px 5px;border-radius:4px}
+  #card{position:absolute;inset:0;z-index:30;background:rgba(6,8,12,0);transition:background .55s;pointer-events:none}
+  #card.on{background:rgba(6,8,12,.72)}
+  #card .inner{position:absolute;left:68px;bottom:92px;max-width:70%}
+  #card .k{font-size:19px;color:#cfd4de;font-weight:500;opacity:0;transform:translateY(10px);transition:all .5s .05s}
+  #card .t{font-size:56px;font-weight:600;line-height:1.04;letter-spacing:-.015em;color:#fff;margin-top:10px;opacity:0;transform:translateY(14px);transition:all .55s .1s}
+  #card .s{font-size:21px;line-height:1.4;color:#aab2c0;margin-top:14px;opacity:0;transform:translateY(14px);transition:all .55s .16s}
+  #card.on .k,#card.on .t,#card.on .s{opacity:1;transform:none}
+  #card .s code,#card .t code{font-family:ui-monospace,Menlo,monospace}
+</style></head>
+<body>
+<div id="root">
+<div id="bg"></div>
+<div id="stage">
+  <div id="win">
+    <div id="tabs">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div id="tablist" style="display:flex;align-items:flex-end;gap:6px"></div>
+      <span class="newtab">+</span>
+    </div>
+    <div id="bar">
+      <span class="nav dis" id="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span>
+      <span class="nav dis" id="fwd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <span class="nav reload"><svg class="r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+      <div id="omni"><span class="ns"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>Non sécurisé</span><span id="url"></span></div>
+      <span class="nav"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></span>
+      <div id="prog"></div>
+    </div>
+    <div id="views"></div>
+  </div>
+  <div id="cur"><svg viewBox="0 0 24 24"><path d="M5 2.5v17.2l4.3-4.1 2.9 6.6 2.9-1.3-2.9-6.5h6.1z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+</div>
+<div id="cap"></div>
+<div id="card"><div class="inner"></div></div>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  const PAL = ['#2c4bd6', '#1f8a52', '#b1452a', '#6b3fa0'];
+  const tabs = [];
+  let active = null, progT = null;
+  const fmtUrl = u => { try { const x = new URL(u); const p = x.pathname + x.search; return `<span class="h">${x.host}</span><span class="p">${p === '/' ? '' : p}</span>`; } catch { return u; } };
+  const cur = () => tabs.find(t => t.id === active);
+  function renderTabs() {
+    const tl = $('tablist'); tl.innerHTML = '';
+    tabs.forEach((t, i) => {
+      const el = document.createElement('div');
+      el.className = 'tab' + (t.id === active ? ' active' : '') + (t.loading ? ' loading' : '');
+      el.innerHTML = `<span class="spin"></span><span class="fav" style="background:${PAL[i % PAL.length]}">${(t.fav || t.title || '?').trim()[0].toUpperCase()}</span>`
+        + `<span class="ttl">${t.title || 'Nouvel onglet'}</span><span class="x">×</span>`;
+      tl.appendChild(el);
+    });
+  }
+  function syncBar() {
+    const t = cur(); if (!t) return;
+    $('bar').classList.toggle('loading', !!t.loading);
+    const e = $('url'); e.classList.remove('typing'); e.innerHTML = t.url ? fmtUrl(t.url) : ''; $('omni').classList.remove('focus');
+    $('back').classList.toggle('dis', (t.hist || 0) <= 1);
+  }
+  window.H = {
+    openTab(id, title, fav) {
+      const ifr = document.createElement('iframe'); ifr.id = 'view-' + id; ifr.name = 'view-' + id;
+      $('views').appendChild(ifr);
+      tabs.push({ id, title, fav, url: '', loading: false, hist: 0, iframe: ifr });
+      renderTabs();
+    },
+    closeTab(id) {
+      const i = tabs.findIndex(t => t.id === id); if (i < 0) return;
+      tabs[i].iframe.remove(); tabs.splice(i, 1);
+      if (active === id && tabs.length) H.switchTab(tabs[Math.max(0, i - 1)].id); else renderTabs();
+    },
+    switchTab(id) { active = id; tabs.forEach(t => t.iframe.classList.toggle('show', t.id === id)); renderTabs(); syncBar(); },
+    activeFrameName() { return 'view-' + active; },
+    setUrl(u) { const t = cur(); if (t) t.url = u; syncBar(); },
+    setTitle(x) { const t = cur(); if (t) t.title = x || 'Sans titre'; renderTabs(); },
+    typeStart() { $('omni').classList.add('focus'); const e = $('url'); e.textContent = ''; e.classList.add('typing'); },
+    typeChar(c) { $('url').textContent += c; },
+    loading(on) {
+      const t = cur(); if (!t) return; t.loading = on;
+      $('bar').classList.toggle('loading', on); renderTabs();
+      const p = $('prog'); clearInterval(progT);
+      if (on) { let w = 8; p.style.transition = 'none'; p.style.opacity = 1; p.style.width = w + '%';
+        progT = setInterval(() => { w += (90 - w) * 0.08; p.style.transition = 'width .2s linear'; p.style.width = w + '%'; }, 120);
+      } else { p.style.transition = 'width .25s ease-out, opacity .3s .25s'; p.style.width = '100%'; p.style.opacity = 0; t.hist = (t.hist || 0) + 1; syncBar(); }
+    },
+    nav(u) { const t = cur(); if (t) t.iframe.src = u; },
+    cursor(x, y) { $('cur').style.transform = `translate(${x - 5}px,${y - 3}px)`; },
+    press(down, x, y) { $('cur').classList.toggle('down', down);
+      if (down) { const r = document.createElement('div'); r.className = 'ripple'; r.style.left = x + 'px'; r.style.top = y + 'px'; $('stage').appendChild(r); setTimeout(() => r.remove(), 600); } },
+    caption(h) { const c = $('cap'); if (h) c.innerHTML = `<span>${h}</span>`; c.classList.toggle('on', !!h); },
+    card(k, t, s) { const c = $('card');
+      if (k === null) { c.classList.remove('on'); return; }
+      c.querySelector('.inner').innerHTML = `<div class="k">${k}</div><div class="t">${t}</div>` + (s ? `<div class="s">${s}</div>` : '');
+      void c.offsetWidth; c.classList.add('on'); },
+    zoom(s, cx, cy) { const W = 1280, Hh = 720;
+      if (s === 1) { $('stage').style.transform = ''; return; }
+      let tx = W / 2 - s * cx, ty = Hh / 2 - s * cy;
+      tx = Math.min(0, Math.max(W - s * W, tx)); ty = Math.min(0, Math.max(Hh - s * Hh, ty));
+      $('stage').style.transform = `translate(${tx}px,${ty}px) scale(${s})`; },
+  };
+</script>
+</body></html>

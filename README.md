@@ -198,6 +198,7 @@ scripts/
   gen-flags.sh         create .env with fresh random flags
   ctfd-setup.py        load the challenges (flags, hints) into CTFd
   build-handouts.sh    build the handout files in handouts/dist/
+  record-demo/         record a demo video of the whole lab (see its README.md)
 docker-compose.yml     the live web + SAP challenges
 docker-compose.cloudflare.yml  optional online overlay (Cloudflare Tunnel, see CLOUDFLARE.md)
 CLOUDFLARE.md          optional online hosting runbook (Tunnel + Access)
