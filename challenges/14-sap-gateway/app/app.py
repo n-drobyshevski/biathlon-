@@ -38,6 +38,10 @@ def shortcuts(resp):
 
 
 app.secret_key = os.environ.get("SAP_SECRET_KEY") or os.urandom(32)
+# Own cookie name: offline, every service shares the Pi's address and cookies
+# ignore the port. Flask's default "session" is also CTFd's, so a SAP logon
+# would overwrite it and log the player out of the scoreboard (and back).
+app.config["SESSION_COOKIE_NAME"] = "sap_session"
 # Flag comes from the environment only (set by scripts/gen-flags.sh through
 # docker-compose as FLAG_14). Plain FLAG is kept as a fallback for older wiring.
 FLAG = os.environ.get("FLAG_14") or os.environ.get("FLAG", "TRIATHLON{placeholder}")

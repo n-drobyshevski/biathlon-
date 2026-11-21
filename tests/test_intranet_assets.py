@@ -200,6 +200,16 @@ def test_12_ssti_still_evaluates(monkeypatch):
 
 
 # ---------------------------------------------------------------- 14
+def test_14_logon_cookie_does_not_clash_with_ctfd(monkeypatch):
+    """Same host offline: CTFd's cookie is "session", the SAP shell's must differ,
+    or a SAP logon logs the player out of the scoreboard."""
+    c = _client("14", monkeypatch, FLAG="TRIATHLON{gw_x}")
+    r = c.post("/sap/logon", data={"user": "basis_dflop", "pass": "Trans1tion!2026"})
+    cookies = r.headers.getlist("Set-Cookie")
+    assert any(h.startswith("sap_session=") for h in cookies)
+    assert not any(h.startswith("session=") for h in cookies)
+
+
 def test_14_register_escapes_and_gives_flag(monkeypatch):
     c = _client("14", monkeypatch, FLAG="TRIATHLON{gw_x}")
     # The gateway now sits behind the Level 3 SAP logon; reach it unauthenticated
