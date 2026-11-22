@@ -188,10 +188,15 @@ const ease = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     await point(tabEl(idx), { chrome: true }); await press();
     activeTab = id; await Hc('switchTab', id); await sleep(500);
   };
-  const openFromLink = async (loc, id, fav) => {
+  // a link opened in a new tab (target=_blank, or Ctrl+click on a plain link)
+  const openFromLink = async (loc, id, fav, { ctrl = false } = {}) => {
     const href = await loc.getAttribute('href');
     ctx.once('page', pg => pg.close().catch(() => {}));
-    await point(loc); await press(); await sleep(300);
+    await point(loc);
+    if (ctrl) await page.keyboard.down('Control');
+    await press();
+    if (ctrl) await page.keyboard.up('Control');
+    await sleep(300);
     await Hc('openTab', id, '', fav); activeTab = id; await Hc('switchTab', id);
     await waitNav(async () => { await Hc('setUrl', href); await Hc('nav', href); });
   };
@@ -362,10 +367,16 @@ const ease = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
   // ---- 5b · mission 14 — the SAP portal ------------------------------------
   await card('MISSION 14 · SAP · MOYEN', 'Le gateway ouvert', 'Le portail SAP DFlop ERP — système DFL, mandant 001');
-  await caption('On ferme CyberChef et on ouvre le portail <b>SAP DFlop ERP</b>', 0);
+  await caption('On ferme CyberChef. Où est le portail SAP ? La cellule de crise le dit', 0);
   await closeTabAt('t6', 2);
-  await openTab('t4', 'S');
-  await typeUrl(U(8014));
+  await switchTab('t1', 0);
+  await clickNav(vf().getByRole('link', { name: 'Missions' }).last());
+  const sapLink = vf().locator('#mission-14 a[href*=":8014"]').first();
+  await point(sapLink); await mark(sapLink);
+  await caption('La fiche de la mission 14 donne l’accès : <b>Gateway SAP</b>, port <code>8014</code>', 2600);
+  await caption('Il figure aussi dans les notes de l’équipe Basis, sur l’intranet. Ctrl + clic : nouvel onglet', 0);
+  await sleep(1200);
+  await openFromLink(sapLink, 't4', 'S', { ctrl: true });
   await caption('Ouverture de session Basis. Les identifiants ont fuité dans le dépôt <code>.git</code> (mission 11)', 0);
   await typeInto(vf().locator('#sap-user'), SAP_USER);
   await typeInto(vf().locator('#sap-pass'), SAP_PASS);
