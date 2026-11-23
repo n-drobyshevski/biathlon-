@@ -81,4 +81,5 @@ echo
 echo "Next:"
 echo "  1) docker compose up -d --build        # start web + SAP challenges"
 echo "  2) ./scripts/build-handouts.sh         # build forensics/stego files"
-echo "  3) serve handouts/dist/ on the scoreboard or a static file share"
+echo "  3) CTFD_TOKEN=... python3 scripts/ctfd-setup.py   # load the challenges into CTFd"
+echo "     (handouts are served by the share :8020 and the shop :8001 automatically)"

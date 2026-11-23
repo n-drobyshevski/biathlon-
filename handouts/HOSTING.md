@@ -57,8 +57,11 @@ run **on the Pi** and are driven entirely from a browser.
   MD5, and JWT decode/sign/verify. Covers 02, 03, 05, 07, 09, 10 and 13 with no
   install. Stateless — one shared instance, nothing to isolate between players.
 - **Terminal d'équipe (ttyd)** — `http://<PiIP>:8091`. A Linux shell in the
-  browser with `git-dumper`, `john`, `binwalk`, `foremost`, `exiftool`, `curl`,
-  `python3`. The catch-all; in practice only **11** (dump a `.git`) really needs
+  browser with `git-dumper`, `john` (jumbo build, with `zip2john`), `hashcat`,
+  `jwt_tool`, `binwalk`, `foremost`, Sleuth Kit (`fls`, `icat`), `pngcheck`,
+  `file`, `exiftool`, `tshark`, `curl`, `python3`: every tool a hint names.
+  `tests/test_toolbox_consistency.py` keeps hints, the hub tile and the image in
+  step. The catch-all; in practice only **11** (dump a `.git`) really needs
   a shell. Each browser connection gets its own scratch workspace, the container
   runs as a **non-root** user with **no repository, flags or challenge source
   mounted**, and it's capped (`mem_limit 512m`, `cpus 2.0`, `pids 256`), so one
@@ -68,18 +71,21 @@ Both link from the cellule de crise's **Outils** tab and auto-point at the Pi's
 IP. Override the addresses with `CYBERCHEF_URL` / `TERMINAL_URL` on the `hub`
 service if you host them elsewhere.
 
-**One prep step (needs internet, before the event):** CyberChef ships as a
-release zip, not committed to this repo. Download it once and drop it in:
+**Build both while you still have internet**, same as the challenge images.
+`docker compose up -d --build` builds them locally (arm64):
+
+- `cyberchef` downloads a pinned CyberChef release and checks its SHA-256. To
+  build with no network, drop a release zip in as `tools/cyberchef/cyberchef.zip`
+  first; it is then used as-is (see `tools/cyberchef/README.md`).
+- `toolbox` pulls its `apt`/`pip` tools, `ttyd`, `jwt_tool`, and compiles John
+  the Ripper jumbo from a pinned commit. Debian's own `john` is the core build,
+  which cannot crack Raw-MD5 or JWT. The compile takes a few minutes on a Pi 5.
+
+Then check the terminal has everything the hints use:
 
 ```bash
-# grab the "CyberChef_vX.Y.Z.zip" asset from
-#   https://github.com/gchq/CyberChef/releases
-cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
+docker compose run --rm toolbox selftest     # ends with "Tout est prêt."
 ```
-
-`docker compose up -d --build` then builds both services locally (arm64). The
-`toolbox` image pulls its `apt`/`pip` tools and the `ttyd` binary at build time,
-so build it while you still have internet, same as the challenge images.
 
 ## Resource budget (4 GB)
 
@@ -155,10 +161,13 @@ drift. If a team is stuck on 01, an organizer can just read them the login — i
 Run through this once, ideally the day before:
 
 - [ ] `uname -m` is `aarch64`
-- [ ] `tools/cyberchef/cyberchef.zip` is in place (one-time download — see
-      "Browser toolbox" above)
-- [ ] `docker compose up -d --build` → all containers `Up` (7 challenge apps
-      + hub + share + CTFd + cyberchef + toolbox)
+- [ ] `docker compose up -d --build` while still online (CyberChef and the
+      toolbox download their tools at build time, see "Browser toolbox" above)
+      → all containers `Up` (7 challenge apps + hub + share + CTFd + cyberchef
+      + toolbox)
+- [ ] `docker compose run --rm toolbox selftest` ends with "Tout est prêt."
+- [ ] `pytest tests/` passes (generates every handout with test flags and
+      solves 07, 09 and 10 the way the hints say)
 - [ ] **`./scripts/build-handouts.sh` → 10 files in `handouts/dist/`. Run this
       BEFORE the checks below.** The poster, the race photo and every share
       download are served from that folder, so until it is built `:8001/presse`,

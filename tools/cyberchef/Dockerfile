@@ -1,13 +1,33 @@
 # CyberChef — static, 100% client-side toolbox served over the offline LAN.
 # Arch-independent payload (plain JS/HTML) on a multi-arch nginx base, so this
-# builds natively on the Pi (arm64). No build-time network: the organizer drops
-# the release zip in as tools/cyberchef/cyberchef.zip (see README.md).
+# builds natively on the Pi (arm64).
+#
+# The build fetches a pinned CyberChef release and checks its SHA-256, so it
+# needs internet once, during prep (like every other image). To build fully
+# offline instead, drop a release zip in as tools/cyberchef/cyberchef.zip: when
+# present it is used as-is and nothing is downloaded (see README.md).
 FROM nginx:alpine
 
-RUN apk add --no-cache unzip
+ARG CYBERCHEF_VERSION=v10.24.0
+ARG CYBERCHEF_SHA256=29947b4d7805b74135c8370f3cba19b609d63e8ece6e33b2cb8ee0dfbbf1393c
 
-# The CyberChef release zip (NOT committed — see README.md / .gitignore).
-COPY cyberchef.zip /tmp/cyberchef.zip
+# nginx:alpine already ships curl, unzip and sha256sum: no apk step, so the
+# local-zip build below works with no network at all.
+
+# README.md always exists, so this COPY works whether or not the optional
+# cyberchef.zip (git-ignored) is there.
+COPY README.md cyberchef.zip* /tmp/cc-src/
+
+RUN set -eu; \
+    if [ -f /tmp/cc-src/cyberchef.zip ]; then \
+        echo "Using the local cyberchef.zip"; \
+        mv /tmp/cc-src/cyberchef.zip /tmp/cyberchef.zip; \
+    else \
+        curl -fsSL -o /tmp/cyberchef.zip \
+            "https://github.com/gchq/CyberChef/releases/download/${CYBERCHEF_VERSION}/CyberChef_${CYBERCHEF_VERSION}.zip"; \
+        echo "${CYBERCHEF_SHA256}  /tmp/cyberchef.zip" | sha256sum -c -; \
+    fi; \
+    rm -rf /tmp/cc-src
 
 # Unpack into the web root. The release may lay files at the root of the zip or
 # inside a single top-level folder; flatten either shape, and make sure "/"

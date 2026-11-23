@@ -19,5 +19,5 @@ saved SAP GUI shortcut in challenge 13 points at.
 **Flag format:** `TRIATHLON{...}`
 
 <details><summary>Hint 1 (−25)</summary>USR02 column <code>TRDAT</code>/<code>LTIME</code> = last logon date/time. Which user logged on on 2026-11-01 around 18:42?</details>
-<details><summary>Hint 2 (−40)</summary><code>BCODE</code> here is MD5(UPPERCASE(password)). Crack VLINDQVIST's hash with <code>wordlist.txt</code> (or <code>hashcat -m 0</code>).</details>
+<details><summary>Hint 2 (−40)</summary><code>BCODE</code> here is MD5(UPPERCASE(password)). Crack VLINDQVIST's hash with <code>wordlist.txt</code>, upper-casing each word first: <code>hashcat -m 0 -j u hash.txt wordlist.txt</code> or <code>john --format=Raw-MD5 --wordlist=wordlist.txt --rules=:u hash.txt</code>.</details>
 <details><summary>Hint 3 (−70)</summary>The cracked password is <code>CHIP7</code>. Run <code>unzip -P CHIP7 case_file.zip</code>.</details>

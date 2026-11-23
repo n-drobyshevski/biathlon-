@@ -25,7 +25,7 @@ Pull the images once while you still have internet.
    ```bash
    python3 scripts/ctfd-setup.py
    ```
-   It reads every `challenges/*/README.md` and creates the 9 challenges with
+   It reads every `challenges/*/README.md` and creates the 14 challenges with
    category, points, description (with the connection link and download links
    to the cellule de crise), the flag from `.env` and the hints with their
    costs. It also sets CTFd's default language to French (`--locale` to change).

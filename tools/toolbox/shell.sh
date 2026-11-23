@@ -9,9 +9,11 @@ cat <<'BANNER'
  DÉCAFLOP, boîte à outils de l'équipe
 ──────────────────────────────────────────────
  Outils installés
-   git, git-dumper, binwalk, foremost,
-   exiftool, john, hashcat, tshark, unzip,
-   xxd, jq, curl, wget, python3
+   git, git-dumper, curl, wget, jq, xxd,
+   file, binwalk, foremost, pngcheck,
+   sleuthkit (fls, icat), exiftool, tshark,
+   john (jumbo, zip2john), hashcat,
+   jwt_tool, unzip, python3
 
  Les fichiers de preuve sont sur Intranet
  DécaFlop (port 8020) ; les services sur

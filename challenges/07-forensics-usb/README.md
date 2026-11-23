@@ -6,10 +6,10 @@
 
 **Connect:** `http://<CTF-HOST>:8020` — internal share **Intranet DécaFlop**, folder `Arbitrage / Pièces` (`referee_usb.img`). Credentials: recover them via challenge 01 (hidden on the DécaFlop site).
 
-Download the disk image. A file was deleted from it. Carve it back out and read the flag.
+Download the disk image. A file was deleted from it. Get it back and read the flag.
 (Grepping for the flag won't work — the bytes you need aren't text.)
 
 **Flag format:** `TRIATHLON{...}`
 
-<details><summary>Hint 1 (−15)</summary>File carving = finding files by their magic bytes in raw data.</details>
-<details><summary>Hint 2 (−30)</summary><code>binwalk -e referee_usb.img</code> or <code>foremost referee_usb.img</code>. Look for an embedded PNG, extract it, and open it.</details>
+<details><summary>Hint 1 (−15)</summary>Two ways in. File carving finds files by their magic bytes in raw data. And the stick is a real FAT16 filesystem: forensic tools can list entries that were deleted.</details>
+<details><summary>Hint 2 (−30)</summary><code>binwalk -e referee_usb.img</code> or <code>foremost referee_usb.img</code>. Look for an embedded PNG, extract it, and open it. Or with The Sleuth Kit: <code>fls -rd referee_usb.img</code> lists the deleted files, then <code>icat referee_usb.img &lt;inode&gt; &gt; out.png</code>.</details>

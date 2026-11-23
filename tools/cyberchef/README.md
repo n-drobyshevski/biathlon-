@@ -6,18 +6,28 @@ laptops use it for base64, EXIF, unzip (including password-protected archives),
 file carving (**Extract Files**), MD5 and JWT decode/sign/verify — all in the
 browser, nothing to install.
 
-## One prep step (needs internet, do it before the event)
+## Build (needs internet once, during prep)
 
-CyberChef is **not committed** to this repo (it's a ~30 MB release bundle).
-Download it once and drop it in here as `cyberchef.zip`:
+`docker compose up -d --build` builds the `cyberchef` service locally (arm64).
+The build downloads the pinned release set in the `Dockerfile`
+(`CYBERCHEF_VERSION`, currently v10.24.0) and checks its SHA-256
+(`CYBERCHEF_SHA256`), so a corrupted or swapped download fails the build.
+
+To move to a newer release, change both build args together:
 
 ```bash
-# from https://github.com/gchq/CyberChef/releases download the
-# "CyberChef_vX.Y.Z.zip" asset, then:
-cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
+v=v10.24.0   # the release tag
+curl -fsSLO "https://github.com/gchq/CyberChef/releases/download/$v/CyberChef_$v.zip"
+sha256sum "CyberChef_$v.zip"   # paste into CYBERCHEF_SHA256
 ```
 
-Then `docker compose up -d --build` builds the `cyberchef` service locally
-(arm64). The build itself needs no network — it just unzips what you dropped in.
+## Building with no network
+
+Drop a release zip in here as `cyberchef.zip` before building. When that file
+exists the build uses it as-is and downloads nothing:
+
+```bash
+cp ~/Downloads/CyberChef_v*.zip tools/cyberchef/cyberchef.zip
+```
 
 `cyberchef.zip` is git-ignored, so it never lands in version control.

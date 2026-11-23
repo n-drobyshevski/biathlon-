@@ -151,16 +151,18 @@ services:
   # Players install nothing: a browser reaches both of these on the Pi.
   # http://<PiIP>:8090 — CyberChef (static, 100% client-side: base64, EXIF,
   #   unzip, file carving, MD5, JWT). Stateless, one shared instance is fine.
-  #   Needs tools/cyberchef/cyberchef.zip at build time (see its README).
+  #   Build online: it downloads a pinned, checksummed release (or uses a
+  #   tools/cyberchef/cyberchef.zip you dropped in, see its README).
   cyberchef:
     build: ./tools/cyberchef
     ports: ["${BIND_ADDR:-}${BIND_ADDR:+:}8090:80"]
     mem_limit: 96m
     restart: unless-stopped
 
-  # http://<PiIP>:8091 — ttyd web terminal with git-dumper, john, binwalk,
-  #   foremost, exiftool, curl, python3. The catch-all (really only 11 needs a
-  #   shell). Non-root, NO repo/flags/source mounted, each connection gets its
+  # http://<PiIP>:8091 — ttyd web terminal with every tool a hint names
+  #   (john jumbo, hashcat, jwt_tool, git-dumper, binwalk, foremost, Sleuth Kit,
+  #   pngcheck, tshark, exiftool, curl, python3). The catch-all (really only 11
+  #   needs a shell). Check it: docker compose run --rm toolbox selftest. Non-root, NO repo/flags/source mounted, each connection gets its
   #   own scratch workspace; capped so one player can't starve the Pi.
   toolbox:
     build: ./tools/toolbox

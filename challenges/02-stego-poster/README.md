@@ -12,5 +12,5 @@ out.
 
 **Flag format:** `TRIATHLON{...}`
 
-<details><summary>Hint 1 (−10)</summary>A PNG ends at its <code>IEND</code> chunk. What if there are more bytes after it?</details>
+<details><summary>Hint 1 (−10)</summary>A PNG ends at its <code>IEND</code> chunk. What if there are more bytes after it? <code>pngcheck -v</code> tells you.</details>
 <details><summary>Hint 2 (−20)</summary>Try <code>unzip decaflop_poster.png</code> or <code>binwalk</code>.</details>

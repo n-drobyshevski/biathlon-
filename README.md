@@ -148,6 +148,12 @@ See [`scoreboard/README.md`](scoreboard/README.md) for the scoreboard options
 and [`handouts/HOSTING.md`](handouts/HOSTING.md) for the Pi 5 + travel-router
 setup, resource notes, reset, and the pre-event test checklist.
 
+**Tests** (no Docker needed, Python 3.12 with `flask pillow piexif pytest` and
+the `zip` command): `pytest tests/` builds every handout from test flags, solves
+the forensics/SAP files the way the hints say, and checks that every tool a
+hint names is installed in the team terminal. On the Pi, after building,
+`docker compose run --rm toolbox selftest` checks the terminal image itself.
+
 **Optional online hosting** (players on locked-down corporate laptops that
 can't reach a local LAN): [`CLOUDFLARE.md`](CLOUDFLARE.md) publishes the lab
 through an outbound-only Cloudflare Tunnel behind a Cloudflare Access login,

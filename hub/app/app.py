@@ -353,11 +353,31 @@ def tools():
          "chips": ["Base64", "EXIF", "Dézip, même protégé", "Extraction de fichiers", "MD5", "JWT"]},
         {"name": "Terminal d'équipe", "icon": "term", "url": tool_url(TERMINAL_URL, TERMINAL_PORT),
          "purpose": "Un shell Linux dans le navigateur, avec les outils de l'équipe déjà installés.",
-         "chips": ["git-dumper", "john", "binwalk", "foremost", "exiftool", "curl", "python3"]},
+         "chips": ["john (jumbo)", "hashcat", "jwt_tool", "git-dumper", "binwalk", "foremost",
+                   "Sleuth Kit", "tshark", "exiftool", "python3"]},
         {"name": "Tableau des scores", "icon": "board", "url": scoreboard_url(),
          "purpose": "Créez ou rejoignez votre équipe, soumettez les flags et suivez le classement.",
          "chips": ["Équipes", "Flags", "Indices", "Classement"]},
     ]
+
+
+# Free, always-online training grounds for after the event (the Pi is offline,
+# so these are only for later). Picked from the awesome-ctf list's wargames and
+# tutorials; general practice, never tied to a mission.
+FURTHER = [
+    ("Root-Me", "https://www.root-me.org/",
+     "Des centaines d'épreuves en français, du web au forensics."),
+    ("picoCTF", "https://picoctf.org/",
+     "Le CTF d'entraînement pour débutants, avec ses archives d'épreuves."),
+    ("OverTheWire, Bandit", "https://overthewire.org/wargames/bandit/",
+     "Apprendre le terminal Linux niveau par niveau."),
+    ("CryptoHack", "https://cryptohack.org/",
+     "La cryptographie par la pratique."),
+    ("Hacker101", "https://www.hacker101.com/",
+     "Cours vidéo et CTF sur la sécurité web."),
+    ("CTF Field Guide", "https://trailofbits.github.io/ctf/",
+     "Le guide de Trail of Bits pour progresser en CTF."),
+]
 
 
 def tile(n, t):
@@ -426,7 +446,12 @@ def outils():
                               "Il ne voit pas les fichiers de votre ordinateur."),
     ]]
     know = grid(["Bon à savoir", ""], rows, start=8)
-    body = f'<div class="canvas"><div class="tiles">{tiles}</div><div class="know">{know}</div></div>'
+    more = [("", [(f'<a href="{escape(url)}"{NEW_TAB}>{escape(name)}</a>', ' class="k"'),
+                  (escape(what), ' class="desc"')]) for name, url, what in FURTHER]
+    later = grid(["Pour aller plus loin", "Après l'événement"], more,
+                 start=8 + len(rows) + 2)
+    body = (f'<div class="canvas"><div class="tiles">{tiles}</div>'
+            f'<div class="know">{know}{later}</div></div>')
     first = ts[0]
     formula = f'{first["name"]}, {first["url"]}' if first["url"] else f'{first["name"]}, non configuré'
     return html(layout("Outils", fr(body), "/outils", "Objet 1", formula, scripts=TOOLS_JS))
@@ -465,7 +490,8 @@ GUIDE = {
            "Le partage interne, puis CyberChef.",
            ["Dans le partage, dossier Chronométrage puis Captures, téléchargez `timing_booth.pcap`.",
             "Dans CyberChef, appliquez `Extract Strings` et cherchez la ligne qui commence par `Authorization: Basic` suivie d'un texte.",
-            "Appliquez `From Base64` sur ce texte : vous obtenez `timingop:` suivi du flag. Le flag est la partie après le deux-points."]),
+            "Appliquez `From Base64` sur ce texte : vous obtenez `timingop:` suivi du flag. Le flag est la partie après le deux-points.",
+            "Variante dans le terminal d'équipe : `tshark -r timing_booth.pcap -Y http.authbasic -T fields -e http.authbasic` affiche directement `identifiant:mot de passe`, déjà décodé."]),
     "06": ("Le formulaire de connexion insère directement votre saisie dans une requête SQL, "
            "on peut donc la détourner (injection SQL).",
            "Le navigateur.",
@@ -477,7 +503,8 @@ GUIDE = {
            "Le partage interne, puis CyberChef.",
            ["Dans le partage, dossier Arbitrage puis Pièces, téléchargez `referee_usb.img` dans un dossier vide.",
             "Dans CyberChef, appliquez `Extract Files` : l'image PNG cachée est détectée et extraite.",
-            "Ouvrez l'image PNG extraite : le flag y est écrit."]),
+            "Ouvrez l'image PNG extraite : le flag y est écrit.",
+            "Variante dans le terminal d'équipe : `fls -rd referee_usb.img` liste les fichiers supprimés, puis `icat referee_usb.img <numéro> > rotation.png` récupère le PNG."]),
     "09": ("Un ancien hachage de mot de passe peut se casser avec une liste de mots. Ici le champ BCODE vaut "
            "le MD5 du mot de passe mis en majuscules.",
            "Le partage interne, puis CyberChef (ou le terminal).",

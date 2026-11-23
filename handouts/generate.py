@@ -9,7 +9,7 @@ Challenges produced:
   02 stego   -> decaflop_poster.png     (PNG with an appended ZIP)
   03 exif    -> transition_shot.jpg     (flag + GPS + timestamp in EXIF)
   05 pcap    -> timing_booth.pcap       (HTTP Basic-Auth creds = flag)
-  07 usb     -> referee_usb.img         (carve a deleted PNG that holds the flag)
+  07 usb     -> referee_usb.img         (FAT16 stick, a deleted PNG holds the flag)
   09 sap     -> SAP_USR02_export.csv, sap_hint.txt, wordlist.txt, case_file.zip
                (crack the operator's legacy hash -> password opens the zip)
   13 sap     -> dflop_erp.sap           (SAP GUI shortcut with a saved password)
@@ -357,24 +357,84 @@ def gen_pcap():
     print("[05] timing_booth.pcap")
 
 # ---------------------------------------------------------------------------
-# 07 · USB carving (medium) — a 'deleted' PNG (holding the flag) inside a raw image
+# 07 · USB carving (medium) — a real FAT16 stick where the flag PNG was deleted
 # ---------------------------------------------------------------------------
+# Built by hand in pure Python (no mkfs/mtools needed, so the tests run it too).
+# Deleting on FAT only marks the directory entry (first byte 0xE5) and frees the
+# FAT chain: the bytes stay put. Two routes therefore work:
+#   * carving: binwalk -e / foremost / CyberChef "Extract Files" find the PNG;
+#   * filesystem: fls -rd lists the deleted entry, icat <inode> recovers it.
+FAT_SECTOR, FAT_SECTORS = 512, 8192            # 4 MiB; 1 sector per cluster
+FAT_RESERVED, FAT_COPIES, FAT_SIZE, FAT_ROOT_ENTRIES = 1, 2, 32, 512
+FAT_ROOT_SECTORS = FAT_ROOT_ENTRIES * 32 // FAT_SECTOR
+FAT_DATA_START = FAT_RESERVED + FAT_COPIES * FAT_SIZE + FAT_ROOT_SECTORS  # >= 4085 clusters: FAT16
+
+
+def _fat_name(name):
+    base, _, ext = name.upper().partition(".")
+    return base.ljust(8)[:8].encode("ascii") + ext.ljust(3)[:3].encode("ascii")
+
+
+def _fat_stamp(y, mo, d, h, mi):
+    return ((h << 11) | (mi << 5)), (((y - 1980) << 9) | (mo << 5) | d)
+
+
+def _fat_dirent(name83, attr, cluster, size, when):
+    t, d = _fat_stamp(*when)
+    return struct.pack("<11sBBBHHHHHHHI", name83, attr, 0, 0, t, d, d, 0, t, d, cluster, size)
+
+
+def fat16_image(files, label="DECAFLOP"):
+    """files: [(NAME.EXT, bytes, deleted, (y, mo, d, h, mi))] -> raw FAT16 image."""
+    img = bytearray(FAT_SECTORS * FAT_SECTOR)
+    boot = struct.pack("<3s8sHBHBHHBHHHII", b"\xebX\x90", b"MSDOS5.0", FAT_SECTOR, 1, FAT_RESERVED,
+                       FAT_COPIES, FAT_ROOT_ENTRIES, FAT_SECTORS, 0xF8, FAT_SIZE, 32, 2, 0, 0)
+    boot += struct.pack("<BBBI11s8s", 0x80, 0, 0x29, 0x20261108,
+                        label.ljust(11).encode("ascii"), b"FAT16   ")
+    img[:len(boot)] = boot
+    img[510:512] = b"\x55\xaa"
+    fat = [0xFFF8, 0xFFFF] + [0] * (FAT_SIZE * FAT_SECTOR // 2 - 2)
+    root = bytearray(_fat_dirent(label.ljust(11).encode("ascii"), 0x08, 0, 0, (2026, 11, 8, 7, 30)))
+    cluster = 2
+    for name, data, deleted, when in files:
+        n = max(1, -(-len(data) // FAT_SECTOR))
+        off = (FAT_DATA_START + cluster - 2) * FAT_SECTOR
+        img[off:off + len(data)] = data
+        if not deleted:                     # a deleted file's chain is freed (stays 0)
+            for c in range(cluster, cluster + n):
+                fat[c] = c + 1 if c < cluster + n - 1 else 0xFFFF
+        ent = bytearray(_fat_dirent(_fat_name(name), 0x20, cluster, len(data), when))
+        if deleted:
+            ent[0] = 0xE5
+        root += ent
+        cluster += n
+    fat_bytes = struct.pack(f"<{len(fat)}H", *fat)
+    for i in range(FAT_COPIES):
+        o = (FAT_RESERVED + i * FAT_SIZE) * FAT_SECTOR
+        img[o:o + len(fat_bytes)] = fat_bytes
+    o = (FAT_RESERVED + FAT_COPIES * FAT_SIZE) * FAT_SECTOR
+    img[o:o + len(root)] = root
+    return bytes(img)
+
+
 def gen_usb():
     f = flag("FLAG_07_USB", "TRIATHLON{usb_placeholder}")
     hidden_png = text_png_bytes(
         ["RECOVERED FILE  (was deleted from the referee USB)", "", f,
-         "", "note: carved from unallocated space - nice work."],
+         "", "note: deleted is not erased - nice work."],
         w=940, h=150, bg=(245,245,245))
-    blob = bytearray()
-    blob += b"DECAFLOP-REMOVABLE-MEDIA\x00FAT16\x00" + b"\x00" * 480
-    blob += b"NOTE.TXT (deleted)\nref rotation sheet, do not sha" + b"\x00" * 300  # partially 'overwritten'
-    blob += os.urandom(2048)
-    blob += hidden_png                                    # <-- carve this PNG
-    blob += os.urandom(4096)
-    # pad to a round size
-    blob += b"\x00" * ((1 << 20) - (len(blob) % (1 << 20)))
+    files = [
+        ("LISEZMOI.TXT", "Clé arbitrage DécaFlop Transition 2026.\r\n"
+                         "Ne rien stocker de sensible ici.\r\n".encode("cp1252"), False,
+         (2026, 11, 2, 9, 12)),
+        ("PARCOURS.TXT", "Parcours final : natation 1,5 km, vélo 40 km, course 10 km.\r\n"
+                         "Briefing arbitres : 06h45, zone de transition.\r\n".encode("cp1252"), False,
+         (2026, 11, 6, 18, 40)),
+        ("NOTE.TXT", b"ref rotation sheet, do not share\r\n", True, (2026, 11, 7, 22, 51)),
+        ("ROTATION.PNG", hidden_png, True, (2026, 11, 7, 22, 54)),   # <-- recover this
+    ]
     with open(os.path.join(OUT, "referee_usb.img"), "wb") as fh:
-        fh.write(blob)
+        fh.write(fat16_image(files))
     print("[07] referee_usb.img")
 
 # ---------------------------------------------------------------------------
@@ -418,18 +478,23 @@ it by recovering their password.
 
 CODVN 'B' (BCODE) is the old, weak, MD5-based SAP hashing scheme. For this
 exercise each BCODE is MD5(UPPERCASE(password)). Crack the suspect's hash
-(a tiny wordlist.txt is provided; or use hashcat -m 0). The recovered password
+(a tiny wordlist.txt is provided; upper-case each word before hashing, e.g.
+hashcat -m 0 -j u). The recovered password
 is the passphrase for case_file.zip, which contains the final flag and names
 the saboteur.
 
 (For reference: real-world SAP CODVN B is hashcat mode 7700.)
 """)
 
+    # The crew's test wordlist. It also has to crack challenge 10's HS256 secret
+    # offline (HOSTING.md promises 09 and 10 need nothing else), so it carries
+    # JWT_SECRET, the same value docker-compose gives challenges 10 and 11.
+    jwt_secret = os.environ.get("JWT_SECRET") or "DecaFlop2026"
+    words = ["spring","summer","swim2020","admin2019","triathlon","results",
+             "chip7","wetsuit","transition","sweden","kalmar","password",
+             "decaflop","DecaFlop2025",jwt_secret,"Transition2026","timing","aero"]
     with open(os.path.join(OUT, "wordlist.txt"), "w") as fh:
-        fh.write("\n".join([
-            "spring","summer","swim2020","admin2019","triathlon","results",
-            "chip7","wetsuit","transition","sweden","kalmar","password",
-            "decaflop","timing","aero"]) + "\n")
+        fh.write("\n".join(dict.fromkeys(words)) + "\n")
 
     # password-protected zip with the finale flag + story
     with tempfile.TemporaryDirectory() as td:
